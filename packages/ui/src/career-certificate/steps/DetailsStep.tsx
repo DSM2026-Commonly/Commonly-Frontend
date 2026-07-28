@@ -10,12 +10,14 @@ import {
   RadioSection,
   SelectionCount,
   SelectionIntro,
+  SelectAllButton,
   SelectionToolbar,
   TableFrame,
 } from "./DetailsStep.styles";
 import type { CertificateIssueType } from "../CareerCertificateIssue.types";
 
 interface DetailsStepProps {
+  variant?: "staff" | "civil";
   issueType: CertificateIssueType;
   selectedCareerIds: string[];
   additionalNote: string;
@@ -29,6 +31,7 @@ interface DetailsStepProps {
 
 interface CertificateExtraFieldsProps {
   idPrefix: string;
+  showAdditionalNote?: boolean;
   additionalNote: string;
   purpose: string;
   onAdditionalNoteChange: (value: string) => void;
@@ -37,6 +40,7 @@ interface CertificateExtraFieldsProps {
 
 function CertificateExtraFields({
   idPrefix,
+  showAdditionalNote = true,
   additionalNote,
   purpose,
   onAdditionalNoteChange,
@@ -44,13 +48,15 @@ function CertificateExtraFields({
 }: CertificateExtraFieldsProps) {
   return (
     <ExtraFields>
-      <TextInput
-        id={`${idPrefix}-additional-note`}
-        label="그 밖의 사항"
-        placeholder="추가 기입 사항을 입력해주세요"
-        value={additionalNote}
-        onChange={onAdditionalNoteChange}
-      />
+      {showAdditionalNote && (
+        <TextInput
+          id={`${idPrefix}-additional-note`}
+          label="그 밖의 사항"
+          placeholder="추가 기입 사항을 입력해주세요"
+          value={additionalNote}
+          onChange={onAdditionalNoteChange}
+        />
+      )}
       <TextInput
         id={`${idPrefix}-purpose`}
         label="용도"
@@ -63,6 +69,7 @@ function CertificateExtraFields({
 }
 
 function DetailsStep({
+  variant = "staff",
   issueType,
   selectedCareerIds,
   additionalNote,
@@ -74,6 +81,7 @@ function DetailsStep({
   onPurposeChange,
 }: DetailsStepProps) {
   const allCareersSelected = selectedCareerIds.length === CAREER_ROWS.length;
+  const isCivil = variant === "civil";
 
   return (
     <CardStack>
@@ -111,6 +119,14 @@ function DetailsStep({
                 {CAREER_ROWS.length}건 중{" "}
                 <strong>{selectedCareerIds.length}건</strong> 선택됨
               </SelectionCount>
+              {isCivil && (
+                <SelectAllButton
+                  type="button"
+                  onClick={() => onSelectAll(!allCareersSelected)}
+                >
+                  {allCareersSelected ? "전체 해제" : "전체 선택"}
+                </SelectAllButton>
+              )}
             </SelectionToolbar>
           </SelectionIntro>
           <TableFrame>
@@ -164,13 +180,14 @@ function DetailsStep({
           </TableFrame>
           <CertificateExtraFields
             idPrefix="certificate"
+            showAdditionalNote={!isCivil}
             additionalNote={additionalNote}
             purpose={purpose}
             onAdditionalNoteChange={onAdditionalNoteChange}
             onPurposeChange={onPurposeChange}
           />
         </FormCard>
-      ) : (
+      ) : !isCivil ? (
         <FormCard>
           <CardTitle>비고</CardTitle>
           <CertificateExtraFields
@@ -181,7 +198,7 @@ function DetailsStep({
             onPurposeChange={onPurposeChange}
           />
         </FormCard>
-      )}
+      ) : null}
     </CardStack>
   );
 }

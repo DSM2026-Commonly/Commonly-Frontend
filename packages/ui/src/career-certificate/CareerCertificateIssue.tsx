@@ -24,21 +24,26 @@ import useCareerCertificateScroll from "./useCareerCertificateScroll";
 import CertificatePreviewView from "./views/CertificatePreviewView";
 import CertificateSuccessView from "./views/CertificateSuccessView";
 import CertificateWorkflowView from "./views/CertificateWorkflowView";
+import CivilCertificateApplicationView from "./views/CivilCertificateApplicationView";
 
 export type {
   CareerCertificateApplicationData,
   CareerCertificateIssueProps,
+  CareerCertificateIssueVariant,
   CareerCertificateIssueView,
   CertificateIssueType,
 } from "./CareerCertificateIssue.types";
 
 function CareerCertificateIssue({
-  initialView = "notice",
+  initialView,
+  variant = "staff",
   onCancel,
   onComplete,
   onDownload,
 }: CareerCertificateIssueProps) {
-  const [view, setView] = useState<CareerCertificateIssueView>(initialView);
+  const [view, setView] = useState<CareerCertificateIssueView>(
+    initialView ?? (variant === "civil" ? "details" : "notice"),
+  );
   const [noticeAccepted, setNoticeAccepted] = useState(false);
   const [reason, setReason] = useState("visit");
   const [note, setNote] = useState("");
@@ -73,6 +78,16 @@ function CareerCertificateIssue({
   };
 
   const handlePrevious = () => {
+    if (variant === "civil" && view === "details") {
+      if (issueType === "selected") {
+        setIssueType("all");
+        return;
+      }
+
+      onCancel?.();
+      return;
+    }
+
     if (currentStep === 0) {
       onCancel?.();
       return;
@@ -166,7 +181,11 @@ function CareerCertificateIssue({
 
   const handleRestart = () => {
     setNoticeAccepted(false);
-    moveToView("notice");
+    setIssueType("all");
+    setSelectedCareerIds(CAREER_ROWS.map((row) => row.id));
+    setAdditionalNote("");
+    setPurpose("");
+    moveToView(variant === "civil" ? "details" : "notice");
   };
 
   const handleDownload = () => {
@@ -177,7 +196,7 @@ function CareerCertificateIssue({
 
     const link = document.createElement("a");
     link.href = certificatePreview;
-    link.download = "유성구청_홍길동_경력증명서_A2026-001.png";
+    link.download = "유성구청_전재준_경력증명서_A2026-001.png";
     link.click();
   };
 
@@ -240,6 +259,7 @@ function CareerCertificateIssue({
     return (
       <FlowRoot key={view}>
         <CertificatePreviewView
+          variant={variant}
           onPrevious={() => moveToView("details")}
           onNext={handlePreviewNext}
         />
@@ -251,9 +271,28 @@ function CareerCertificateIssue({
     return (
       <FlowRoot key={view}>
         <CertificateSuccessView
+          variant={variant}
           issueType={issueType}
           onRestart={handleRestart}
           onDownload={handleDownload}
+        />
+      </FlowRoot>
+    );
+  }
+
+  if (variant === "civil") {
+    return (
+      <FlowRoot key={view}>
+        <CivilCertificateApplicationView
+          issueType={issueType}
+          selectedCareerIds={selectedCareerIds}
+          purpose={purpose}
+          onIssueTypeChange={setIssueType}
+          onCareerSelection={handleCareerSelection}
+          onSelectAll={handleSelectAll}
+          onPurposeChange={setPurpose}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
         />
       </FlowRoot>
     );
