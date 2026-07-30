@@ -8,8 +8,10 @@ on:
     paths:
       - "apps/**"
       - "packages/**"
+      - ".dockerignore"
       - "Dockerfile"
       - "bun.lock"
+      - "compose.portainer.yml"
       - "package.json"
       - "turbo.json"
       - "deploy/nginx.conf"
