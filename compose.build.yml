@@ -1,0 +1,42 @@
+services:
+  admin-web:
+    image: commonly-admin-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: admin-web
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_WEB_PORT:-8081}:80"
+    networks:
+      - commonly-web
+
+  civil-web:
+    image: commonly-civil-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: civil-web
+    restart: unless-stopped
+    ports:
+      - "${CIVIL_WEB_PORT:-8082}:80"
+    networks:
+      - commonly-web
+
+  user-web:
+    image: commonly-user-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: user-web
+    restart: unless-stopped
+    ports:
+      - "${USER_WEB_PORT:-8083}:80"
+    networks:
+      - commonly-web
+
+networks:
+  commonly-web:

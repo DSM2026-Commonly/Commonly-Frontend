@@ -1,0 +1,99 @@
+name: Build container images
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "Dockerfile"
+      - "bun.lock"
+      - "package.json"
+      - "turbo.json"
+      - "deploy/nginx.conf"
+      - ".github/workflows/container-images.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: admin-web
+            image: commonly-admin-web
+          - app: civil-web
+            image: commonly-civil-web
+          - app: user-web
+            image: commonly-user-web
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/dsm2026-commonly/${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' }}
+          build-args: |
+            APP_NAME=${{ matrix.app }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    name: Deploy production stack
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Portainer deployment
+        env:
+          PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+        run: |
+          if [ -z "${PORTAINER_WEBHOOK_URL}" ]; then
+            echo "::error::Add PORTAINER_WEBHOOK_URL to the repository Actions secrets."
+            exit 1
+          fi
+
+          curl \
+            --fail-with-body \
+            --request POST \
+            --retry 3 \
+            --show-error \
+            --silent \
+            "${PORTAINER_WEBHOOK_URL}"

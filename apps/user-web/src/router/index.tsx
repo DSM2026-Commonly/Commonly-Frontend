@@ -20,7 +20,6 @@ import IntegratedRegistrationUploadPage from "../pages/IntegratedRegistrationUpl
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import RegistrationMethodPage from "../pages/RegistrationMethodPage";
-import RoutePlaceholderPage from "../pages/RoutePlaceholderPage";
 
 function requireAuth({ request }: LoaderFunctionArgs) {
   if (hasAuthToken()) {

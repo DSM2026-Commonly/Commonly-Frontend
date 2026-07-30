@@ -1,5 +1,10 @@
 # React + TypeScript + Vite
 
+## Deployment
+
+세 웹 앱을 Portainer Stack으로 배포하는 방법은
+[`deploy/PORTAINER.md`](deploy/PORTAINER.md)를 참고하세요.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

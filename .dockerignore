@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.turbo
+.vscode
+node_modules
+**/dist
+**/dist-ssr
+*.log
+*.local
