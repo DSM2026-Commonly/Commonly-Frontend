@@ -13,5 +13,8 @@
   },
   "devDependencies": {
     "turbo": "^2.10.5"
+  },
+  "dependencies": {
+    "krds-react": "^1.1.1"
   }
 }

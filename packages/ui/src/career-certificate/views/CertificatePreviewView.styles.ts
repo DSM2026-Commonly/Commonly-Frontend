@@ -1,0 +1,128 @@
+import styled from "@emotion/styled";
+import {
+  MOBILE_BREAKPOINT,
+  TABLET_BREAKPOINT,
+} from "../CareerCertificateIssue.breakpoints";
+
+interface CivilLayoutProps {
+  $civil: boolean;
+}
+
+export const PreviewPage = styled.div<CivilLayoutProps>`
+  width: min(
+    ${({ $civil }) => ($civil ? "1200px" : "792px")},
+    calc(100% - 48px)
+  );
+  margin: 88px auto 64px;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    width: calc(100% - 40px);
+    margin-top: 48px;
+    margin-bottom: 48px;
+  }
+`;
+
+export const PreviewHeader = styled.header`
+  display: flex;
+  min-height: 94px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+
+  .krds-btn {
+    min-width: 114px;
+  }
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+  }
+`;
+
+export const PreviewTitle = styled.h1`
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 1px;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    font-size: 30px;
+  }
+`;
+
+export const FilenameBar = styled.div`
+  display: flex;
+  min-height: 80px;
+  align-items: center;
+  padding: 20px;
+  overflow: hidden;
+  background: #2c261f;
+  color: #ffffff;
+  font-family: Pretendard, "Pretendard GOV", sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.4;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    min-height: 64px;
+    font-size: 16px;
+  }
+`;
+
+export const DocumentViewer = styled.div<CivilLayoutProps>`
+  display: flex;
+  height: ${({ $civil }) =>
+    $civil ? "1492px" : "clamp(520px, 68vh, 760px)"};
+  align-items: flex-start;
+  justify-content: center;
+  padding: ${({ $civil }) =>
+    $civil ? "190px 178px 110px" : "48px 32px"};
+  overflow: auto;
+  background: #878079;
+  overscroll-behavior: contain;
+
+  @media (max-width: ${TABLET_BREAKPOINT}) {
+    height: auto;
+    padding: 40px 24px;
+  }
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    height: min(68vh, 620px);
+    min-height: 420px;
+    padding: 24px 16px;
+  }
+`;
+
+export const CertificateImage = styled.img<CivilLayoutProps>`
+  display: block;
+  width: min(${({ $civil }) => ($civil ? "842px" : "640px")}, 100%);
+  height: auto;
+  flex: 0 0 auto;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 16%);
+`;
+
+export const PreviewActions = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 48px;
+
+  .krds-btn {
+    min-width: 114px;
+  }
+
+  @media (max-width: 479px) {
+    .krds-btn {
+      min-width: 0;
+      flex: 1 1 0;
+    }
+  }
+`;

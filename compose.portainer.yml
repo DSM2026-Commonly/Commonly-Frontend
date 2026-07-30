@@ -1,0 +1,45 @@
+services:
+  admin-web:
+    image: commonly-admin-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: admin-web
+    pull_policy: build
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_WEB_PORT:-8081}:80"
+    networks:
+      - commonly-web
+
+  civil-web:
+    image: commonly-civil-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: civil-web
+    pull_policy: build
+    restart: unless-stopped
+    ports:
+      - "${CIVIL_WEB_PORT:-8082}:80"
+    networks:
+      - commonly-web
+
+  user-web:
+    image: commonly-user-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: user-web
+    pull_policy: build
+    restart: unless-stopped
+    ports:
+      - "${USER_WEB_PORT:-8083}:80"
+    networks:
+      - commonly-web
+
+networks:
+  commonly-web:
