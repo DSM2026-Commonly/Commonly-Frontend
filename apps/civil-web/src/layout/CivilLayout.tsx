@@ -4,7 +4,7 @@ import {
   type HeaderProps,
 } from "@commonly/ui";
 import { clearAuthToken } from "@commonly/utils";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Outlet, useNavigate } from "react-router";
 
 export interface CivilLayoutProps {
@@ -19,8 +19,19 @@ function CivilLayout({
   footerProps,
 }: CivilLayoutProps) {
   const navigate = useNavigate();
-  const handleNavigate =
-    headerProps?.onNavigate ?? ((href: string) => void navigate(href));
+  const [issueFlowKey, setIssueFlowKey] = useState(0);
+  const handleNavigate = (href: string) => {
+    if (href === "/") {
+      setIssueFlowKey((currentKey) => currentKey + 1);
+    }
+
+    if (headerProps?.onNavigate) {
+      headerProps.onNavigate(href);
+      return;
+    }
+
+    void navigate(href);
+  };
   const handleLogout =
     headerProps?.onLogout ??
     (() => {
@@ -42,7 +53,7 @@ function CivilLayout({
       }}
       footerProps={footerProps}
     >
-      {children ?? <Outlet />}
+      {children ?? <Outlet key={issueFlowKey} />}
     </ApplicationShell>
   );
 }

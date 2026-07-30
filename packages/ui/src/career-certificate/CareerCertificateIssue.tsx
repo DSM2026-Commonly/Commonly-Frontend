@@ -286,6 +286,7 @@ function CareerCertificateIssue({
         <CivilCertificateApplicationView
           issueType={issueType}
           selectedCareerIds={selectedCareerIds}
+          canContinue={canContinue}
           purpose={purpose}
           onIssueTypeChange={setIssueType}
           onCareerSelection={handleCareerSelection}

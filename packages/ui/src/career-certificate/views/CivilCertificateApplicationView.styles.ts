@@ -118,6 +118,10 @@ export const CivilActionRow = styled.div`
     min-width: 114px;
   }
 
+  .krds-btn:last-child {
+    margin-left: auto;
+  }
+
   @media (max-width: 479px) {
     .krds-btn {
       min-width: 0;

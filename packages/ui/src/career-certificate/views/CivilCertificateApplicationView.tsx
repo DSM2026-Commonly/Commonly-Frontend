@@ -17,6 +17,7 @@ import {
 interface CivilCertificateApplicationViewProps {
   issueType: CertificateIssueType;
   selectedCareerIds: string[];
+  canContinue: boolean;
   purpose: string;
   onIssueTypeChange: (issueType: CertificateIssueType) => void;
   onCareerSelection: (id: string, checked: boolean) => void;
@@ -29,6 +30,7 @@ interface CivilCertificateApplicationViewProps {
 function CivilCertificateApplicationView({
   issueType,
   selectedCareerIds,
+  canContinue,
   purpose,
   onIssueTypeChange,
   onCareerSelection,
@@ -78,10 +80,12 @@ function CivilCertificateApplicationView({
       />
 
       <CivilActionRow>
-        <Button variant="tertiary" size="xlarge" onClick={onPrevious}>
-          {issueType === "selected" ? "이전으로" : "취소하기"}
-        </Button>
-        <Button size="xlarge" onClick={onNext}>
+        {issueType === "selected" && (
+          <Button variant="tertiary" size="xlarge" onClick={onPrevious}>
+            이전으로
+          </Button>
+        )}
+        <Button size="xlarge" disabled={!canContinue} onClick={onNext}>
           신청하기
         </Button>
       </CivilActionRow>
