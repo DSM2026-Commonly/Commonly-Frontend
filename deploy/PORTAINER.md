@@ -1,8 +1,8 @@
 # Portainer Stack 배포
 
-이 구성은 Portainer가 Git 저장소를 받은 뒤 세 앱의 이미지를 직접 빌드하고
-한 Stack으로 배포합니다. 별도 컨테이너 레지스트리나 Business Edition 전용
-GitOps 기능은 사용하지 않습니다.
+이 구성은 Portainer가 `main` 브랜치를 주기적으로 확인한 뒤 변경된 소스를
+받아 세 앱의 이미지를 직접 빌드하고 한 Stack으로 배포합니다. 별도 컨테이너
+레지스트리, GitHub Actions, GitHub Secrets는 사용하지 않습니다.
 
 ## 기본 접속 주소
 
@@ -20,26 +20,12 @@ GitOps 기능은 사용하지 않습니다.
 4. `Git repository` 방식을 선택하고 Repository reference를 `main`으로
    지정합니다.
 5. `Compose path`에 `compose.portainer.yml`을 입력합니다.
-6. 필요하면 `Environment variables`에서 포트를 변경합니다.
-7. `Deploy the stack`을 누릅니다. Portainer가 Dockerfile을 사용해
+6. `GitOps updates`를 활성화합니다.
+7. Mechanism은 `Polling`으로 선택하고 원하는 Fetch interval을 지정합니다.
+8. `Re-pull image`는 활성화하지 않아도 됩니다.
+9. 필요하면 `Environment variables`에서 포트를 변경합니다.
+10. `Deploy the stack`을 누릅니다. Portainer가 Dockerfile을 사용해
    `admin-web`, `civil-web`, `user-web` 이미지를 직접 빌드합니다.
-8. Portainer 우측 상단 사용자 메뉴 → `My account` → `Access tokens`에서
-    GitHub Actions용 Access Token을 생성합니다.
-9. GitHub 저장소의 `Settings` → `Secrets and variables` → `Actions`에
-    아래 Repository secrets를 등록합니다.
-
-| Secret | 값 |
-| --- | --- |
-| `PORTAINER_URL` | 외부에서 접근 가능한 Portainer 주소. 예: `https://portainer.example.com` |
-| `PORTAINER_ACCESS_TOKEN` | 8번에서 만든 Access Token |
-| `PORTAINER_STACK_ID` | 배포한 Commonly Stack의 숫자 ID |
-
-Stack ID는 Access Token을 사용해 `GET /api/stacks`를 호출하면 응답의
-`Id`에서 확인할 수 있습니다.
-
-```sh
-curl -H "X-API-Key: <ACCESS_TOKEN>" https://portainer.example.com/api/stacks
-```
 
 사용 가능한 환경변수:
 
@@ -56,15 +42,10 @@ curl -H "X-API-Key: <ACCESS_TOKEN>" https://portainer.example.com/api/stacks
 
 ## 갱신 배포
 
-`main`에 merge되면 GitHub Actions가 Portainer CE의
-`PUT /api/stacks/{id}/git/redeploy` API를 호출합니다. Portainer가 `main`의
-새 소스를 받고 Dockerfile로 세 이미지를 다시 빌드한 뒤 Stack을 재배포합니다.
-각 서비스의 `pull_policy: build`가 기존 로컬 이미지 대신 새 빌드를
-사용하도록 강제합니다.
-
-Portainer가 사설망 안에만 있어 GitHub-hosted runner에서 API 주소에 접근할
-수 없다면 자동 호출은 실패합니다. 이 경우 네트워크에 접근 가능한
-self-hosted runner를 사용하거나 Stack 화면에서 수동으로 재배포해야 합니다.
+`main`에 merge되면 commit hash가 변경됩니다. 다음 Polling 주기에 Portainer가
+변경을 감지하고 새 소스를 받은 뒤 Dockerfile로 세 이미지를 다시 빌드하고
+Stack을 재배포합니다. 각 서비스의 `pull_policy: build`가 기존 로컬 이미지
+대신 새 빌드를 사용하도록 강제하므로 `Re-pull image`는 필요하지 않습니다.
 
 Portainer가 원격 Agent나 별도 원격 Docker 환경을 관리하는 구성에서는
 Compose의 `build`가 지원되지 않을 수 있습니다. 이 방식은 Portainer가
