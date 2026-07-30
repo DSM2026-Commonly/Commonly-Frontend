@@ -8,6 +8,8 @@ export type CareerCertificateIssueView =
 
 export type CertificateIssueType = "all" | "selected";
 
+export type CareerCertificateIssueVariant = "staff" | "civil";
+
 export interface CareerCertificateApplicationData {
   issueType: CertificateIssueType;
   reason: string;
@@ -23,6 +25,7 @@ export interface CareerCertificateApplicationData {
 
 export interface CareerCertificateIssueProps {
   initialView?: CareerCertificateIssueView;
+  variant?: CareerCertificateIssueVariant;
   onCancel?: () => void;
   onComplete?: (data: CareerCertificateApplicationData) => void;
   onDownload?: () => void;

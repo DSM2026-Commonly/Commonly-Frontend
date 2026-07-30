@@ -7,28 +7,45 @@ import {
   SummaryLabel,
   SummaryValue,
 } from "./CertificateSuccessView.styles";
-import type { CertificateIssueType } from "../CareerCertificateIssue.types";
+import type {
+  CareerCertificateIssueVariant,
+  CertificateIssueType,
+} from "../CareerCertificateIssue.types";
 
 interface CertificateSuccessViewProps {
+  variant?: CareerCertificateIssueVariant;
   issueType: CertificateIssueType;
   onRestart: () => void;
   onDownload: () => void;
 }
 
 function CertificateSuccessView({
+  variant = "staff",
   issueType,
   onRestart,
   onDownload,
 }: CertificateSuccessViewProps) {
+  const isCivil = variant === "civil";
+
   return (
     <SuccessPage>
       <SuccessTitle>
-        경력증명서 발급
-        <br />
-        업무 처리가 <strong>완료</strong>되었습니다.
+        {isCivil ? (
+          <>
+            경력증명서 발급 신청
+            <br />
+            민원 처리가 완료되었습니다.
+          </>
+        ) : (
+          <>
+            경력증명서 발급
+            <br />
+            업무 처리가 <strong>완료</strong>되었습니다.
+          </>
+        )}
       </SuccessTitle>
       <SummaryCard>
-        <SummaryLabel>대상자</SummaryLabel>
+        <SummaryLabel>{isCivil ? "신청인" : "대상자"}</SummaryLabel>
         <SummaryValue>전재준</SummaryValue>
         <SummaryLabel>신청정보</SummaryLabel>
         <SummaryValue>

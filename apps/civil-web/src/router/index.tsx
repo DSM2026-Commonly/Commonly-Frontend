@@ -8,7 +8,6 @@ import CivilLayout from "../layout/CivilLayout";
 import CareerCertificateIssuePage from "../pages/CareerCertificateIssuePage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
-import RoutePlaceholderPage from "../pages/RoutePlaceholderPage";
 import SignupFormPage from "../pages/SignupFormPage";
 import SignupPage from "../pages/SignupPage";
 
@@ -50,12 +49,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <RoutePlaceholderPage
-            title="경력관리 시스템"
-            description="경력관리 서비스를 이용해 주세요."
-          />
-        ),
+        Component: CareerCertificateIssuePage,
       },
       {
         path: "career/issue",

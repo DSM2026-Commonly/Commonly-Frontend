@@ -4,8 +4,15 @@ import {
   TABLET_BREAKPOINT,
 } from "../CareerCertificateIssue.breakpoints";
 
-export const PreviewPage = styled.div`
-  width: min(792px, calc(100% - 48px));
+interface CivilLayoutProps {
+  $civil: boolean;
+}
+
+export const PreviewPage = styled.div<CivilLayoutProps>`
+  width: min(
+    ${({ $civil }) => ($civil ? "1200px" : "792px")},
+    calc(100% - 48px)
+  );
   margin: 88px auto 64px;
 
   @media (max-width: ${MOBILE_BREAKPOINT}) {
@@ -68,17 +75,20 @@ export const FilenameBar = styled.div`
   }
 `;
 
-export const DocumentViewer = styled.div`
+export const DocumentViewer = styled.div<CivilLayoutProps>`
   display: flex;
-  height: clamp(520px, 68vh, 760px);
+  height: ${({ $civil }) =>
+    $civil ? "1492px" : "clamp(520px, 68vh, 760px)"};
   align-items: flex-start;
   justify-content: center;
-  padding: 48px 32px;
+  padding: ${({ $civil }) =>
+    $civil ? "190px 178px 110px" : "48px 32px"};
   overflow: auto;
   background: #878079;
   overscroll-behavior: contain;
 
   @media (max-width: ${TABLET_BREAKPOINT}) {
+    height: auto;
     padding: 40px 24px;
   }
 
@@ -89,9 +99,9 @@ export const DocumentViewer = styled.div`
   }
 `;
 
-export const CertificateImage = styled.img`
+export const CertificateImage = styled.img<CivilLayoutProps>`
   display: block;
-  width: min(640px, 100%);
+  width: min(${({ $civil }) => ($civil ? "842px" : "640px")}, 100%);
   height: auto;
   flex: 0 0 auto;
   background: #ffffff;

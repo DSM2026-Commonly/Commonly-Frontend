@@ -34,6 +34,30 @@ export const SelectionCount = styled.p`
   }
 `;
 
+export const SelectAllButton = styled.button`
+  min-height: 24px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--career-color-text);
+  font-size: 15px;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-position: from-font;
+  cursor: pointer;
+
+  &:hover {
+    background: #f4f5f6;
+    color: #0b50d0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--career-color-primary);
+    outline-offset: 2px;
+  }
+`;
+
 export const ExtraFields = styled.div`
   display: flex;
   flex-direction: column;

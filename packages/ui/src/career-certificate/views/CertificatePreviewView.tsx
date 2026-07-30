@@ -1,5 +1,6 @@
 import { Button } from "krds-react";
 import certificatePreview from "../../assets/career-certificate-preview.png";
+import type { CareerCertificateIssueVariant } from "../CareerCertificateIssue.types";
 import {
   CertificateImage,
   DocumentViewer,
@@ -11,16 +12,20 @@ import {
 } from "./CertificatePreviewView.styles";
 
 interface CertificatePreviewViewProps {
+  variant?: CareerCertificateIssueVariant;
   onPrevious: () => void;
   onNext: () => void;
 }
 
 function CertificatePreviewView({
+  variant = "staff",
   onPrevious,
   onNext,
 }: CertificatePreviewViewProps) {
+  const isCivil = variant === "civil";
+
   return (
-    <PreviewPage>
+    <PreviewPage $civil={isCivil}>
       <PreviewHeader>
         <PreviewTitle>경력증명서 발급 미리보기</PreviewTitle>
         <Button size="xlarge" onClick={onNext}>
@@ -30,8 +35,9 @@ function CertificatePreviewView({
       <FilenameBar>
         <span>유성구청_홍길동_경력증명서_A2026-001.pdf</span>
       </FilenameBar>
-      <DocumentViewer>
+      <DocumentViewer $civil={isCivil}>
         <CertificateImage
+          $civil={isCivil}
           src={certificatePreview}
           alt="열람용 경력증명서 미리보기"
         />

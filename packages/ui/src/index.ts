@@ -10,6 +10,7 @@ export { default as CareerCertificateIssue } from "./career-certificate/CareerCe
 export type {
   CareerCertificateApplicationData,
   CareerCertificateIssueProps,
+  CareerCertificateIssueVariant,
   CareerCertificateIssueView,
   CertificateIssueType,
 } from "./career-certificate/CareerCertificateIssue";
