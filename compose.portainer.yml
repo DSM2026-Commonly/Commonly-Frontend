@@ -1,6 +1,12 @@
 services:
   admin-web:
-    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_NAMESPACE:-dsm2026-commonly}/commonly-admin-web:${IMAGE_TAG:-main}
+    image: commonly-admin-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: admin-web
+    pull_policy: build
     restart: unless-stopped
     ports:
       - "${ADMIN_WEB_PORT:-8081}:80"
@@ -8,7 +14,13 @@ services:
       - commonly-web
 
   civil-web:
-    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_NAMESPACE:-dsm2026-commonly}/commonly-civil-web:${IMAGE_TAG:-main}
+    image: commonly-civil-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: civil-web
+    pull_policy: build
     restart: unless-stopped
     ports:
       - "${CIVIL_WEB_PORT:-8082}:80"
@@ -16,7 +28,13 @@ services:
       - commonly-web
 
   user-web:
-    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_NAMESPACE:-dsm2026-commonly}/commonly-user-web:${IMAGE_TAG:-main}
+    image: commonly-user-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: user-web
+    pull_policy: build
     restart: unless-stopped
     ports:
       - "${USER_WEB_PORT:-8083}:80"
