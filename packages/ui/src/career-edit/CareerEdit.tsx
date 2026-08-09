@@ -1304,7 +1304,7 @@ function CareerEdit({
                 type="button"
                 onClick={handlePrevious}
               >
-                {currentStep === 0 ? "취소하기" : "이전으로"}
+                이전으로
               </Button>
               <Button
                 variant="primary"

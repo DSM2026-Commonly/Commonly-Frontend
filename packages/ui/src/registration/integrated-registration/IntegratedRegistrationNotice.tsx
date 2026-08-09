@@ -162,7 +162,7 @@ function IntegratedRegistrationNotice({
         <ActionBar $individual={variant === "individual"}>
           <ButtonGroup $individual={variant === "individual"}>
             <Button
-              variant={variant === "individual" ? "tertiary" : "secondary"}
+              variant="tertiary"
               size="xlarge"
               type="button"
               onClick={onPrevious}
