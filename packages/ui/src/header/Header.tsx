@@ -23,6 +23,10 @@ import {
 
 export type HeaderVariant = "admin" | "user" | "civil" | "not-auth";
 
+// TODO: 로그인 사용자 정보/세션 타이머 연동 전까지 사용하는 임시 더미 데이터
+const PLACEHOLDER_USER_NAME = "전재준";
+const PLACEHOLDER_SESSION_TIME = "00분 00초";
+
 export interface HeaderProps {
   variant?: HeaderVariant;
   onExtend?: () => void;
@@ -105,10 +109,10 @@ const Header = ({
       <HeaderBody $compact={!configuration.showUtility}>
         {configuration.showUtility && (
           <UtilityRow>
-            <UtilityText>전재준 님</UtilityText>
+            <UtilityText>{PLACEHOLDER_USER_NAME} 님</UtilityText>
             <UtilityDivider aria-hidden="true" />
             <UtilityText $width={125}>
-              남은시간 00분 00초
+              남은시간 {PLACEHOLDER_SESSION_TIME}
             </UtilityText>
             <UtilityButton
               variant="text"
