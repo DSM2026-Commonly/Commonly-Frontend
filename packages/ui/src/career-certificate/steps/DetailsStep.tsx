@@ -152,8 +152,8 @@ function DetailsStep({
                       }
                     />
                   </Table.Th>
-                  <Table.Th scope="col">담당 업무</Table.Th>
-                  <Table.Th scope="col">근무 부서</Table.Th>
+                  <Table.Th scope="col">담당업무</Table.Th>
+                  <Table.Th scope="col">근무부서</Table.Th>
                   <Table.Th scope="col">근무 기간</Table.Th>
                 </Table.Tr>
               </Table.Thead>

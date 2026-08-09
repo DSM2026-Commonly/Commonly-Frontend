@@ -429,12 +429,12 @@ function IndividualRegistrationSubject({
           {duplicateStatus === "duplicate" && (
             <DuplicateResultCard aria-labelledby={`${titleId}-duplicate-title`}>
               <DuplicateResultTitle id={`${titleId}-duplicate-title`}>
-                중복확인
+                중복 확인
               </DuplicateResultTitle>
               <DuplicateTableFrame>
                 <Table>
                   <Table.Caption className="sr-only">
-                    입력 정보와 일치하는 기존 근로자 목록
+                    입력 정보와 일치하는 기존 대상자 목록
                   </Table.Caption>
                   <Table.Colgroup>
                     <Table.Col width="80px" />
@@ -464,7 +464,7 @@ function IndividualRegistrationSubject({
                             onChange={() => setSelectedDuplicateId(candidate.id)}
                           >
                             <span className="sr-only">
-                              {candidate.name} 기존 근로자 선택
+                              {candidate.name} 기존 대상자 선택
                             </span>
                           </Radio>
                         </Table.Td>
@@ -506,7 +506,7 @@ function IndividualRegistrationSubject({
                 disabled={!selectedDuplicateId || !onNext}
                 onClick={() => handleDuplicateResolution("existing")}
               >
-                기존 근로자 선택
+                기존 대상자 선택
               </Button>
               <Button
                 variant="primary"
@@ -515,7 +515,7 @@ function IndividualRegistrationSubject({
                 disabled={!onNext}
                 onClick={() => handleDuplicateResolution("new")}
               >
-                신규 근로자 추가
+                신규 대상자 추가
               </Button>
             </DuplicateActionGroup>
           ) : (

@@ -64,15 +64,15 @@ function UserRegistration({
     const nextErrors: UserRegistrationErrors = {};
 
     if (!normalizedData.name) {
-      nextErrors.name = "이름을 입력해 주세요.";
+      nextErrors.name = "이름을 입력해주세요.";
     }
 
     if (!normalizedData.accountId) {
-      nextErrors.accountId = "아이디를 입력해 주세요.";
+      nextErrors.accountId = "아이디를 입력해주세요.";
     }
 
     if (!normalizedData.department) {
-      nextErrors.department = "소속 부서를 입력해 주세요.";
+      nextErrors.department = "소속 부서를 입력해주세요.";
     }
 
     setErrors(nextErrors);

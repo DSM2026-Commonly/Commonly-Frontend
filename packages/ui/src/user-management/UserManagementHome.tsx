@@ -29,19 +29,19 @@ const managementActions = [
   {
     id: "list",
     title: "사용자 조회",
-    description: "업무 담당자 목록을 조회합니다.",
+    description: "사용자 목록을 조회합니다.",
     shortcutLabel: "목록 조회",
   },
   {
     id: "register",
     title: "사용자 등록",
-    description: "업무 담당자를 등록합니다.",
+    description: "사용자를 등록합니다.",
     shortcutLabel: "등록",
   },
   {
     id: "delete",
     title: "사용자 삭제",
-    description: "업무 담당자를 삭제합니다.",
+    description: "사용자를 삭제합니다.",
     shortcutLabel: "삭제",
   },
 ] as const satisfies readonly {
