@@ -546,8 +546,8 @@ function EditTargetSelectionStep({
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th scope="col">선택</Table.Th>
-                    <Table.Th scope="col">담당 업무</Table.Th>
-                    <Table.Th scope="col">근무 부서</Table.Th>
+                    <Table.Th scope="col">담당업무</Table.Th>
+                    <Table.Th scope="col">근무부서</Table.Th>
                     <Table.Th scope="col">근무 기간</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -1304,7 +1304,7 @@ function CareerEdit({
                 type="button"
                 onClick={handlePrevious}
               >
-                {currentStep === 0 ? "취소하기" : "이전으로"}
+                이전으로
               </Button>
               <Button
                 variant="primary"

@@ -2,10 +2,11 @@ import {
   ApplicationShell,
   type FooterProps,
   type HeaderProps,
+  useScrollToTopOnChange,
 } from "@commonly/ui";
 import { clearAuthToken } from "@commonly/utils";
 import { useState, type ReactNode } from "react";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 
 export interface CivilLayoutProps {
   children?: ReactNode;
@@ -19,7 +20,10 @@ function CivilLayout({
   footerProps,
 }: CivilLayoutProps) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [issueFlowKey, setIssueFlowKey] = useState(0);
+
+  useScrollToTopOnChange(pathname);
   const handleNavigate = (href: string) => {
     if (href === "/") {
       setIssueFlowKey((currentKey) => currentKey + 1);

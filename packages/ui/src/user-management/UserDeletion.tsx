@@ -74,7 +74,7 @@ function UserDeletion({
     const normalizedAccountId = accountId.trim();
 
     if (!normalizedAccountId) {
-      setSearchError("조회할 아이디를 입력해 주세요.");
+      setSearchError("조회할 아이디를 입력해주세요.");
       setSearchResult(null);
       setSelectedAccountId("");
       setHasSearched(false);

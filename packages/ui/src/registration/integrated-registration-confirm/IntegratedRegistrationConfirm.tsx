@@ -218,7 +218,7 @@ function IntegratedRegistrationConfirm({
         <ActionBar>
           <ButtonGroup>
             <Button
-              variant="secondary"
+              variant="tertiary"
               size="xlarge"
               type="button"
               onClick={onPrevious}

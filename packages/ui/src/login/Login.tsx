@@ -69,11 +69,11 @@ function Login({
     const nextFieldErrors: LoginFieldErrors = {};
 
     if (!normalizedLoginId) {
-      nextFieldErrors.loginId = "아이디를 입력해 주세요.";
+      nextFieldErrors.loginId = "아이디를 입력해주세요.";
     }
 
     if (!password) {
-      nextFieldErrors.password = "비밀번호를 입력해 주세요.";
+      nextFieldErrors.password = "비밀번호를 입력해주세요.";
     }
 
     setFieldErrors(nextFieldErrors);

@@ -61,7 +61,7 @@ const defaultSteps = [
 
 const defaultNoticeItems = [
   "등록 대상자의 인적사항이 일치하는지 확인하여 주시기 바랍니다.",
-  "근무기간, 소속부서 및 담당업무를 정확하게 입력하여 주시기 바랍니다.",
+  "근무기간, 근무부서 및 담당업무를 정확하게 입력하여 주시기 바랍니다.",
   "등록 완료 전 입력 내용을 다시 한번 확인하여 주시기 바랍니다.",
 ] as const;
 
@@ -162,7 +162,7 @@ function IntegratedRegistrationNotice({
         <ActionBar $individual={variant === "individual"}>
           <ButtonGroup $individual={variant === "individual"}>
             <Button
-              variant={variant === "individual" ? "tertiary" : "secondary"}
+              variant="tertiary"
               size="xlarge"
               type="button"
               onClick={onPrevious}

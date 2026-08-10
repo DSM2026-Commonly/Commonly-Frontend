@@ -55,7 +55,7 @@ function CertificateWorkflowView({
         <StageContent>{children}</StageContent>
         <ActionRow>
           <Button variant="tertiary" size="xlarge" onClick={onPrevious}>
-            {currentStep === 0 ? "취소하기" : "이전으로"}
+            이전으로
           </Button>
           <Button
             size="xlarge"
