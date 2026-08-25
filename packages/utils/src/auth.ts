@@ -124,13 +124,27 @@ export function setAuthTokens(
     return false;
   }
 
-  setRefreshToken(tokens.refreshToken, storage);
+  const didStoreRefreshToken = setRefreshToken(tokens.refreshToken, storage);
+
+  if (!didStoreRefreshToken) {
+    removeStorageValue(AUTH_TOKEN_STORAGE_KEY, storage);
+    return false;
+  }
+
   return true;
 }
 
 export function clearAuthToken(storage?: AuthStorage): boolean {
-  removeStorageValue(REFRESH_TOKEN_STORAGE_KEY, storage);
-  return removeStorageValue(AUTH_TOKEN_STORAGE_KEY, storage);
+  const didRemoveRefreshToken = removeStorageValue(
+    REFRESH_TOKEN_STORAGE_KEY,
+    storage,
+  );
+  const didRemoveAccessToken = removeStorageValue(
+    AUTH_TOKEN_STORAGE_KEY,
+    storage,
+  );
+
+  return didRemoveRefreshToken && didRemoveAccessToken;
 }
 
 export function getRememberedLoginId(storage?: AuthStorage): string {
