@@ -24,6 +24,26 @@ describe("login", () => {
     expect(await login(credentials)).toEqual({ accessToken: "a", refreshToken: "r" });
   });
 
+  test("200 trims tokens", async () => {
+    mockFetch(200, { accessToken: "  a  ", refreshToken: "\tr\n" });
+    expect(await login(credentials)).toEqual({ accessToken: "a", refreshToken: "r" });
+  });
+
+  test("200 with empty or missing tokens throws invalid response", async () => {
+    for (const body of [
+      { accessToken: "", refreshToken: "r" },
+      { accessToken: "a", refreshToken: "   " },
+      { accessToken: 123, refreshToken: "r" },
+      { accessToken: "a" },
+      {},
+    ]) {
+      mockFetch(200, body);
+      const error = await login(credentials).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).message).toBe("로그인 응답이 올바르지 않습니다.");
+    }
+  });
+
   test("400 / 401 / 500 map to messages", async () => {
     for (const [status, message] of [
       [400, "입력한 정보가 조건에 맞지 않습니다. 아이디와 비밀번호를 확인해주세요."],

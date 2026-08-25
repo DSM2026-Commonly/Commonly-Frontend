@@ -43,15 +43,18 @@ export async function login(
     },
   });
 
-  if (
-    typeof response?.accessToken !== "string" ||
-    typeof response.refreshToken !== "string"
-  ) {
+  const accessToken = normalizeToken(response?.accessToken);
+  const refreshToken = normalizeToken(response?.refreshToken);
+
+  if (!accessToken || !refreshToken) {
     throw new ApiError(200, "로그인 응답이 올바르지 않습니다.");
   }
 
-  return {
-    accessToken: response.accessToken,
-    refreshToken: response.refreshToken,
-  };
+  return { accessToken, refreshToken };
+}
+
+function normalizeToken(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
