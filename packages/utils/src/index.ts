@@ -37,3 +37,11 @@ export {
   login,
 } from "./login";
 export type { LoginRequest, LoginResponse } from "./login";
+export {
+  SIGNUP_BAD_REQUEST_MESSAGE,
+  SIGNUP_ENDPOINT,
+  SIGNUP_INVALID_RESPONSE_MESSAGE,
+  SIGNUP_UNAUTHORIZED_MESSAGE,
+  signup,
+} from "./signup";
+export type { SignupRequest, SignupResponse } from "./signup";
