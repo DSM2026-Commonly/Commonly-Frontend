@@ -41,6 +41,9 @@ export interface LoginProps {
   variant?: LoginVariant;
 }
 
+const ACCOUNT_ID_PATTERN = /^[a-zA-Z0-9]{4,12}$/;
+const PASSWORD_MIN_LENGTH = 8;
+
 interface LoginFieldErrors {
   loginId?: string;
   password?: string;
@@ -70,10 +73,14 @@ function Login({
 
     if (!normalizedLoginId) {
       nextFieldErrors.loginId = "아이디를 입력해주세요.";
+    } else if (!ACCOUNT_ID_PATTERN.test(normalizedLoginId)) {
+      nextFieldErrors.loginId = "아이디는 영문과 숫자로 4~12자 입력해주세요.";
     }
 
     if (!password) {
       nextFieldErrors.password = "비밀번호를 입력해주세요.";
+    } else if (password.length < PASSWORD_MIN_LENGTH) {
+      nextFieldErrors.password = `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상 입력해주세요.`;
     }
 
     setFieldErrors(nextFieldErrors);
