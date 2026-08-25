@@ -53,7 +53,7 @@ export async function login(
   return { accessToken, refreshToken };
 }
 
-function normalizeToken(value: unknown): string | null {
+export function normalizeToken(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
