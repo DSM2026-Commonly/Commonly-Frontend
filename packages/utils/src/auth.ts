@@ -1,4 +1,5 @@
 export const AUTH_TOKEN_STORAGE_KEY = "token";
+export const REFRESH_TOKEN_STORAGE_KEY = "refreshToken";
 export const REMEMBERED_LOGIN_ID_STORAGE_KEY = "rememberedLoginId";
 
 export interface AuthStorage {
@@ -92,7 +93,43 @@ export function setAuthToken(token: string, storage?: AuthStorage): boolean {
   );
 }
 
+export function getRefreshToken(storage?: AuthStorage): string | null {
+  const token = readStorageValue(REFRESH_TOKEN_STORAGE_KEY, storage)?.trim();
+  return token || null;
+}
+
+export function setRefreshToken(token: string, storage?: AuthStorage): boolean {
+  const normalizedToken = token.trim();
+
+  if (!normalizedToken) {
+    removeStorageValue(REFRESH_TOKEN_STORAGE_KEY, storage);
+    return false;
+  }
+
+  return writeStorageValue(REFRESH_TOKEN_STORAGE_KEY, normalizedToken, storage);
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export function setAuthTokens(
+  tokens: AuthTokens,
+  storage?: AuthStorage,
+): boolean {
+  const didStoreAccessToken = setAuthToken(tokens.accessToken, storage);
+
+  if (!didStoreAccessToken) {
+    return false;
+  }
+
+  setRefreshToken(tokens.refreshToken, storage);
+  return true;
+}
+
 export function clearAuthToken(storage?: AuthStorage): boolean {
+  removeStorageValue(REFRESH_TOKEN_STORAGE_KEY, storage);
   return removeStorageValue(AUTH_TOKEN_STORAGE_KEY, storage);
 }
 
