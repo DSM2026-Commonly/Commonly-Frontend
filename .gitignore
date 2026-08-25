@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .turbo
+
+# AI agent runtime state
+.omc/
+.omx/

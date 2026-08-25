@@ -1,10 +1,10 @@
 import { Login, type LoginFormData } from "@commonly/ui";
 import {
   clearRememberedLoginId,
-  createLocalSessionToken,
   getRememberedLoginId,
   getSafeRedirectPath,
-  setAuthToken,
+  login,
+  setAuthTokens,
   setRememberedLoginId,
 } from "@commonly/utils";
 import { useLocation, useNavigate } from "react-router";
@@ -16,10 +16,15 @@ function LoginPage() {
     new URLSearchParams(location.search).get("redirectTo"),
   );
 
-  const handleLogin = (formData: LoginFormData) => {
-    const didStoreToken = setAuthToken(createLocalSessionToken());
+  const handleLogin = async (formData: LoginFormData) => {
+    const tokens = await login({
+      accountId: formData.loginId,
+      password: formData.password,
+    });
 
-    if (!didStoreToken) {
+    const didStoreTokens = setAuthTokens(tokens);
+
+    if (!didStoreTokens) {
       throw new Error(
         "브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다.",
       );
