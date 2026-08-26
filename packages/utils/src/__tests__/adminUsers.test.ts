@@ -1,21 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { ApiError } from "../api";
 import {
-  ADMIN_USERS_ENDPOINT,
-  ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
   ADMIN_USER_CREATE_ENDPOINT,
   createAdminUser,
   deleteAdminUser,
-  fetchAdminUsers,
   getAdminUserDeleteEndpoint,
 } from "../adminUsers";
-
-const hongUser = {
-  userId: 1,
-  accountId: "hong123",
-  name: "홍길동",
-  department: "민원과",
-};
 
 function mockFetch(
   status: number,
@@ -30,73 +20,6 @@ function mockFetch(
     });
   }) as typeof fetch;
 }
-
-describe("fetchAdminUsers", () => {
-  test("GETs the keyword query with auth header and returns parsed users", async () => {
-    mockFetch(200, [hongUser], (url, init) => {
-      expect(url).toBe(`${ADMIN_USERS_ENDPOINT}?keyword=hong123&page=1&size=100`);
-      expect(init?.method).toBe("GET");
-      expect(init?.body).toBeUndefined();
-      const headers = init?.headers as Record<string, string>;
-      expect(headers["Content-Type"]).toBeUndefined();
-      expect(headers.Authorization).toBe("Bearer token-1");
-    });
-
-    expect(await fetchAdminUsers("hong123", { token: "token-1" })).toEqual([
-      hongUser,
-    ]);
-  });
-
-  test("encodes the keyword and applies page/size options", async () => {
-    mockFetch(200, [], (url) => {
-      expect(url).toBe(
-        `${ADMIN_USERS_ENDPOINT}?keyword=${encodeURIComponent("홍길동")}&page=2&size=10`,
-      );
-    });
-
-    expect(await fetchAdminUsers("홍길동", { page: 2, size: 10 })).toEqual([]);
-  });
-
-  test("skips malformed rows instead of failing the whole list", async () => {
-    mockFetch(200, [
-      hongUser,
-      { ...hongUser, userId: "2" },
-      { name: "홍길동" },
-      null,
-    ]);
-
-    expect(await fetchAdminUsers("hong123")).toEqual([hongUser]);
-  });
-
-  test("rejects non-array 200 bodies", async () => {
-    for (const body of [{}, "oops", 3]) {
-      mockFetch(200, body);
-      const error = await fetchAdminUsers("hong123").catch((e: unknown) => e);
-      expect(error).toBeInstanceOf(ApiError);
-      expect((error as ApiError).status).toBe(200);
-      expect((error as ApiError).message).toBe(
-        ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
-      );
-    }
-  });
-
-  test("maps error statuses to Korean messages", async () => {
-    const cases = [
-      [400, "검색어를 확인해 주세요"],
-      [401, "로그인이 만료되었습니다"],
-      [403, "사용자 조회 권한이 없습니다"],
-      [500, "일시적인 오류"],
-    ] as const;
-
-    for (const [status, message] of cases) {
-      mockFetch(status, undefined);
-      const error = await fetchAdminUsers("hong123").catch((e: unknown) => e);
-      expect(error).toBeInstanceOf(ApiError);
-      expect((error as ApiError).status).toBe(status);
-      expect((error as ApiError).message).toContain(message);
-    }
-  });
-});
 
 describe("createAdminUser", () => {
   const newUser = {

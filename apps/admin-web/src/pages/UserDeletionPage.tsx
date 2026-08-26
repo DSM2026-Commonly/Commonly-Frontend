@@ -8,9 +8,12 @@ function UserDeletionPage() {
   const handleSearch = async (
     name: string,
   ): Promise<readonly UserAccountRecord[]> => {
-    const users = await fetchAdminUsers(name, { token: getAuthToken() });
+    const usersPage = await fetchAdminUsers(
+      { keyword: name, size: 100 },
+      { token: getAuthToken() },
+    );
 
-    return users.map((user) => ({
+    return usersPage.content.map((user) => ({
       id: String(user.userId),
       name: user.name,
       accountId: user.accountId,

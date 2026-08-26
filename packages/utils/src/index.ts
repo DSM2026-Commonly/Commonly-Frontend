@@ -85,11 +85,6 @@ export type {
   UploadedFileRow,
 } from "./files";
 export {
-  ADMIN_USERS_BAD_REQUEST_MESSAGE,
-  ADMIN_USERS_ENDPOINT,
-  ADMIN_USERS_FORBIDDEN_MESSAGE,
-  ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
-  ADMIN_USERS_UNAUTHORIZED_MESSAGE,
   ADMIN_USER_CREATE_BAD_REQUEST_MESSAGE,
   ADMIN_USER_CREATE_CONFLICT_MESSAGE,
   ADMIN_USER_CREATE_ENDPOINT,
@@ -101,14 +96,11 @@ export {
   ADMIN_USER_INITIAL_PASSWORD,
   createAdminUser,
   deleteAdminUser,
-  fetchAdminUsers,
   getAdminUserDeleteEndpoint,
 } from "./adminUsers";
 export type {
-  AdminUser,
   AdminUserRequestOptions,
   CreateAdminUserRequest,
-  FetchAdminUsersOptions,
 } from "./adminUsers";
 export {
   REGISTRATION_SESSION_STORAGE_KEY,
@@ -155,6 +147,7 @@ export type {
   IssueCertificateRequest,
   IssuedCertificate,
 } from "./certificates";
+export {
   ADMIN_USERS_DEFAULT_PAGE_SIZE,
   ADMIN_USERS_ENDPOINT,
   ADMIN_USERS_INVALID_RESPONSE_MESSAGE,

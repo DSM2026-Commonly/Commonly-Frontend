@@ -46,8 +46,6 @@ export interface HumanCertificate {
   note: string;
 }
 
-// 명세 문서에는 workerId/workExperienceIds로 남아있으나 worker API가 삭제되어
-// humanId/certificateIds(경력 증명 사항 찾기 응답의 id)로 백엔드와 합의됨.
 export interface IssueCertificateRequest {
   humanId: number;
   certificateIds: number[];
