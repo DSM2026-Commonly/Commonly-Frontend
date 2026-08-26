@@ -5,13 +5,23 @@ export function getApiBaseUrl(): string {
   return (configured || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 }
 
+export interface ApiErrorBody {
+  code?: string;
+  message?: string;
+  detail?: unknown;
+}
+
 export class ApiError extends Error {
   readonly status: number;
+  readonly code?: string;
+  readonly detail?: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body?: ApiErrorBody) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = body?.code;
+    this.detail = body?.detail;
   }
 }
 
@@ -20,12 +30,38 @@ export const NETWORK_ERROR_MESSAGE =
 export const SERVER_ERROR_MESSAGE =
   "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
 
+/**
+ * 에러 메시지 매핑. 숫자 키는 HTTP 상태 코드, 문자열 키는 응답 본문의 `code`.
+ * 응답 본문의 `code`가 먼저 매칭되고, 없으면 상태 코드로 매칭된다.
+ */
+export type ErrorMessageMap = Partial<Record<number | string, string>>;
+
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
   signal?: AbortSignal;
-  errorMessages?: Partial<Record<number, string>>;
+  errorMessages?: ErrorMessageMap;
+}
+
+async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
+  try {
+    const body: unknown = await response.json();
+
+    if (!body || typeof body !== "object") {
+      return {};
+    }
+
+    const { code, message, detail } = body as Record<string, unknown>;
+
+    return {
+      code: typeof code === "string" ? code : undefined,
+      message: typeof message === "string" ? message : undefined,
+      detail,
+    };
+  } catch {
+    return {};
+  }
 }
 
 export async function request<TResponse>(
@@ -41,8 +77,9 @@ export async function request<TResponse>(
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
-  if (body !== undefined) {
+  if (body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -56,7 +93,12 @@ export async function request<TResponse>(
     response = await fetch(`${getApiBaseUrl()}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body:
+        body === undefined
+          ? undefined
+          : isFormData
+            ? (body as FormData)
+            : JSON.stringify(body),
       signal,
     });
   } catch (error) {
@@ -68,10 +110,13 @@ export async function request<TResponse>(
   }
 
   if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      errorMessages[response.status] ?? SERVER_ERROR_MESSAGE,
-    );
+    const errorBody = await parseErrorBody(response);
+    const message =
+      (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
+      errorMessages[response.status] ??
+      SERVER_ERROR_MESSAGE;
+
+    throw new ApiError(response.status, message, errorBody);
   }
 
   if (response.status === 204) {

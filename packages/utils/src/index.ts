@@ -23,7 +23,7 @@ export {
   getApiBaseUrl,
   request,
 } from "./api";
-export type { RequestOptions } from "./api";
+export type { ApiErrorBody, ErrorMessageMap, RequestOptions } from "./api";
 export {
   ACCOUNT_ID_FORMAT_MESSAGE,
   ACCOUNT_ID_PATTERN,
@@ -45,3 +45,43 @@ export {
   signup,
 } from "./signup";
 export type { SignupRequest, SignupResponse } from "./signup";
+export {
+  CERTIFICATE_TARGET_FIELDS,
+  FILE_MAPPING_BAD_REQUEST_MESSAGE,
+  FILE_MAPPING_CONFLICT_MESSAGE,
+  FILE_MAPPING_INVALID_RESPONSE_MESSAGE,
+  FILE_MAPPING_NOT_FOUND_MESSAGE,
+  FILE_UPLOAD_ENDPOINT,
+  FILE_UPLOAD_INVALID_HEADER_MESSAGE,
+  FILE_UPLOAD_INVALID_RESPONSE_MESSAGE,
+  FILE_UPLOAD_SIZE_EXCEEDED_MESSAGE,
+  FILE_UPLOAD_STORAGE_FAILURE_MESSAGE,
+  FILE_UPLOAD_UNPROCESSABLE_MESSAGE,
+  FILE_UPLOAD_UNSUPPORTED_TYPE_MESSAGE,
+  confirmFileMapping,
+  getFileMappingEndpoint,
+  getMappedRowValues,
+  getUploadErrorMessage,
+  suggestFileMappings,
+  uploadFile,
+} from "./files";
+export type {
+  CertificateTargetField,
+  CertificateTargetFieldId,
+  ConfirmFileMappingOptions,
+  FileMapping,
+  FileMappingFailedRow,
+  FileMappingRequest,
+  FileMappingResult,
+  InvalidHeaderRowDetail,
+  UploadFileOptions,
+  UploadedFile,
+  UploadedFileRow,
+} from "./files";
+export {
+  REGISTRATION_SESSION_STORAGE_KEY,
+  clearRegistrationSession,
+  getRegistrationSession,
+  updateRegistrationSession,
+} from "./registrationSession";
+export type { IntegratedRegistrationSession } from "./registrationSession";
