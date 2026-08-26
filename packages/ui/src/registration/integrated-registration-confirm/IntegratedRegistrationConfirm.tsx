@@ -14,6 +14,7 @@ import {
   FieldGrid,
   FieldLabel,
   FieldRow,
+  FormError,
   FormFlow,
   FormMainContent,
   PageHeader,
@@ -49,10 +50,19 @@ export interface IntegratedRegistrationConfirmProps {
   stepTitle?: string;
   fields?: readonly IntegratedRegistrationConfirmField[];
   rowOptions?: readonly string[];
+  /** `fieldId -> rowOption` 형태의 초기 선택값 (예: 열 이름 자동 매칭 결과) */
+  initialSelections?: Readonly<Record<string, string>>;
+  /** 제출 중이면 버튼을 잠근다. */
+  isSubmitting?: boolean;
+  submittingLabel?: string;
+  /** 제출 실패 등 사용자에게 보여줄 오류 메시지 */
+  errorMessage?: string;
   previousLabel?: string;
   nextLabel?: string;
   onPrevious?: () => void;
-  onNext?: (mappings: IntegratedRegistrationConfirmMapping[]) => void;
+  onNext?: (
+    mappings: IntegratedRegistrationConfirmMapping[],
+  ) => void | Promise<void>;
 }
 
 const defaultSteps = [
@@ -62,16 +72,18 @@ const defaultSteps = [
 ] as const satisfies readonly IntegratedRegistrationConfirmStep[];
 
 const defaultFields = [
-  { id: "name", label: "이름" },
-  { id: "gender", label: "성별" },
+  { id: "name", label: "성명" },
   { id: "birthDate", label: "생년\n월일" },
-  { id: "address", label: "주소" },
-  { id: "jobType", label: "직종" },
-  { id: "task", label: "담당\n업무" },
-  { id: "department", label: "부서" },
-  { id: "retirementReason", label: "퇴직\n사유" },
-  { id: "workStartDate", label: "근무\n시작" },
-  { id: "workEndDate", label: "근무\n종료" },
+  { id: "gender", label: "성별" },
+  { id: "jobTitle", label: "직종명" },
+  { id: "keyResponsibilities", label: "담당\n업무" },
+  { id: "hireDate", label: "채용일" },
+  { id: "expirationDate", label: "만료\n예정일" },
+  { id: "retirementDate", label: "퇴직일" },
+  { id: "division", label: "구분" },
+  { id: "reason", label: "사유" },
+  { id: "employmentType", label: "근무\n형태" },
+  { id: "note", label: "비고" },
 ] as const satisfies readonly IntegratedRegistrationConfirmField[];
 
 const defaultRowOptions = [
@@ -96,13 +108,19 @@ function IntegratedRegistrationConfirm({
   stepTitle = "데이터 확인",
   fields = defaultFields,
   rowOptions = defaultRowOptions,
+  initialSelections,
+  isSubmitting = false,
+  submittingLabel = "등록 중...",
+  errorMessage,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
   onPrevious,
   onNext,
 }: IntegratedRegistrationConfirmProps) {
   const titleId = useId();
-  const [selectedRows, setSelectedRows] = useState<Record<string, string>>({});
+  const [selectedRows, setSelectedRows] = useState<Record<string, string>>(
+    () => ({ ...initialSelections }),
+  );
 
   const selectOptions = useMemo(
     () =>
@@ -121,6 +139,7 @@ function IntegratedRegistrationConfirm({
   const canProceed =
     fields.length > 0 &&
     fields.every((field) => Boolean(selectedRows[field.id])) &&
+    !isSubmitting &&
     Boolean(onNext);
 
   const getAvailableOptions = (fieldId: string) => {
@@ -157,7 +176,7 @@ function IntegratedRegistrationConfirm({
       return;
     }
 
-    onNext?.(
+    void onNext?.(
       fields.map((field) => ({
         fieldId: field.id,
         selectedRow: selectedRows[field.id] ?? "",
@@ -213,6 +232,7 @@ function IntegratedRegistrationConfirm({
               ))}
             </FieldGrid>
           </ConfirmCard>
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>
 
         <ActionBar>
@@ -221,6 +241,7 @@ function IntegratedRegistrationConfirm({
               variant="tertiary"
               size="xlarge"
               type="button"
+              disabled={isSubmitting}
               onClick={onPrevious}
             >
               {previousLabel}
@@ -234,7 +255,7 @@ function IntegratedRegistrationConfirm({
               disabled={!canProceed}
               onClick={handleNext}
             >
-              {nextLabel}
+              {isSubmitting ? submittingLabel : nextLabel}
             </Button>
           </ButtonGroup>
         </ActionBar>

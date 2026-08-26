@@ -9,6 +9,7 @@ import {
 import {
   ActionBar,
   ButtonGroup,
+  FormError,
   FormFlow,
   FormMainContent,
   PageHeader,
@@ -39,6 +40,12 @@ export interface IntegratedRegistrationUploadProps {
   maxFileSize?: number;
   previousLabel?: string;
   nextLabel?: string;
+  /** 파일이 선택될 때마다 호출된다. reject 되면 파일 상태가 error 로 표시된다. */
+  onFileUpload?: (file: File) => Promise<void>;
+  /** 파일 목록에서 파일이 제거될 때 호출된다. */
+  onFileDelete?: (fileId: string) => void;
+  /** 업로드 실패 등 사용자에게 보여줄 오류 메시지 */
+  errorMessage?: string;
   onPrevious?: () => void;
   onNext?: (files: FileItem[]) => void;
 }
@@ -61,6 +68,9 @@ function IntegratedRegistrationUpload({
   maxFileSize = 20 * 1024 * 1024,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
+  onFileUpload,
+  onFileDelete,
+  errorMessage,
   onPrevious,
   onNext,
 }: IntegratedRegistrationUploadProps) {
@@ -74,6 +84,18 @@ function IntegratedRegistrationUpload({
       Boolean(onNext),
     [files, onNext],
   );
+
+  const handleFilesChange = (nextFiles: FileItem[]) => {
+    if (onFileDelete) {
+      for (const file of files) {
+        if (!nextFiles.some((nextFile) => nextFile.id === file.id)) {
+          onFileDelete(file.id);
+        }
+      }
+    }
+
+    setFiles(nextFiles);
+  };
 
   const handleNext = () => {
     if (!canProceed) {
@@ -117,8 +139,10 @@ function IntegratedRegistrationUpload({
             maxFiles={maxFiles}
             maxFileSize={maxFileSize}
             files={files}
-            onFilesChange={setFiles}
+            onFilesChange={handleFilesChange}
+            onFileUpload={onFileUpload}
           />
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>
 
         <ActionBar>

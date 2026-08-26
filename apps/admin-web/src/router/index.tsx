@@ -8,11 +8,12 @@ import AdminLayout from "../layout/AdminLayout";
 import CareerCertificateIssuePage from "../pages/CareerCertificateIssuePage";
 import CareerEditPage from "../pages/CareerEditPage";
 import HomePage from "../pages/HomePage";
+import IntegratedRegistrationCompletePage from "../pages/IntegratedRegistrationCompletePage";
+import IntegratedRegistrationConfirmPage from "../pages/IntegratedRegistrationConfirmPage";
 import IntegratedRegistrationNoticePage from "../pages/IntegratedRegistrationNoticePage";
 import IntegratedRegistrationUploadPage from "../pages/IntegratedRegistrationUploadPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
-import RoutePlaceholderPage from "../pages/RoutePlaceholderPage";
 import UserDeletionCompletePage from "../pages/UserDeletionCompletePage";
 import UserDeletionPage from "../pages/UserDeletionPage";
 import UserListPage from "../pages/UserListPage";
@@ -69,12 +70,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "career/register/bulk/confirm",
-        element: (
-          <RoutePlaceholderPage
-            title="데이터 확인"
-            description="업로드한 경력사항 데이터를 확인하는 페이지를 준비 중입니다."
-          />
-        ),
+        Component: IntegratedRegistrationConfirmPage,
+      },
+      {
+        path: "career/register/bulk/complete",
+        Component: IntegratedRegistrationCompletePage,
       },
       {
         path: "career/edit",

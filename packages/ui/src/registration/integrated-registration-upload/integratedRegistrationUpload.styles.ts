@@ -211,3 +211,11 @@ export const ButtonGroup = styled.div`
     }
   }
 `;
+
+export const FormError = styled.p`
+  margin: 16px 0 0;
+  color: var(--krds-light-color-text-danger, #bd2c0f);
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-line;
+`;

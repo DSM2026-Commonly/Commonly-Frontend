@@ -1,25 +1,36 @@
 import {
-  IntegratedRegistrationPreview,
-  type IntegratedRegistrationPreviewField,
+  IntegratedRegistrationConfirm,
+  type IntegratedRegistrationConfirmMapping,
 } from "@commonly/ui";
 import {
-  CERTIFICATE_TARGET_FIELDS,
   confirmFileMapping,
   getAuthToken,
-  getMappedRowValues,
   getRegistrationSession,
+  suggestFileMappings,
   updateRegistrationSession,
+  type CertificateTargetFieldId,
+  type FileMapping,
 } from "@commonly/utils";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
-function IntegratedRegistrationPreviewPage() {
+const COLUMN_PLACEHOLDER = "열 선택";
+
+function toFileMappings(
+  mappings: IntegratedRegistrationConfirmMapping[],
+): FileMapping[] {
+  return mappings.map((mapping) => ({
+    sourceColumn: mapping.selectedRow,
+    targetField: mapping.fieldId as CertificateTargetFieldId,
+  }));
+}
+
+function IntegratedRegistrationConfirmPage() {
   const navigate = useNavigate();
   const [session] = useState(getRegistrationSession);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const { uploadedFile, mappings } = session;
-  const isReady = Boolean(uploadedFile && mappings?.length);
+  const uploadedFile = session.uploadedFile;
   // 진행 중인 등록 요청. 페이지 이탈이나 새 흐름 시작 시 이전 요청을 무효화해
   // 늦게 완료된 요청이 세션에 result를 저장하거나 완료 페이지로 이동하지 못하게 한다.
   const confirmControllerRef = useRef<AbortController | null>(null);
@@ -32,24 +43,20 @@ function IntegratedRegistrationPreviewPage() {
   useEffect(() => abortPendingConfirm, []);
 
   useEffect(() => {
-    if (!isReady) {
+    if (!uploadedFile) {
       void navigate("/career/register/bulk/upload", { replace: true });
     }
-  }, [isReady, navigate]);
+  }, [navigate, uploadedFile]);
 
-  if (!uploadedFile || !mappings?.length) {
+  if (!uploadedFile) {
     return null;
   }
 
-  const firstRowValues = getMappedRowValues(uploadedFile, mappings);
-  const fields: IntegratedRegistrationPreviewField[] =
-    CERTIFICATE_TARGET_FIELDS.map((field) => ({
-      id: field.id,
-      label: field.label,
-      value: firstRowValues[field.id] ?? "",
-    }));
+  const handleNext = async (
+    confirmMappings: IntegratedRegistrationConfirmMapping[],
+  ) => {
+    const mappings = toFileMappings(confirmMappings);
 
-  const handleNext = async () => {
     abortPendingConfirm();
     const controller = new AbortController();
     confirmControllerRef.current = controller;
@@ -71,7 +78,7 @@ function IntegratedRegistrationPreviewPage() {
 
       // 세션 저장에 실패하더라도 등록 API는 이미 성공했으므로
       // 완료 페이지가 결과를 읽을 수 있도록 라우터 state로 함께 전달한다.
-      const isSaved = updateRegistrationSession({ result });
+      const isSaved = updateRegistrationSession({ mappings, result });
       void navigate("/career/register/bulk/complete", {
         replace: true,
         state: isSaved ? undefined : { result, uploadedFile },
@@ -95,18 +102,19 @@ function IntegratedRegistrationPreviewPage() {
   };
 
   return (
-    <IntegratedRegistrationPreview
-      fields={fields}
+    <IntegratedRegistrationConfirm
+      rowOptions={[COLUMN_PLACEHOLDER, ...uploadedFile.columns]}
+      initialSelections={suggestFileMappings(uploadedFile.columns)}
       isSubmitting={isSubmitting}
       errorMessage={errorMessage}
       nextLabel="등록하기"
       onPrevious={() => {
         abortPendingConfirm();
-        void navigate("/career/register/bulk/confirm");
+        void navigate("/career/register/bulk/upload");
       }}
       onNext={handleNext}
     />
   );
 }
 
-export default IntegratedRegistrationPreviewPage;
+export default IntegratedRegistrationConfirmPage;
