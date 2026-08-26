@@ -56,6 +56,15 @@ export interface CertificateRequestOptions {
   signal?: AbortSignal;
 }
 
+// null/누락된 선택 필드는 빈 문자열로 통일하고, 문자열이 아닌 값은 무효(null)로 돌려준다.
+function normalizeOptionalString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return typeof value === "string" ? value : null;
+}
+
 function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -80,10 +89,20 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
     typeof employmentType !== "string" ||
     typeof keyResponsibilities !== "string" ||
     typeof hireDate !== "string" ||
-    typeof retirementDate !== "string" ||
-    typeof expirationDate !== "string" ||
-    typeof reason !== "string" ||
-    typeof note !== "string"
+    typeof expirationDate !== "string"
+  ) {
+    return null;
+  }
+
+  // 재직 중(퇴직일 없음) 행도 유효해야 하므로 퇴직일·사유·비고는 null을 허용한다.
+  const normalizedRetirementDate = normalizeOptionalString(retirementDate);
+  const normalizedReason = normalizeOptionalString(reason);
+  const normalizedNote = normalizeOptionalString(note);
+
+  if (
+    normalizedRetirementDate === null ||
+    normalizedReason === null ||
+    normalizedNote === null
   ) {
     return null;
   }
@@ -94,10 +113,10 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
     employmentType,
     keyResponsibilities,
     hireDate,
-    retirementDate,
+    retirementDate: normalizedRetirementDate,
     expirationDate,
-    reason,
-    note,
+    reason: normalizedReason,
+    note: normalizedNote,
   };
 }
 

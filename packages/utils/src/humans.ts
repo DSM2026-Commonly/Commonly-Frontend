@@ -47,6 +47,15 @@ export interface HumanRequestOptions {
   signal?: AbortSignal;
 }
 
+// null/누락된 선택 필드는 빈 문자열로 통일하고, 문자열이 아닌 값은 무효(null)로 돌려준다.
+function normalizeOptionalString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return typeof value === "string" ? value : null;
+}
+
 function normalizeHumanSummary(value: unknown): HumanSummary | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -62,13 +71,19 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
     !Number.isFinite(humanId) ||
     typeof name !== "string" ||
     typeof gender !== "string" ||
-    typeof birthDate !== "string" ||
-    typeof address !== "string"
+    typeof birthDate !== "string"
   ) {
     return null;
   }
 
-  return { humanId, name, gender, birthDate, address };
+  // 주소는 명세상 nullable(UpdateHumanRequest.address 참조)이라 빈 문자열로 정규화한다.
+  const normalizedAddress = normalizeOptionalString(address);
+
+  if (normalizedAddress === null) {
+    return null;
+  }
+
+  return { humanId, name, gender, birthDate, address: normalizedAddress };
 }
 
 export async function searchHumans(

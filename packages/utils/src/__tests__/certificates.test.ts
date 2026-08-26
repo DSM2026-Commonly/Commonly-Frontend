@@ -74,10 +74,34 @@ describe("fetchHumanCertificates", () => {
     mockFetch(200, [
       humanCertificate,
       { ...humanCertificate, certificateId: "11" },
+      { ...humanCertificate, hireDate: null },
+      { ...humanCertificate, note: 5 },
       null,
     ]);
 
     expect(await fetchHumanCertificates(3)).toEqual([humanCertificate]);
+  });
+
+  test("normalizes null or omitted retirementDate/reason/note to empty strings", async () => {
+    mockFetch(200, [
+      {
+        ...humanCertificate,
+        certificateId: 12,
+        retirementDate: null,
+        reason: null,
+        note: undefined,
+      },
+    ]);
+
+    expect(await fetchHumanCertificates(3)).toEqual([
+      {
+        ...humanCertificate,
+        certificateId: 12,
+        retirementDate: "",
+        reason: "",
+        note: "",
+      },
+    ]);
   });
 
   test("rejects non-array 200 bodies", async () => {

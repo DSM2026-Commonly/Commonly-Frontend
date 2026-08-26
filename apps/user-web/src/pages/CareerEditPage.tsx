@@ -89,10 +89,7 @@ function CareerEditPage() {
       duties: certificate.keyResponsibilities,
       department: certificate.division,
       startDate: certificate.hireDate.replaceAll("-", "."),
-      endDate: (certificate.retirementDate || certificate.expirationDate).replaceAll(
-        "-",
-        ".",
-      ),
+      endDate: certificate.retirementDate.replaceAll("-", "."),
       retirementReason: certificate.reason,
       note: certificate.note,
     }));
