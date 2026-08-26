@@ -56,8 +56,13 @@ function IntegratedRegistrationConfirmPage() {
         token: getAuthToken(),
       });
 
-      updateRegistrationSession({ mappings, result });
-      void navigate("/career/register/bulk/complete", { replace: true });
+      // 세션 저장에 실패하더라도 등록 API는 이미 성공했으므로
+      // 완료 페이지가 결과를 읽을 수 있도록 라우터 state로 함께 전달한다.
+      const isSaved = updateRegistrationSession({ mappings, result });
+      void navigate("/career/register/bulk/complete", {
+        replace: true,
+        state: isSaved ? undefined : { result, uploadedFile },
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
