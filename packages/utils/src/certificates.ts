@@ -35,19 +35,18 @@ export interface HumanCertificate {
   note: string;
 }
 
-// 백엔드 명세가 이 엔드포인트만 snake_case 필드를 사용한다 (2026-08-26 기준).
 export interface UpdateCertificateRequest {
   name: string;
-  birth_date: string;
+  birthDate: string;
   gender: "M" | "F" | "";
-  job_title: string;
-  key_responsibilities: string;
-  hire_date: string;
-  expiration_date: string;
-  retirement_date: string;
+  jobTitle: string;
+  keyResponsibilities: string;
+  hireDate: string;
+  expirationDate: string;
+  retirementDate: string;
   division: string;
   reason: string;
-  employment_type: string;
+  employmentType: string;
   note: string;
 }
 
@@ -156,8 +155,8 @@ export async function updateCertificate(
   body: UpdateCertificateRequest,
   { token, signal }: CertificateRequestOptions = {},
 ): Promise<void> {
-  // 명세의 200 응답 바디({insertedCount, failedRows})는 복붙 오류로 보여 무시한다.
-  // 에러 명세도 없어 401/404만 방어적으로 매핑한다.
+  // 204 No Content 응답이라 본문 검증 없이 성공으로 처리한다.
+  // 에러 명세가 없어 401/404만 방어적으로 매핑한다.
   await request<unknown>(getCertificateUpdateEndpoint(certificateId), {
     method: "PUT",
     body,

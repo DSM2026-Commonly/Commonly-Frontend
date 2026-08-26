@@ -22,16 +22,16 @@ const humanCertificate = {
 
 const updateRequest = {
   name: "홍길동",
-  birth_date: "1990-01-01",
+  birthDate: "1990-01-01",
   gender: "M" as const,
-  job_title: "사무원",
-  key_responsibilities: "행정지원",
-  hire_date: "2024-03-01",
-  expiration_date: "2025-02-28",
-  retirement_date: "2025-02-28",
+  jobTitle: "사무원",
+  keyResponsibilities: "행정지원",
+  hireDate: "2024-03-01",
+  expirationDate: "2025-02-28",
+  retirementDate: "2025-02-28",
   division: "채용",
   reason: "신규채용",
-  employment_type: "기간제",
+  employmentType: "기간제",
   note: "",
 };
 
@@ -135,8 +135,8 @@ describe("fetchHumanCertificates", () => {
 });
 
 describe("updateCertificate", () => {
-  test("PUTs the snake_case body to the certificate endpoint", async () => {
-    mockFetch(200, { insertedCount: 0, failedRows: [] }, (url, init) => {
+  test("PUTs the camelCase body to the certificate endpoint", async () => {
+    mockFetch(204, undefined, (url, init) => {
       expect(url).toBe(getCertificateUpdateEndpoint(7));
       expect(url).toBe("/api/certificates/7");
       expect(init?.method).toBe("PUT");
@@ -146,25 +146,25 @@ describe("updateCertificate", () => {
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
       expect(body).toEqual(updateRequest);
       expect(Object.keys(body).sort()).toEqual([
-        "birth_date",
+        "birthDate",
         "division",
-        "employment_type",
-        "expiration_date",
+        "employmentType",
+        "expirationDate",
         "gender",
-        "hire_date",
-        "job_title",
-        "key_responsibilities",
+        "hireDate",
+        "jobTitle",
+        "keyResponsibilities",
         "name",
         "note",
         "reason",
-        "retirement_date",
+        "retirementDate",
       ]);
     });
 
     await updateCertificate(7, updateRequest, { token: "token-1" });
   });
 
-  test("resolves on 200 even with the spec's copy-paste body", async () => {
+  test("resolves on 200 with an unexpected body (tolerated)", async () => {
     mockFetch(200, { insertedCount: 0, failedRows: [{ rowIndex: 0, reason: "x" }] });
     await updateCertificate(7, updateRequest);
   });
