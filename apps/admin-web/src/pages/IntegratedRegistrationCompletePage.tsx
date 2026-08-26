@@ -36,7 +36,7 @@ function IntegratedRegistrationCompletePage() {
         { id: "success", label: "성공 건수", value: `${result.insertedCount}건` },
         { id: "failure", label: "실패 건수", value: `${failureCount}건` },
       ]}
-      onAdd={() => leaveFlow("/career/register")}
+      onAdd={() => leaveFlow("/career/register/bulk")}
       onHome={() => leaveFlow("/")}
     />
   );

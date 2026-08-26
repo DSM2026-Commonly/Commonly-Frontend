@@ -1,45 +1,52 @@
 import {
-  IntegratedRegistrationPreview,
-  type IntegratedRegistrationPreviewField,
+  IntegratedRegistrationConfirm,
+  type IntegratedRegistrationConfirmMapping,
 } from "@commonly/ui";
 import {
-  CERTIFICATE_TARGET_FIELDS,
   confirmFileMapping,
   getAuthToken,
-  getMappedRowValues,
   getRegistrationSession,
+  suggestFileMappings,
   updateRegistrationSession,
+  type CertificateTargetFieldId,
+  type FileMapping,
 } from "@commonly/utils";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
-function IntegratedRegistrationPreviewPage() {
+const COLUMN_PLACEHOLDER = "열 선택";
+
+function toFileMappings(
+  mappings: IntegratedRegistrationConfirmMapping[],
+): FileMapping[] {
+  return mappings.map((mapping) => ({
+    sourceColumn: mapping.selectedRow,
+    targetField: mapping.fieldId as CertificateTargetFieldId,
+  }));
+}
+
+function IntegratedRegistrationConfirmPage() {
   const navigate = useNavigate();
   const [session] = useState(getRegistrationSession);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const { uploadedFile, mappings } = session;
-  const isReady = Boolean(uploadedFile && mappings?.length);
+  const uploadedFile = session.uploadedFile;
 
   useEffect(() => {
-    if (!isReady) {
+    if (!uploadedFile) {
       void navigate("/career/register/bulk/upload", { replace: true });
     }
-  }, [isReady, navigate]);
+  }, [navigate, uploadedFile]);
 
-  if (!uploadedFile || !mappings?.length) {
+  if (!uploadedFile) {
     return null;
   }
 
-  const firstRowValues = getMappedRowValues(uploadedFile, mappings);
-  const fields: IntegratedRegistrationPreviewField[] =
-    CERTIFICATE_TARGET_FIELDS.map((field) => ({
-      id: field.id,
-      label: field.label,
-      value: firstRowValues[field.id] ?? "",
-    }));
+  const handleNext = async (
+    confirmMappings: IntegratedRegistrationConfirmMapping[],
+  ) => {
+    const mappings = toFileMappings(confirmMappings);
 
-  const handleNext = async () => {
     setErrorMessage("");
     setIsSubmitting(true);
 
@@ -49,7 +56,7 @@ function IntegratedRegistrationPreviewPage() {
         token: getAuthToken(),
       });
 
-      updateRegistrationSession({ result });
+      updateRegistrationSession({ mappings, result });
       void navigate("/career/register/bulk/complete", { replace: true });
     } catch (error) {
       setErrorMessage(
@@ -63,15 +70,16 @@ function IntegratedRegistrationPreviewPage() {
   };
 
   return (
-    <IntegratedRegistrationPreview
-      fields={fields}
+    <IntegratedRegistrationConfirm
+      rowOptions={[COLUMN_PLACEHOLDER, ...uploadedFile.columns]}
+      initialSelections={suggestFileMappings(uploadedFile.columns)}
       isSubmitting={isSubmitting}
       errorMessage={errorMessage}
       nextLabel="등록하기"
-      onPrevious={() => void navigate("/career/register/bulk/confirm")}
+      onPrevious={() => void navigate("/career/register/bulk/upload")}
       onNext={handleNext}
     />
   );
 }
 
-export default IntegratedRegistrationPreviewPage;
+export default IntegratedRegistrationConfirmPage;
