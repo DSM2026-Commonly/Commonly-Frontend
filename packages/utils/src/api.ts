@@ -73,7 +73,7 @@ export async function request<TResponse>(
     signal,
     errorMessages = {},
   }: RequestOptions = {},
-): Promise<TResponse> {
+): Promise<TResponse | undefined> {
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
@@ -120,8 +120,19 @@ export async function request<TResponse>(
   }
 
   if (response.status === 204) {
-    return undefined as TResponse;
+    return undefined;
   }
 
-  return (await response.json()) as TResponse;
+  const text = await response.text();
+
+  if (!text) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(text) as TResponse;
+  } catch {
+    // 본문이 JSON이 아닌 성공 응답(예: DELETE 200 "삭제완료")은 본문 없음으로 취급한다.
+    return undefined;
+  }
 }
