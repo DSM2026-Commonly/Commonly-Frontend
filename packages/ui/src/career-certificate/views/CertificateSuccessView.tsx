@@ -26,7 +26,7 @@ interface CertificateSuccessViewProps {
 function CertificateSuccessView({
   variant = "staff",
   issueType,
-  applicantName = "전재준",
+  applicantName = "",
   isDownloading = false,
   downloadError = "",
   onRestart,

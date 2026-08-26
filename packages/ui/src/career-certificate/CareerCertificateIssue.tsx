@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import certificatePreview from "../assets/career-certificate-preview.png";
 import {
   CAREER_ROWS,
@@ -90,6 +90,8 @@ function CareerCertificateIssue({
   const [submissionError, setSubmissionError] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
+  const searchRequestIdRef = useRef(0);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
@@ -229,6 +231,8 @@ function CareerCertificateIssue({
       return;
     }
 
+    const requestId = ++searchRequestIdRef.current;
+
     setIsSearchingApplicants(true);
     setSearchError("");
 
@@ -239,10 +243,18 @@ function CareerCertificateIssue({
         birthDate,
       });
 
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
       setApplicants(result);
       setHasPersonSearchResult(true);
       setSelectedPerson(result.length === 1 ? result[0].id : "");
     } catch (error) {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
       setApplicants([]);
       setHasPersonSearchResult(false);
       setSelectedPerson("");
@@ -253,6 +265,7 @@ function CareerCertificateIssue({
   };
 
   const resetPersonSearchResult = () => {
+    searchRequestIdRef.current += 1;
     setHasPersonSearchResult(false);
     setSelectedPerson("");
     setApplicants([]);
