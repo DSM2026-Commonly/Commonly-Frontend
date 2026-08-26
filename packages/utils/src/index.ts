@@ -155,3 +155,38 @@ export type {
   IssueCertificateRequest,
   IssuedCertificate,
 } from "./certificates";
+  ADMIN_USERS_DEFAULT_PAGE_SIZE,
+  ADMIN_USERS_ENDPOINT,
+  ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
+  ADMIN_USERS_UNAUTHORIZED_MESSAGE,
+  buildAdminUsersPath,
+  fetchAdminUsers,
+} from "./admins";
+export type {
+  AdminUserPage,
+  AdminUserSummary,
+  FetchAdminUsersOptions,
+  FetchAdminUsersParams,
+} from "./admins";
+export {
+  ISSUANCE_HISTORIES_DEFAULT_PAGE_SIZE,
+  ISSUANCE_HISTORIES_ENDPOINT,
+  ISSUANCE_HISTORY_FORBIDDEN_MESSAGE,
+  ISSUANCE_HISTORY_INVALID_RESPONSE_MESSAGE,
+  ISSUANCE_HISTORY_NOT_FOUND_MESSAGE,
+  ISSUANCE_HISTORY_TYPES,
+  ISSUANCE_HISTORY_TYPE_LABELS,
+  ISSUANCE_HISTORY_UNAUTHORIZED_MESSAGE,
+  buildIssuanceHistoriesPath,
+  fetchIssuanceHistories,
+  getIssuanceHistoryTypeLabel,
+  isIssuanceHistoryType,
+} from "./issuanceHistories";
+export type {
+  FetchIssuanceHistoriesParams,
+  FetchIssuanceHistoryOptions,
+  IssuanceHistory,
+  IssuanceHistoryCertificate,
+  IssuanceHistoryPage,
+  IssuanceHistoryType,
+} from "./issuanceHistories";

@@ -186,3 +186,16 @@ export const PageMoveIcon = styled.span<{ $direction: "prev" | "next" }>`
   transform: rotate(${({ $direction }) =>
     $direction === "prev" ? "45deg" : "225deg"});
 `;
+
+export const TableStatus = styled.p<{ $tone?: "error" | "muted" }>`
+  margin: 0;
+  padding: 24px 16px;
+  color: ${({ $tone }) =>
+    $tone === "error"
+      ? "var(--krds-light-color-text-danger, #de3412)"
+      : "var(--krds-light-color-text-subtle, #464c53)"};
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+`;
