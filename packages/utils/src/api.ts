@@ -123,5 +123,16 @@ export async function request<TResponse>(
     return undefined as TResponse;
   }
 
-  return (await response.json()) as TResponse;
+  const text = await response.text();
+
+  if (!text) {
+    return undefined as TResponse;
+  }
+
+  try {
+    return JSON.parse(text) as TResponse;
+  } catch {
+    // 본문이 JSON이 아닌 성공 응답(예: DELETE 200 "삭제완료")은 본문 없음으로 취급한다.
+    return undefined as TResponse;
+  }
 }

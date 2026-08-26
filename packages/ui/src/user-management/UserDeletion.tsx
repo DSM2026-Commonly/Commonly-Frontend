@@ -96,7 +96,7 @@ function UserDeletion({
     } catch (error) {
       setSearchResult(null);
       setSelectedAccountId("");
-      setHasSearched(true);
+      setHasSearched(false);
       setSearchError(
         error instanceof Error
           ? error.message
