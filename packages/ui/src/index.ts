@@ -101,5 +101,6 @@ export { default as UserManagementComplete } from "./user-management/UserManagem
 export type {
   UserManagementCompleteProps,
   UserManagementCompletionAction,
+  UserManagementCompletionDetail,
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";

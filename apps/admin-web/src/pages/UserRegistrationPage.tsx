@@ -14,7 +14,9 @@ function UserRegistrationPage() {
       },
       { token: getAuthToken() },
     );
-    void navigate("/accounts/register/complete");
+    void navigate("/accounts/register/complete", {
+      state: { accountId: data.accountId },
+    });
   };
 
   return (

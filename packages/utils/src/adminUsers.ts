@@ -3,6 +3,9 @@ import { ApiError, request } from "./api";
 export const ADMIN_USERS_ENDPOINT = "/api/admins";
 export const ADMIN_USER_CREATE_ENDPOINT = "/api/admin/users";
 
+// 백엔드가 신규 계정에 설정하는 초기 비밀번호(명세 고정값). 프론트는 안내 용도로만 사용한다.
+export const ADMIN_USER_INITIAL_PASSWORD = "abcd1234";
+
 // 목록 조회는 /api/admins, 삭제는 /api/admin/users/{userId} — 백엔드 명세의 경로 비대칭을 그대로 따른다.
 export function getAdminUserDeleteEndpoint(userId: number): string {
   return `/api/admin/users/${userId}`;
