@@ -111,3 +111,39 @@ export {
   updateRegistrationSession,
 } from "./registrationSession";
 export type { IntegratedRegistrationSession } from "./registrationSession";
+export {
+  HUMAN_SEARCH_BAD_REQUEST_MESSAGE,
+  HUMAN_SEARCH_ENDPOINT,
+  HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
+  HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
+  HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
+  HUMAN_UPDATE_CONFLICT_MESSAGE,
+  HUMAN_UPDATE_ENDPOINT,
+  HUMAN_UPDATE_NOT_FOUND_MESSAGE,
+  HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
+  searchHumans,
+  updateHuman,
+} from "./humans";
+export type {
+  HumanRequestOptions,
+  HumanSummary,
+  SearchHumansQuery,
+  UpdateHumanRequest,
+} from "./humans";
+export {
+  CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
+  CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
+  HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
+  HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+  HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
+  HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+  fetchHumanCertificates,
+  getCertificateUpdateEndpoint,
+  getHumanCertificatesEndpoint,
+  updateCertificate,
+} from "./certificates";
+export type {
+  CertificateRequestOptions,
+  HumanCertificate,
+  UpdateCertificateRequest,
+} from "./certificates";

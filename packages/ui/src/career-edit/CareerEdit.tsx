@@ -57,6 +57,7 @@ import {
   CareerEditRoot,
   CurrentStepText,
   EmptyState,
+  FlowError,
   FormFields,
   GenderField,
   PageHeader,
@@ -116,6 +117,8 @@ interface ApplicantStepProps {
   birthDay: string;
   canSearch: boolean;
   hasSearchResult: boolean;
+  isSearching: boolean;
+  searchError: string;
   searchResults: readonly CareerEditApplicant[];
   selectedApplicantId: string;
   onApplicantNameChange: (value: string) => void;
@@ -264,6 +267,10 @@ function isCareerEditGender(value: string): value is CareerEditGender {
   return value === "male" || value === "female";
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 function cloneRecord(record: CareerEditRecord | undefined): CareerEditRecord {
   if (record) {
     return { ...record };
@@ -339,6 +346,8 @@ function ApplicantStep({
   birthDay,
   canSearch,
   hasSearchResult,
+  isSearching,
+  searchError,
   searchResults,
   selectedApplicantId,
   onApplicantNameChange,
@@ -417,12 +426,13 @@ function ApplicantStep({
             variant="secondary"
             size="large"
             type="button"
-            disabled={!canSearch}
+            disabled={!canSearch || isSearching}
             onClick={onSearch}
           >
-            대상자 조회
+            {isSearching ? "조회 중..." : "대상자 조회"}
           </Button>
         </ApplicantSearchAction>
+        {searchError && <FlowError role="alert">{searchError}</FlowError>}
       </FormCard>
 
       {hasSearchResult && (
@@ -922,6 +932,8 @@ function CareerEdit({
   applicants = DEFAULT_CAREER_EDIT_APPLICANTS,
   careerRecords = DEFAULT_CAREER_EDIT_RECORDS,
   onCancel,
+  onSearch,
+  onLoadCareerRecords,
   onComplete,
   onAddAnother,
   onHome,
@@ -957,6 +969,18 @@ function CareerEdit({
   );
   const [completedSubmission, setCompletedSubmission] =
     useState<CareerEditSubmission | null>(null);
+  const [fetchedApplicants, setFetchedApplicants] = useState<
+    readonly CareerEditApplicant[] | null
+  >(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [fetchedRecords, setFetchedRecords] = useState<
+    readonly CareerEditRecord[] | null
+  >(null);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  const [recordsError, setRecordsError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
   const careerEditView = completedSubmission
     ? "success"
     : `step-${currentStep}`;
@@ -968,17 +992,24 @@ function CareerEdit({
     birthMonth,
     birthDay,
   );
+  const availableApplicants = onSearch ? (fetchedApplicants ?? []) : applicants;
+  const effectiveCareerRecords = onLoadCareerRecords
+    ? (fetchedRecords ?? [])
+    : careerRecords;
   const searchResults = hasSearchResult
-    ? applicants.filter(
-        (applicant) =>
-          applicant.name === applicantName.trim() &&
-          normalizeApplicantBirthDate(applicant.birthDate) === searchBirthDate,
-      )
+    ? onSearch
+      ? (fetchedApplicants ?? [])
+      : applicants.filter(
+          (applicant) =>
+            applicant.name === applicantName.trim() &&
+            normalizeApplicantBirthDate(applicant.birthDate) ===
+              searchBirthDate,
+        )
     : [];
   const canSearch =
     applicantName.trim().length > 0 &&
     isValidBirthDate(birthYear, birthMonth, birthDay);
-  const selectedApplicant = applicants.find(
+  const selectedApplicant = availableApplicants.find(
     (applicant) => applicant.id === selectedApplicantId,
   );
   const canSavePersonalInfo =
@@ -1012,6 +1043,10 @@ function CareerEdit({
     setHasSearchResult(false);
     setSelectedApplicantId("");
     setPersonalInfo(createPersonalInfo(undefined));
+    setFetchedApplicants(null);
+    setSearchError("");
+    setFetchedRecords(null);
+    setRecordsError("");
   };
 
   const handleApplicantNameChange = (value: string) => {
@@ -1040,24 +1075,55 @@ function CareerEdit({
     resetSearchResult();
   };
 
-  const handleSearch = () => {
-    if (!canSearch) {
+  const handleSearch = async () => {
+    if (!canSearch || isSearching) {
       return;
     }
 
-    const matchedApplicant = applicants.find(
-      (applicant) =>
-        applicant.name === applicantName.trim() &&
-        normalizeApplicantBirthDate(applicant.birthDate) === searchBirthDate,
-    );
+    if (!onSearch) {
+      const matchedApplicant = applicants.find(
+        (applicant) =>
+          applicant.name === applicantName.trim() &&
+          normalizeApplicantBirthDate(applicant.birthDate) === searchBirthDate,
+      );
 
-    setHasSearchResult(true);
-    setSelectedApplicantId(matchedApplicant?.id ?? "");
-    setPersonalInfo(createPersonalInfo(matchedApplicant));
+      setHasSearchResult(true);
+      setSelectedApplicantId(matchedApplicant?.id ?? "");
+      setPersonalInfo(createPersonalInfo(matchedApplicant));
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError("");
+
+    try {
+      const results = await onSearch({
+        name: applicantName.trim(),
+        birthDate: `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
+      });
+      const onlyMatch = results.length === 1 ? results[0] : undefined;
+
+      setFetchedApplicants(results);
+      setHasSearchResult(true);
+      setSelectedApplicantId(onlyMatch?.id ?? "");
+      setPersonalInfo(createPersonalInfo(onlyMatch));
+    } catch (error) {
+      setFetchedApplicants(null);
+      setHasSearchResult(false);
+      setSelectedApplicantId("");
+      setSearchError(
+        getErrorMessage(
+          error,
+          "대상자 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+      );
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleSelectApplicant = (applicantId: string) => {
-    const applicant = applicants.find(
+    const applicant = availableApplicants.find(
       (candidate) => candidate.id === applicantId,
     );
 
@@ -1066,7 +1132,7 @@ function CareerEdit({
   };
 
   const handleSelectCareer = (careerId: string) => {
-    const selectedRecord = careerRecords.find(
+    const selectedRecord = effectiveCareerRecords.find(
       (record) => record.id === careerId,
     );
 
@@ -1131,8 +1197,8 @@ function CareerEdit({
     setCurrentStep(3);
   };
 
-  const handleNext = () => {
-    if (!canContinue) {
+  const handleNext = async () => {
+    if (!canContinue || isLoadingRecords || isSubmitting) {
       return;
     }
 
@@ -1147,6 +1213,29 @@ function CareerEdit({
     }
 
     if (currentStep === 2) {
+      if (onLoadCareerRecords && selectedApplicant) {
+        setIsLoadingRecords(true);
+        setRecordsError("");
+
+        try {
+          const records = await onLoadCareerRecords(selectedApplicant.id);
+
+          setFetchedRecords(records);
+          setSelectedCareerId(records[0]?.id ?? "");
+          setDraftRecord(cloneRecord(records[0]));
+        } catch (error) {
+          setRecordsError(
+            getErrorMessage(
+              error,
+              "경력 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            ),
+          );
+          return;
+        } finally {
+          setIsLoadingRecords(false);
+        }
+      }
+
       setCurrentStep(3);
       return;
     }
@@ -1182,13 +1271,35 @@ function CareerEdit({
             },
           };
 
-    onComplete?.(submission);
-    setCompletedSubmission(submission);
+    setIsSubmitting(true);
+    setSubmissionError("");
+
+    try {
+      await onComplete?.(submission);
+      setCompletedSubmission(submission);
+    } catch (error) {
+      setSubmissionError(
+        getErrorMessage(
+          error,
+          "저장 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddAnother = () => {
-    const firstRecord = careerRecords[0];
+    const firstRecord = onLoadCareerRecords ? undefined : careerRecords[0];
 
+    setFetchedApplicants(null);
+    setIsSearching(false);
+    setSearchError("");
+    setFetchedRecords(null);
+    setIsLoadingRecords(false);
+    setRecordsError("");
+    setIsSubmitting(false);
+    setSubmissionError("");
     setCurrentStep(0);
     setNoticeAccepted(false);
     setReason("visit");
@@ -1263,20 +1374,22 @@ function CareerEdit({
                   birthDay={birthDay}
                   canSearch={canSearch}
                   hasSearchResult={hasSearchResult}
+                  isSearching={isSearching}
+                  searchError={searchError}
                   searchResults={searchResults}
                   selectedApplicantId={selectedApplicantId}
                   onApplicantNameChange={handleApplicantNameChange}
                   onBirthYearChange={handleBirthYearChange}
                   onBirthMonthChange={handleBirthMonthChange}
                   onBirthDayChange={handleBirthDayChange}
-                  onSearch={handleSearch}
+                  onSearch={() => void handleSearch()}
                   onSelectApplicant={handleSelectApplicant}
                 />
               )}
               {currentStep === 3 && (
                 <EditTargetSelectionStep
                   editTarget={editTarget}
-                  careerRecords={careerRecords}
+                  careerRecords={effectiveCareerRecords}
                   selectedCareerId={selectedCareerId}
                   onEditTargetChange={setEditTarget}
                   onSelectCareer={handleSelectCareer}
@@ -1297,11 +1410,18 @@ function CareerEdit({
               )}
             </StageContent>
 
+            {currentStep === 2 && recordsError && (
+              <FlowError role="alert">{recordsError}</FlowError>
+            )}
+            {currentStep === 4 && submissionError && (
+              <FlowError role="alert">{submissionError}</FlowError>
+            )}
             <ActionRow>
               <Button
                 variant="tertiary"
                 size="xlarge"
                 type="button"
+                disabled={isLoadingRecords || isSubmitting}
                 onClick={handlePrevious}
               >
                 이전으로
@@ -1310,10 +1430,16 @@ function CareerEdit({
                 variant="primary"
                 size="xlarge"
                 type="button"
-                disabled={!canContinue}
-                onClick={handleNext}
+                disabled={!canContinue || isLoadingRecords || isSubmitting}
+                onClick={() => void handleNext()}
               >
-                {currentStep === 4 ? "저장하기" : "다음으로"}
+                {currentStep === 4
+                  ? isSubmitting
+                    ? "저장 중..."
+                    : "저장하기"
+                  : isLoadingRecords
+                    ? "불러오는 중..."
+                    : "다음으로"}
               </Button>
             </ActionRow>
           </Stage>
