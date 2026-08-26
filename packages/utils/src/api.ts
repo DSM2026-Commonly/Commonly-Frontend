@@ -52,6 +52,19 @@ export interface RequestOptions {
   errorMessages?: ErrorMessageMap;
 }
 
+async function throwErrorResponse(
+  response: Response,
+  errorMessages: ErrorMessageMap,
+): Promise<never> {
+  const errorBody = await parseErrorBody(response);
+  const message =
+    (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
+    errorMessages[response.status] ??
+    SERVER_ERROR_MESSAGE;
+
+  throw new ApiError(response.status, message, errorBody);
+}
+
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
   try {
     const body: unknown = await response.json();
@@ -118,13 +131,7 @@ export async function request<TResponse>(
   }
 
   if (!response.ok) {
-    const errorBody = await parseErrorBody(response);
-    const message =
-      (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
-      errorMessages[response.status] ??
-      SERVER_ERROR_MESSAGE;
-
-    throw new ApiError(response.status, message, errorBody);
+    await throwErrorResponse(response, errorMessages);
   }
 
   if (response.status === 204) {
@@ -143,4 +150,39 @@ export async function request<TResponse>(
     // 본문이 JSON이 아닌 성공 응답(예: DELETE 200 "삭제완료")은 본문 없음으로 취급한다.
     return undefined;
   }
+}
+
+export interface BlobRequestOptions {
+  token?: string | null;
+  signal?: AbortSignal;
+  errorMessages?: ErrorMessageMap;
+}
+
+export async function requestBlob(
+  path: string,
+  { token, signal, errorMessages = {} }: BlobRequestOptions = {},
+): Promise<Blob> {
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, { headers, signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
+    throw new ApiError(0, NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!response.ok) {
+    await throwErrorResponse(response, errorMessages);
+  }
+
+  return response.blob();
 }

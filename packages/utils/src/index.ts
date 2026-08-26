@@ -22,8 +22,14 @@ export {
   SERVER_ERROR_MESSAGE,
   getApiBaseUrl,
   request,
+  requestBlob,
 } from "./api";
-export type { ApiErrorBody, ErrorMessageMap, RequestOptions } from "./api";
+export type {
+  ApiErrorBody,
+  BlobRequestOptions,
+  ErrorMessageMap,
+  RequestOptions,
+} from "./api";
 export {
   ACCOUNT_ID_FORMAT_MESSAGE,
   ACCOUNT_ID_PATTERN,
@@ -79,11 +85,6 @@ export type {
   UploadedFileRow,
 } from "./files";
 export {
-  ADMIN_USERS_BAD_REQUEST_MESSAGE,
-  ADMIN_USERS_ENDPOINT,
-  ADMIN_USERS_FORBIDDEN_MESSAGE,
-  ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
-  ADMIN_USERS_UNAUTHORIZED_MESSAGE,
   ADMIN_USER_CREATE_BAD_REQUEST_MESSAGE,
   ADMIN_USER_CREATE_CONFLICT_MESSAGE,
   ADMIN_USER_CREATE_ENDPOINT,
@@ -95,14 +96,11 @@ export {
   ADMIN_USER_INITIAL_PASSWORD,
   createAdminUser,
   deleteAdminUser,
-  fetchAdminUsers,
   getAdminUserDeleteEndpoint,
 } from "./adminUsers";
 export type {
-  AdminUser,
   AdminUserRequestOptions,
   CreateAdminUserRequest,
-  FetchAdminUsersOptions,
 } from "./adminUsers";
 export {
   REGISTRATION_SESSION_STORAGE_KEY,
@@ -111,6 +109,44 @@ export {
   updateRegistrationSession,
 } from "./registrationSession";
 export type { IntegratedRegistrationSession } from "./registrationSession";
+export {
+  HUMAN_SEARCH_BAD_REQUEST_MESSAGE,
+  HUMAN_SEARCH_ENDPOINT,
+  HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
+  HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
+  searchHumans,
+} from "./humans";
+export type {
+  HumanRequestOptions,
+  HumanSummary,
+  SearchHumansQuery,
+} from "./humans";
+export {
+  CERTIFICATES_ENDPOINT,
+  CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
+  CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
+  CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_ISSUE_CONFLICT_MESSAGE,
+  CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
+  CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+  HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
+  HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+  HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
+  HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+  downloadCertificate,
+  fetchHumanCertificates,
+  getCertificateDownloadEndpoint,
+  getHumanCertificatesEndpoint,
+  issueCertificate,
+  saveBlobAsFile,
+} from "./certificates";
+export type {
+  CertificateRequestOptions,
+  HumanCertificate,
+  IssueCertificateRequest,
+  IssuedCertificate,
+} from "./certificates";
 export {
   ADMIN_USERS_DEFAULT_PAGE_SIZE,
   ADMIN_USERS_ENDPOINT,

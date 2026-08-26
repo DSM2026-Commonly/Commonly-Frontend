@@ -1,5 +1,6 @@
 import { Button } from "krds-react";
 import certificatePreview from "../../assets/career-certificate-preview.png";
+import { FlowError } from "../CareerCertificateIssue.styles";
 import type { CareerCertificateIssueVariant } from "../CareerCertificateIssue.types";
 import {
   CertificateImage,
@@ -13,23 +14,28 @@ import {
 
 interface CertificatePreviewViewProps {
   variant?: CareerCertificateIssueVariant;
+  isSubmitting?: boolean;
+  submissionError?: string;
   onPrevious: () => void;
   onNext: () => void;
 }
 
 function CertificatePreviewView({
   variant = "staff",
+  isSubmitting = false,
+  submissionError = "",
   onPrevious,
   onNext,
 }: CertificatePreviewViewProps) {
   const isCivil = variant === "civil";
+  const nextLabel = isSubmitting ? "발급 중..." : "다음으로";
 
   return (
     <PreviewPage $civil={isCivil}>
       <PreviewHeader>
         <PreviewTitle>경력증명서 발급 미리보기</PreviewTitle>
-        <Button size="xlarge" onClick={onNext}>
-          다음으로
+        <Button size="xlarge" disabled={isSubmitting} onClick={onNext}>
+          {nextLabel}
         </Button>
       </PreviewHeader>
       <FilenameBar>
@@ -42,12 +48,20 @@ function CertificatePreviewView({
           alt="열람용 경력증명서 미리보기"
         />
       </DocumentViewer>
+      {submissionError && (
+        <FlowError role="alert">{submissionError}</FlowError>
+      )}
       <PreviewActions>
-        <Button variant="tertiary" size="xlarge" onClick={onPrevious}>
+        <Button
+          variant="tertiary"
+          size="xlarge"
+          disabled={isSubmitting}
+          onClick={onPrevious}
+        >
           이전으로
         </Button>
-        <Button size="xlarge" onClick={onNext}>
-          다음으로
+        <Button size="xlarge" disabled={isSubmitting} onClick={onNext}>
+          {nextLabel}
         </Button>
       </PreviewActions>
     </PreviewPage>

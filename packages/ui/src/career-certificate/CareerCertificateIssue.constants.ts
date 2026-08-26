@@ -1,4 +1,7 @@
-import type { CareerCertificateIssueView } from "./CareerCertificateIssue.types";
+import type {
+  CareerCertificateIssueView,
+  CertificateApplicant,
+} from "./CareerCertificateIssue.types";
 
 export const STEP_VIEWS: CareerCertificateIssueView[] = [
   "notice",
@@ -26,6 +29,15 @@ export const REASON_OPTIONS = [
   { value: "phone", label: "민원인 발급 신청 (전화)" },
   { value: "email", label: "민원인 발급 신청 (전자우편)" },
   { value: "other", label: "기타 사유" },
+];
+
+export const DEMO_APPLICANTS: CertificateApplicant[] = [
+  {
+    id: "jeon-jaejun",
+    name: "전재준",
+    birthDate: "2009년 02월 10일",
+    address: "대전광역시 유성구 가정북로 76",
+  },
 ];
 
 export const CAREER_ROWS = [
