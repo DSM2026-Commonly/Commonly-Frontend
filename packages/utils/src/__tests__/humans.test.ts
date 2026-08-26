@@ -59,10 +59,34 @@ describe("searchHumans", () => {
 
   test("skips malformed rows instead of failing the whole list", async () => {
     mockFetch(200, {
-      content: [hongHuman, { ...hongHuman, humanId: "2" }, null],
+      content: [
+        hongHuman,
+        { ...hongHuman, humanId: "2" },
+        { ...hongHuman, name: null },
+        { ...hongHuman, address: 5 },
+        null,
+      ],
     });
 
     expect(await searchHumans({ name: "홍" })).toEqual([hongHuman]);
+  });
+
+  test("normalizes null or omitted optional fields to empty strings", async () => {
+    mockFetch(200, {
+      content: [
+        { humanId: 2, name: "홍길동", birthDate: "1990-01-01", gender: null },
+      ],
+    });
+
+    expect(await searchHumans({ name: "홍" })).toEqual([
+      {
+        humanId: 2,
+        name: "홍길동",
+        gender: "",
+        birthDate: "1990-01-01",
+        address: "",
+      },
+    ]);
   });
 
   test("rejects bodies without a content array", async () => {

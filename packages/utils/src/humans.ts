@@ -30,6 +30,15 @@ export interface HumanRequestOptions {
   signal?: AbortSignal;
 }
 
+// null/누락된 선택 필드는 빈 문자열로 통일하고, 문자열이 아닌 값은 무효(null)로 돌려준다.
+function normalizeOptionalString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return typeof value === "string" ? value : null;
+}
+
 function normalizeHumanSummary(value: unknown): HumanSummary | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -40,18 +49,30 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
     unknown
   >;
 
+  // gender/address는 명세상 nullable이므로 humanId·name·birthDate만 필수로 검증한다.
   if (
     typeof humanId !== "number" ||
     !Number.isFinite(humanId) ||
     typeof name !== "string" ||
-    typeof gender !== "string" ||
-    typeof birthDate !== "string" ||
-    typeof address !== "string"
+    typeof birthDate !== "string"
   ) {
     return null;
   }
 
-  return { humanId, name, gender, birthDate, address };
+  const normalizedGender = normalizeOptionalString(gender);
+  const normalizedAddress = normalizeOptionalString(address);
+
+  if (normalizedGender === null || normalizedAddress === null) {
+    return null;
+  }
+
+  return {
+    humanId,
+    name,
+    gender: normalizedGender,
+    birthDate,
+    address: normalizedAddress,
+  };
 }
 
 export async function searchHumans(

@@ -53,7 +53,7 @@ function CertificateSuccessView({
       </SuccessTitle>
       <SummaryCard>
         <SummaryLabel>{isCivil ? "신청인" : "대상자"}</SummaryLabel>
-        <SummaryValue>{applicantName}</SummaryValue>
+        <SummaryValue>{applicantName || "-"}</SummaryValue>
         <SummaryLabel>신청정보</SummaryLabel>
         <SummaryValue>
           <p>유성 구청 기간제 근로자 경력증명서 발급 신청</p>

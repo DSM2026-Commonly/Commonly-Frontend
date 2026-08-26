@@ -66,6 +66,15 @@ export interface CertificateRequestOptions {
   signal?: AbortSignal;
 }
 
+// null/누락된 선택 필드는 빈 문자열로 통일하고, 문자열이 아닌 값은 무효(null)로 돌려준다.
+function normalizeOptionalString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return typeof value === "string" ? value : null;
+}
+
 function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -83,31 +92,34 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
     note,
   } = value as Record<string, unknown>;
 
+  // 재직 중(퇴직일 없음) 등 선택 필드가 null인 행도 유효해야 하므로
+  // certificateId와 hireDate만 필수로 검증한다.
   if (
     typeof certificateId !== "number" ||
     !Number.isFinite(certificateId) ||
-    typeof division !== "string" ||
-    typeof employmentType !== "string" ||
-    typeof keyResponsibilities !== "string" ||
-    typeof hireDate !== "string" ||
-    typeof retirementDate !== "string" ||
-    typeof expirationDate !== "string" ||
-    typeof reason !== "string" ||
-    typeof note !== "string"
+    typeof hireDate !== "string"
   ) {
+    return null;
+  }
+
+  const optionalFields = {
+    division: normalizeOptionalString(division),
+    employmentType: normalizeOptionalString(employmentType),
+    keyResponsibilities: normalizeOptionalString(keyResponsibilities),
+    retirementDate: normalizeOptionalString(retirementDate),
+    expirationDate: normalizeOptionalString(expirationDate),
+    reason: normalizeOptionalString(reason),
+    note: normalizeOptionalString(note),
+  };
+
+  if (Object.values(optionalFields).some((field) => field === null)) {
     return null;
   }
 
   return {
     certificateId,
-    division,
-    employmentType,
-    keyResponsibilities,
     hireDate,
-    retirementDate,
-    expirationDate,
-    reason,
-    note,
+    ...(optionalFields as Record<keyof typeof optionalFields, string>),
   };
 }
 
@@ -214,6 +226,11 @@ export function saveBlobAsFile(blob: Blob, filename: string): void {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  // 브라우저가 Blob URL 읽기를 시작한 뒤에 정리해야 다운로드가 끊기지 않는다.
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 0);
 }

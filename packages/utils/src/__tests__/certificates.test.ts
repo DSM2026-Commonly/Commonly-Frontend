@@ -75,10 +75,41 @@ describe("fetchHumanCertificates", () => {
     mockFetch(200, [
       humanCertificate,
       { ...humanCertificate, certificateId: "11" },
+      { ...humanCertificate, hireDate: null },
+      { ...humanCertificate, note: 5 },
       null,
     ]);
 
     expect(await fetchHumanCertificates(3)).toEqual([humanCertificate]);
+  });
+
+  test("normalizes null or omitted optional fields to empty strings", async () => {
+    mockFetch(200, [
+      {
+        certificateId: 12,
+        division: null,
+        employmentType: "기간제",
+        keyResponsibilities: "행정지원",
+        hireDate: "2024-03-01",
+        retirementDate: null,
+        expirationDate: "2025-02-28",
+        reason: null,
+      },
+    ]);
+
+    expect(await fetchHumanCertificates(3)).toEqual([
+      {
+        certificateId: 12,
+        division: "",
+        employmentType: "기간제",
+        keyResponsibilities: "행정지원",
+        hireDate: "2024-03-01",
+        retirementDate: "",
+        expirationDate: "2025-02-28",
+        reason: "",
+        note: "",
+      },
+    ]);
   });
 
   test("rejects non-array 200 bodies", async () => {
