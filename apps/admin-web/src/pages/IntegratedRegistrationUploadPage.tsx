@@ -6,19 +6,42 @@ import {
   updateRegistrationSession,
   uploadFile,
 } from "@commonly/utils";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 function IntegratedRegistrationUploadPage() {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState("");
+  // 진행 중인 업로드 요청. 삭제/새 업로드/페이지 이탈 시 이전 요청을 무효화해
+  // 늦게 완료된 요청이 새 등록 세션을 덮어쓰지 못하게 한다.
+  const uploadControllerRef = useRef<AbortController | null>(null);
+
+  const abortPendingUpload = () => {
+    uploadControllerRef.current?.abort();
+    uploadControllerRef.current = null;
+  };
+
+  useEffect(() => abortPendingUpload, []);
 
   const handleFileUpload = async (file: File) => {
+    abortPendingUpload();
+    const controller = new AbortController();
+    uploadControllerRef.current = controller;
+
     setErrorMessage("");
     clearRegistrationSession();
 
     try {
-      const uploadedFile = await uploadFile(file, { token: getAuthToken() });
+      const uploadedFile = await uploadFile(file, {
+        token: getAuthToken(),
+        signal: controller.signal,
+      });
+
+      // 요청 중 삭제/새 업로드/페이지 이탈로 무효화된 경우 세션을 덮어쓰지 않는다.
+      // 컴포넌트가 이 파일을 "완료"로 표시하지 않도록 reject 한다.
+      if (controller.signal.aborted) {
+        throw new DOMException("업로드 요청이 취소되었습니다.", "AbortError");
+      }
 
       if (!updateRegistrationSession({ uploadedFile })) {
         throw new Error(
@@ -26,8 +49,15 @@ function IntegratedRegistrationUploadPage() {
         );
       }
     } catch (error) {
-      setErrorMessage(getUploadErrorMessage(error));
+      // 무효화된 요청의 오류는 현재 흐름과 무관하므로 화면에 표시하지 않는다.
+      if (!controller.signal.aborted) {
+        setErrorMessage(getUploadErrorMessage(error));
+      }
       throw error;
+    } finally {
+      if (uploadControllerRef.current === controller) {
+        uploadControllerRef.current = null;
+      }
     }
   };
 
@@ -36,6 +66,7 @@ function IntegratedRegistrationUploadPage() {
       errorMessage={errorMessage}
       onFileUpload={handleFileUpload}
       onFileDelete={() => {
+        abortPendingUpload();
         setErrorMessage("");
         clearRegistrationSession();
       }}
