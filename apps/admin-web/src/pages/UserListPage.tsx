@@ -26,6 +26,10 @@ function UserListPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    setKeyword(submittedKeyword);
+  }, [submittedKeyword]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     setIsLoading(true);
