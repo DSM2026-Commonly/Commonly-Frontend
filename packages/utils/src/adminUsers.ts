@@ -109,17 +109,6 @@ export async function fetchAdminUsers(
   return users;
 }
 
-// keyword 검색은 이름 기준이라 다른 사용자가 섞여 올 수 있으므로
-// 계정 아이디가 정확히 일치하는 한 건만 돌려준다.
-export async function findAdminUserByAccountId(
-  accountId: string,
-  options: AdminUserRequestOptions = {},
-): Promise<AdminUser | null> {
-  const users = await fetchAdminUsers(accountId, options);
-
-  return users.find((user) => user.accountId === accountId) ?? null;
-}
-
 export async function deleteAdminUser(
   userId: number,
   { token, signal }: AdminUserRequestOptions = {},

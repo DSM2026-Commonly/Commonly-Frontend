@@ -90,7 +90,6 @@ export {
   ADMIN_USER_DELETE_UNAUTHORIZED_MESSAGE,
   deleteAdminUser,
   fetchAdminUsers,
-  findAdminUserByAccountId,
   getAdminUserDeleteEndpoint,
 } from "./adminUsers";
 export type {

@@ -5,7 +5,6 @@ import {
   ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
   deleteAdminUser,
   fetchAdminUsers,
-  findAdminUserByAccountId,
   getAdminUserDeleteEndpoint,
 } from "../adminUsers";
 
@@ -94,33 +93,6 @@ describe("fetchAdminUsers", () => {
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
     }
-  });
-});
-
-describe("findAdminUserByAccountId", () => {
-  test("returns only the exact accountId match among similar rows", async () => {
-    mockFetch(200, [
-      { ...hongUser, userId: 1, accountId: "hong12" },
-      { ...hongUser, userId: 2, accountId: "hong123" },
-      { ...hongUser, userId: 3, accountId: "hong1234" },
-    ]);
-
-    expect(await findAdminUserByAccountId("hong123")).toEqual({
-      ...hongUser,
-      userId: 2,
-      accountId: "hong123",
-    });
-  });
-
-  test("returns null for empty, partial-only, or case-mismatched results", async () => {
-    mockFetch(200, []);
-    expect(await findAdminUserByAccountId("hong123")).toBeNull();
-
-    mockFetch(200, [{ ...hongUser, accountId: "hong1234" }]);
-    expect(await findAdminUserByAccountId("hong123")).toBeNull();
-
-    mockFetch(200, [hongUser]);
-    expect(await findAdminUserByAccountId("Hong123")).toBeNull();
   });
 });
 

@@ -1,31 +1,21 @@
 import { UserDeletion, type UserAccountRecord } from "@commonly/ui";
-import {
-  deleteAdminUser,
-  findAdminUserByAccountId,
-  getAuthToken,
-} from "@commonly/utils";
+import { deleteAdminUser, fetchAdminUsers, getAuthToken } from "@commonly/utils";
 import { useNavigate } from "react-router";
 
 function UserDeletionPage() {
   const navigate = useNavigate();
 
   const handleSearch = async (
-    accountId: string,
-  ): Promise<UserAccountRecord | null> => {
-    const user = await findAdminUserByAccountId(accountId, {
-      token: getAuthToken(),
-    });
+    name: string,
+  ): Promise<readonly UserAccountRecord[]> => {
+    const users = await fetchAdminUsers(name, { token: getAuthToken() });
 
-    if (!user) {
-      return null;
-    }
-
-    return {
+    return users.map((user) => ({
       id: String(user.userId),
       name: user.name,
       accountId: user.accountId,
       department: user.department,
-    };
+    }));
   };
 
   const handleDelete = async (account: UserAccountRecord) => {
