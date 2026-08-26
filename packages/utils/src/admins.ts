@@ -1,4 +1,4 @@
-import { ApiError, request } from "./api";
+import { ApiError, normalizePositiveInteger, request } from "./api";
 
 export const ADMIN_USERS_ENDPOINT = "/api/admins";
 
@@ -63,8 +63,8 @@ export function buildAdminUsersPath({
   keyword = "",
 }: FetchAdminUsersParams = {}): string {
   const searchParams = new URLSearchParams({
-    page: String(Math.max(1, Math.floor(page))),
-    size: String(Math.max(1, Math.floor(size))),
+    page: String(normalizePositiveInteger(page, 1)),
+    size: String(normalizePositiveInteger(size, ADMIN_USERS_DEFAULT_PAGE_SIZE)),
   });
   const trimmedKeyword = keyword.trim();
 

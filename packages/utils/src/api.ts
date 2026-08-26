@@ -34,6 +34,14 @@ export const SERVER_ERROR_MESSAGE =
  * 에러 메시지 매핑. 숫자 키는 HTTP 상태 코드, 문자열 키는 응답 본문의 `code`.
  * 응답 본문의 `code`가 먼저 매칭되고, 없으면 상태 코드로 매칭된다.
  */
+/** 유한한 양의 정수로 정규화한다. 유한하지 않으면 기본값을 사용한다. */
+export function normalizePositiveInteger(
+  value: number,
+  fallback: number,
+): number {
+  return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : fallback;
+}
+
 export type ErrorMessageMap = Partial<Record<number | string, string>>;
 
 export interface RequestOptions {

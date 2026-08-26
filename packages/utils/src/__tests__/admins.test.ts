@@ -33,6 +33,14 @@ describe("buildAdminUsersPath", () => {
       `${ADMIN_USERS_ENDPOINT}?page=1&size=3&keyword=${encodeURIComponent("홍길동")}`,
     );
   });
+
+  test("falls back to defaults for non-finite page/size", () => {
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(buildAdminUsersPath({ page: value, size: value })).toBe(
+        `${ADMIN_USERS_ENDPOINT}?page=1&size=10`,
+      );
+    }
+  });
 });
 
 describe("fetchAdminUsers", () => {

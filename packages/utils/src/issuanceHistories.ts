@@ -1,4 +1,4 @@
-import { ApiError, request } from "./api";
+import { ApiError, normalizePositiveInteger, request } from "./api";
 
 export const ISSUANCE_HISTORIES_ENDPOINT = "/api/issuance-histories";
 
@@ -88,8 +88,8 @@ export function buildIssuanceHistoriesPath({
   keyword = "",
 }: FetchIssuanceHistoriesParams = {}): string {
   const searchParams = new URLSearchParams({
-    page: String(Math.max(1, Math.floor(page))),
-    size: String(Math.max(1, Math.floor(size))),
+    page: String(normalizePositiveInteger(page, 1)),
+    size: String(normalizePositiveInteger(size, ISSUANCE_HISTORIES_DEFAULT_PAGE_SIZE)),
   });
 
   for (const [key, value] of [

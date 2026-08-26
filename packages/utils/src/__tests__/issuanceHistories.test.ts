@@ -56,6 +56,14 @@ describe("buildIssuanceHistoriesPath", () => {
       `${ISSUANCE_HISTORIES_ENDPOINT}?page=2&size=20&type=MODIFY&startDate=2026-08-01&endDate=2026-08-26&keyword=${encodeURIComponent("홍")}`,
     );
   });
+
+  test("falls back to defaults for non-finite page/size", () => {
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(buildIssuanceHistoriesPath({ page: value, size: value })).toBe(
+        `${ISSUANCE_HISTORIES_ENDPOINT}?page=1&size=10`,
+      );
+    }
+  });
 });
 
 describe("getIssuanceHistoryTypeLabel", () => {
