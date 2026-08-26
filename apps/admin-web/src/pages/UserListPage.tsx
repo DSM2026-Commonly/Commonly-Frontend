@@ -15,6 +15,20 @@ function parsePage(value: string | null): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function buildSearchParams(page: number, keyword: string): URLSearchParams {
+  const params = new URLSearchParams();
+
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+
+  if (keyword) {
+    params.set("keyword", keyword);
+  }
+
+  return params;
+}
+
 function UserListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePage(searchParams.get("page"));
@@ -40,10 +54,21 @@ function UserListPage() {
       { token: getAuthToken(), signal: controller.signal },
     )
       .then((result) => {
-        if (!controller.signal.aborted) {
-          setUsers(result.content);
-          setTotalPages(result.totalPages);
+        if (controller.signal.aborted) {
+          return;
         }
+
+        const lastPage = Math.max(result.totalPages, 1);
+
+        if (page > lastPage) {
+          setSearchParams(buildSearchParams(lastPage, submittedKeyword), {
+            replace: true,
+          });
+          return;
+        }
+
+        setUsers(result.content);
+        setTotalPages(result.totalPages);
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
@@ -65,20 +90,10 @@ function UserListPage() {
       });
 
     return () => controller.abort();
-  }, [page, submittedKeyword]);
+  }, [page, submittedKeyword, setSearchParams]);
 
   const updateSearchParams = (nextPage: number, nextKeyword: string) => {
-    const params = new URLSearchParams();
-
-    if (nextPage > 1) {
-      params.set("page", String(nextPage));
-    }
-
-    if (nextKeyword) {
-      params.set("keyword", nextKeyword);
-    }
-
-    setSearchParams(params);
+    setSearchParams(buildSearchParams(nextPage, nextKeyword));
   };
 
   return (
