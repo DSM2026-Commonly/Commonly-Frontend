@@ -3,6 +3,8 @@ import { ApiError } from "../api";
 import {
   ADMIN_USERS_ENDPOINT,
   ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
+  ADMIN_USER_CREATE_ENDPOINT,
+  createAdminUser,
   deleteAdminUser,
   fetchAdminUsers,
   getAdminUserDeleteEndpoint,
@@ -89,6 +91,44 @@ describe("fetchAdminUsers", () => {
     for (const [status, message] of cases) {
       mockFetch(status, undefined);
       const error = await fetchAdminUsers("hong123").catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(status);
+      expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("createAdminUser", () => {
+  const newUser = {
+    accountId: "hong1234",
+    name: "홍길동",
+    department: "민원과",
+  };
+
+  test("POSTs the user with auth header and resolves on 200", async () => {
+    mockFetch(200, undefined, (url, init) => {
+      expect(url).toBe(ADMIN_USER_CREATE_ENDPOINT);
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual(newUser);
+      const headers = init?.headers as Record<string, string>;
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers.Authorization).toBe("Bearer token-1");
+    });
+
+    await createAdminUser(newUser, { token: "token-1" });
+  });
+
+  test("maps error statuses to Korean messages", async () => {
+    const cases = [
+      [400, "입력값을 확인해 주세요"],
+      [401, "로그인이 만료되었습니다"],
+      [409, "이미 사용 중인 아이디입니다"],
+      [500, "일시적인 오류"],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+      const error = await createAdminUser(newUser).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
