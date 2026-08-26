@@ -1,0 +1,219 @@
+import { ApiError, request, requestBlob } from "./api";
+
+export const CERTIFICATES_ENDPOINT = "/api/certificates";
+
+// 경력 증명 사항 찾기 — 해당 인적사항(humanId)의 경력증명서 행 목록을 반환한다.
+export function getHumanCertificatesEndpoint(humanId: number): string {
+  return `/api/certificates/${humanId}`;
+}
+
+export function getCertificateDownloadEndpoint(certificateId: number): string {
+  return `/api/certificates/${certificateId}/download`;
+}
+
+export const HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE =
+  "경력 사항 응답이 올바르지 않습니다.";
+export const HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE =
+  "대상자 정보가 올바르지 않습니다. 다시 조회해 주세요.";
+export const HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE =
+  "대상자의 인적사항을 찾을 수 없습니다. 다시 조회해 주세요.";
+export const CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE =
+  "증명서 발급 응답이 올바르지 않습니다.";
+export const CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE =
+  "대상 인력 또는 경력사항을 찾을 수 없습니다. 대상자를 다시 조회해 주세요.";
+export const CERTIFICATE_ISSUE_CONFLICT_MESSAGE =
+  "문서번호 발급이 중복되었습니다. 잠시 후 다시 시도해 주세요.";
+export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
+  "증명서를 내려받을 권한이 없습니다.";
+export const CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE =
+  "증명서를 찾을 수 없습니다. 다시 발급해 주세요.";
+
+export interface HumanCertificate {
+  certificateId: number;
+  division: string;
+  employmentType: string;
+  keyResponsibilities: string;
+  hireDate: string;
+  retirementDate: string;
+  expirationDate: string;
+  reason: string;
+  note: string;
+}
+
+// 명세 문서에는 workerId/workExperienceIds로 남아있으나 worker API가 삭제되어
+// humanId/certificateIds(경력 증명 사항 찾기 응답의 id)로 백엔드와 합의됨.
+export interface IssueCertificateRequest {
+  humanId: number;
+  certificateIds: number[];
+  purpose: string;
+  otherMatters: string;
+}
+
+export interface IssuedCertificate {
+  certificateId: number;
+  documentNo: string;
+  downloadUrl: string;
+}
+
+export interface CertificateRequestOptions {
+  token?: string | null;
+  signal?: AbortSignal;
+}
+
+function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const {
+    certificateId,
+    division,
+    employmentType,
+    keyResponsibilities,
+    hireDate,
+    retirementDate,
+    expirationDate,
+    reason,
+    note,
+  } = value as Record<string, unknown>;
+
+  if (
+    typeof certificateId !== "number" ||
+    !Number.isFinite(certificateId) ||
+    typeof division !== "string" ||
+    typeof employmentType !== "string" ||
+    typeof keyResponsibilities !== "string" ||
+    typeof hireDate !== "string" ||
+    typeof retirementDate !== "string" ||
+    typeof expirationDate !== "string" ||
+    typeof reason !== "string" ||
+    typeof note !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    certificateId,
+    division,
+    employmentType,
+    keyResponsibilities,
+    hireDate,
+    retirementDate,
+    expirationDate,
+    reason,
+    note,
+  };
+}
+
+export async function fetchHumanCertificates(
+  humanId: number,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<HumanCertificate[]> {
+  const response = await request<unknown>(getHumanCertificatesEndpoint(humanId), {
+    token,
+    signal,
+    errorMessages: {
+      400: HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
+      401: HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+      404: HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
+    },
+  });
+
+  if (!Array.isArray(response)) {
+    throw new ApiError(200, HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE);
+  }
+
+  const certificates: HumanCertificate[] = [];
+
+  for (const row of response) {
+    const certificate = normalizeHumanCertificate(row);
+
+    if (certificate) {
+      certificates.push(certificate);
+    }
+  }
+
+  return certificates;
+}
+
+function normalizeIssuedCertificate(value: unknown): IssuedCertificate | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const { certificateId, documentNo, downloadUrl } = value as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof certificateId !== "number" ||
+    !Number.isFinite(certificateId) ||
+    typeof documentNo !== "string" ||
+    typeof downloadUrl !== "string"
+  ) {
+    return null;
+  }
+
+  return { certificateId, documentNo, downloadUrl };
+}
+
+export async function issueCertificate(
+  requestBody: IssueCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<IssuedCertificate> {
+  const response = await request<unknown>(CERTIFICATES_ENDPOINT, {
+    method: "POST",
+    body: requestBody,
+    token,
+    signal,
+    errorMessages: {
+      401: CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+      404: CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
+      409: CERTIFICATE_ISSUE_CONFLICT_MESSAGE,
+    },
+  });
+
+  const issued = normalizeIssuedCertificate(response);
+
+  if (!issued) {
+    throw new ApiError(201, CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE);
+  }
+
+  return issued;
+}
+
+// downloadUrl을 <a href>로 직접 쓰면 Authorization 헤더를 붙일 수 없어 blob으로 받는다.
+export async function downloadCertificate(
+  certificateId: number,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<Blob> {
+  return requestBlob(getCertificateDownloadEndpoint(certificateId), {
+    token,
+    signal,
+    errorMessages: {
+      401: CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
+      403: CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
+      404: CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
+    },
+  });
+}
+
+export function saveBlobAsFile(blob: Blob, filename: string): void {
+  if (typeof document === "undefined" || typeof URL === "undefined") {
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

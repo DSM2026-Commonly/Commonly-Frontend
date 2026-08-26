@@ -1,5 +1,7 @@
 import { Button, Radio, Select, Table, TextInput } from "krds-react";
 import { YEAR_OPTIONS } from "../CareerCertificateIssue.constants";
+import { FlowError } from "../CareerCertificateIssue.styles";
+import type { CertificateApplicant } from "../CareerCertificateIssue.types";
 import {
   getDaysInBirthMonth,
   isValidBirthDay,
@@ -9,6 +11,7 @@ import {
   CardStack,
   CardTitle,
   DateFields,
+  EmptyResult,
   FieldGroup,
   FieldLabel,
   FormCard,
@@ -23,6 +26,9 @@ interface ApplicantStepProps {
   birthDay: string;
   canSearch: boolean;
   hasSearchResult: boolean;
+  applicants: readonly CertificateApplicant[];
+  isSearching?: boolean;
+  searchError?: string;
   selectedPerson: string;
   onApplicantNameChange: (value: string) => void;
   onBirthYearChange: (value: string) => void;
@@ -39,6 +45,9 @@ function ApplicantStep({
   birthDay,
   canSearch,
   hasSearchResult,
+  applicants,
+  isSearching = false,
+  searchError = "",
   selectedPerson,
   onApplicantNameChange,
   onBirthYearChange,
@@ -112,56 +121,67 @@ function ApplicantStep({
           <Button
             variant="secondary"
             size="large"
-            disabled={!canSearch}
+            disabled={!canSearch || isSearching}
             onClick={onSearch}
           >
-            대상자 조회
+            {isSearching ? "조회 중..." : "대상자 조회"}
           </Button>
         </SearchAction>
+        {searchError && <FlowError role="alert">{searchError}</FlowError>}
       </FormCard>
 
       {hasSearchResult && (
         <FormCard>
           <CardTitle>대상자 선택</CardTitle>
-          <TableFrame>
-            <Table>
-              <Table.Caption className="sr-only">
-                경력증명서 발급 대상자 목록
-              </Table.Caption>
-              <Table.Colgroup>
-                <Table.Col width="80px" />
-                <Table.Col width="110px" />
-                <Table.Col width="170px" />
-                <Table.Col />
-              </Table.Colgroup>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th scope="col">선택</Table.Th>
-                  <Table.Th scope="col">이름</Table.Th>
-                  <Table.Th scope="col">생년월일</Table.Th>
-                  <Table.Th scope="col">주소</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                <Table.Tr>
-                  <Table.Td>
-                    <Radio
-                      id="certificate-person-jeon-jaejun"
-                      name="certificate-person"
-                      value="jeon-jaejun"
-                      checked={selectedPerson === "jeon-jaejun"}
-                      onChange={() => onSelectedPersonChange("jeon-jaejun")}
-                    >
-                      <span className="sr-only">전재준 선택</span>
-                    </Radio>
-                  </Table.Td>
-                  <Table.Td>전재준</Table.Td>
-                  <Table.Td>2009년 02월 10일</Table.Td>
-                  <Table.Td>대전광역시 유성구 가정북로 76</Table.Td>
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
-          </TableFrame>
+          {applicants.length > 0 ? (
+            <TableFrame>
+              <Table>
+                <Table.Caption className="sr-only">
+                  경력증명서 발급 대상자 목록
+                </Table.Caption>
+                <Table.Colgroup>
+                  <Table.Col width="80px" />
+                  <Table.Col width="110px" />
+                  <Table.Col width="170px" />
+                  <Table.Col />
+                </Table.Colgroup>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th scope="col">선택</Table.Th>
+                    <Table.Th scope="col">이름</Table.Th>
+                    <Table.Th scope="col">생년월일</Table.Th>
+                    <Table.Th scope="col">주소</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {applicants.map((applicant) => (
+                    <Table.Tr key={applicant.id}>
+                      <Table.Td>
+                        <Radio
+                          id={`certificate-person-${applicant.id}`}
+                          name="certificate-person"
+                          value={applicant.id}
+                          checked={selectedPerson === applicant.id}
+                          onChange={() => onSelectedPersonChange(applicant.id)}
+                        >
+                          <span className="sr-only">
+                            {applicant.name}({applicant.birthDate}) 선택
+                          </span>
+                        </Radio>
+                      </Table.Td>
+                      <Table.Td>{applicant.name}</Table.Td>
+                      <Table.Td>{applicant.birthDate}</Table.Td>
+                      <Table.Td>{applicant.address}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </TableFrame>
+          ) : (
+            <EmptyResult role="status">
+              일치하는 대상자가 없습니다.
+            </EmptyResult>
+          )}
         </FormCard>
       )}
     </CardStack>

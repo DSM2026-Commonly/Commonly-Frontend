@@ -40,3 +40,10 @@ export const SearchAction = styled.div`
   justify-content: flex-end;
   margin-top: 24px;
 `;
+
+export const EmptyResult = styled.p`
+  margin: 0;
+  color: var(--career-color-text-subtle);
+  font-size: 15px;
+  line-height: 1.5;
+`;

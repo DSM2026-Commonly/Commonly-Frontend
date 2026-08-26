@@ -1,4 +1,5 @@
 import { Button } from "krds-react";
+import { FlowError } from "../CareerCertificateIssue.styles";
 import {
   SuccessActions,
   SuccessPage,
@@ -15,6 +16,9 @@ import type {
 interface CertificateSuccessViewProps {
   variant?: CareerCertificateIssueVariant;
   issueType: CertificateIssueType;
+  applicantName?: string;
+  isDownloading?: boolean;
+  downloadError?: string;
   onRestart: () => void;
   onDownload: () => void;
 }
@@ -22,6 +26,9 @@ interface CertificateSuccessViewProps {
 function CertificateSuccessView({
   variant = "staff",
   issueType,
+  applicantName = "전재준",
+  isDownloading = false,
+  downloadError = "",
   onRestart,
   onDownload,
 }: CertificateSuccessViewProps) {
@@ -46,19 +53,20 @@ function CertificateSuccessView({
       </SuccessTitle>
       <SummaryCard>
         <SummaryLabel>{isCivil ? "신청인" : "대상자"}</SummaryLabel>
-        <SummaryValue>전재준</SummaryValue>
+        <SummaryValue>{applicantName}</SummaryValue>
         <SummaryLabel>신청정보</SummaryLabel>
         <SummaryValue>
           <p>유성 구청 기간제 근로자 경력증명서 발급 신청</p>
           <p>{issueType === "all" ? "전체 발급" : "선택 발급"}</p>
         </SummaryValue>
       </SummaryCard>
+      {downloadError && <FlowError role="alert">{downloadError}</FlowError>}
       <SuccessActions>
         <Button variant="tertiary" size="xlarge" onClick={onRestart}>
           추가 발급하기
         </Button>
-        <Button size="xlarge" onClick={onDownload}>
-          경력증명서 다운로드
+        <Button size="xlarge" disabled={isDownloading} onClick={onDownload}>
+          {isDownloading ? "다운로드 중..." : "경력증명서 다운로드"}
         </Button>
       </SuccessActions>
     </SuccessPage>
