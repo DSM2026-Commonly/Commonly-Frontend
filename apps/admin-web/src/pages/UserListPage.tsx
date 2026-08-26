@@ -22,8 +22,10 @@ function buildSearchParams(page: number, keyword: string): URLSearchParams {
     params.set("page", String(page));
   }
 
-  if (keyword) {
-    params.set("keyword", keyword);
+  const trimmedKeyword = keyword.trim();
+
+  if (trimmedKeyword) {
+    params.set("keyword", trimmedKeyword);
   }
 
   return params;
