@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { ApiError, NETWORK_ERROR_MESSAGE } from "../api";
 import {
   CERTIFICATES_ENDPOINT,
+  CERTIFICATE_CREATE_ENDPOINT,
+  CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+  createCertificate,
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
   CERTIFICATE_SELF_ENDPOINT,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
@@ -416,5 +419,46 @@ describe("downloadCertificate", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(0);
     expect((error as ApiError).message).toBe(NETWORK_ERROR_MESSAGE);
+  });
+});
+
+describe("createCertificate", () => {
+  const createRequest = {
+    name: "홍길동",
+    birthDate: "1990-01-02",
+    gender: "M" as const,
+    jobTitle: "주무관",
+    keyResponsibilities: "민원 응대",
+    hireDate: "2020-03-01",
+    expirationDate: null,
+    retirementDate: "2021-02-28",
+    division: "총무과",
+    reason: "계약 만료",
+    employmentType: "",
+    note: "",
+  };
+
+  test("POSTs the body to /api/certificates/create with the token", async () => {
+    mockFetch(201, undefined, (url, init) => {
+      expect(url).toBe(CERTIFICATE_CREATE_ENDPOINT);
+      expect(url).toBe("/api/certificates/create");
+      expect(init?.method).toBe("POST");
+      const headers = init?.headers as Record<string, string>;
+      expect(headers.Authorization).toBe("Bearer token-1");
+      expect(JSON.parse(String(init?.body))).toEqual(createRequest);
+    });
+
+    await expect(
+      createCertificate(createRequest, { token: "token-1" }),
+    ).resolves.toBeUndefined();
+  });
+
+  test("maps 409 to the conflict message", async () => {
+    mockFetch(409, { status: 409, message: "dup" });
+
+    await expect(createCertificate(createRequest)).rejects.toMatchObject({
+      status: 409,
+      message: CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+    });
   });
 });

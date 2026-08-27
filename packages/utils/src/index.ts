@@ -127,6 +127,10 @@ export type {
 } from "./humans";
 export {
   CERTIFICATES_ENDPOINT,
+  CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+  CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+  CERTIFICATE_CREATE_ENDPOINT,
+  CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
   CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
   CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
   CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
@@ -145,6 +149,7 @@ export {
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
   HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+  createCertificate,
   downloadCertificate,
   fetchHumanCertificates,
   fetchSelfCertificates,
@@ -158,6 +163,7 @@ export {
 } from "./certificates";
 export type {
   CertificateRequestOptions,
+  CreateCertificateRequest,
   HumanCertificate,
   IssueCertificateRequest,
   IssueSelfCertificateRequest,

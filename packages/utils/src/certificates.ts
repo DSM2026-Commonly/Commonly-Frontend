@@ -2,6 +2,7 @@ import { ApiError, request, requestBlob } from "./api";
 
 export const CERTIFICATES_ENDPOINT = "/api/certificates";
 export const CERTIFICATE_SELF_ENDPOINT = "/api/certificates/self";
+export const CERTIFICATE_CREATE_ENDPOINT = "/api/certificates/create";
 
 // 경력 증명 사항 찾기 — 해당 인적사항(humanId)의 경력증명서 행 목록을 반환한다.
 export function getHumanCertificatesEndpoint(humanId: number): string {
@@ -82,6 +83,25 @@ export interface IssuedCertificate {
   certificateId: number;
   documentNo: string;
   downloadUrl: string;
+}
+
+/**
+ * 경력증명서 개별 등록(POST /api/certificates/create) 요청 본문.
+ * 필드 구성은 수정 요청과 같고, 날짜가 없으면 null 을 보낸다.
+ */
+export interface CreateCertificateRequest {
+  name: string;
+  birthDate: string;
+  gender: "M" | "F";
+  jobTitle: string;
+  keyResponsibilities: string;
+  hireDate: string;
+  expirationDate: string | null;
+  retirementDate: string | null;
+  division: string;
+  reason: string;
+  employmentType: string;
+  note: string;
 }
 
 export interface UpdateCertificateRequest {
@@ -298,6 +318,31 @@ export async function downloadCertificate(
       401: CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
       403: CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
       404: CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
+    },
+  });
+}
+
+export const CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE =
+  "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
+export const CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_CREATE_CONFLICT_MESSAGE =
+  "동일한 대상자의 경력사항이 이미 등록되어 있습니다.";
+
+export async function createCertificate(
+  body: CreateCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<void> {
+  // 201 Created. 응답 본문 형식이 명세에 없어 검증하지 않는다.
+  await request<unknown>(CERTIFICATE_CREATE_ENDPOINT, {
+    method: "POST",
+    body,
+    token,
+    signal,
+    errorMessages: {
+      400: CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+      401: CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
+      409: CERTIFICATE_CREATE_CONFLICT_MESSAGE,
     },
   });
 }
