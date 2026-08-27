@@ -3,6 +3,7 @@ import { ApiError, NETWORK_ERROR_MESSAGE } from "../api";
 import {
   CERTIFICATES_ENDPOINT,
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_SELF_ENDPOINT,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
@@ -10,6 +11,7 @@ import {
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
   issueCertificate,
+  issueSelfCertificate,
   updateCertificate,
 } from "../certificates";
 
@@ -71,7 +73,7 @@ describe("fetchHumanCertificates", () => {
   test("GETs the human's certificates with auth header", async () => {
     mockFetch(200, [humanCertificate], (url, init) => {
       expect(url).toBe(getHumanCertificatesEndpoint(3));
-      expect(url).toBe("/api/certificates/3");
+      expect(url).toBe("/api/humans/3/certificates");
       expect(init?.method).toBe("GET");
       expect(init?.body).toBeUndefined();
       const headers = init?.headers as Record<string, string>;
@@ -211,6 +213,64 @@ describe("issueCertificate", () => {
     for (const [status, message] of cases) {
       mockFetch(status, undefined);
       const error = await issueCertificate(issueRequest).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(status);
+      expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("issueSelfCertificate", () => {
+  const selfRequest = {
+    purpose: "은행 제출용",
+    otherMatters: "",
+  };
+
+  test("POSTs purpose/otherMatters to the self endpoint", async () => {
+    mockFetch(201, issuedResponse, (url, init) => {
+      expect(url).toBe(CERTIFICATE_SELF_ENDPOINT);
+      expect(url).toBe("/api/certificates/self");
+      expect(init?.method).toBe("POST");
+      const headers = init?.headers as Record<string, string>;
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers.Authorization).toBe("Bearer token-1");
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body).toEqual(selfRequest);
+      expect(Object.keys(body).sort()).toEqual(["otherMatters", "purpose"]);
+    });
+
+    expect(
+      await issueSelfCertificate(selfRequest, { token: "token-1" }),
+    ).toEqual(issuedResponse);
+  });
+
+  test("rejects malformed 201 bodies", async () => {
+    for (const body of [undefined, {}, { ...issuedResponse, documentNo: 1 }]) {
+      mockFetch(201, body);
+      const error = await issueSelfCertificate(selfRequest).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(201);
+      expect((error as ApiError).message).toBe(
+        CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
+      );
+    }
+  });
+
+  test("maps error statuses to Korean messages", async () => {
+    const cases = [
+      [401, "로그인이 만료되었습니다"],
+      [403, "본인 경력만 발급할 수 있습니다"],
+      [404, "발급할 경력 사항이 없습니다"],
+      [500, "일시적인 오류"],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+      const error = await issueSelfCertificate(selfRequest).catch(
         (e: unknown) => e,
       );
       expect(error).toBeInstanceOf(ApiError);

@@ -1,13 +1,13 @@
 import { ApiError, request, requestBlob } from "./api";
 
 export const CERTIFICATES_ENDPOINT = "/api/certificates";
+export const CERTIFICATE_SELF_ENDPOINT = "/api/certificates/self";
 
 // 경력 증명 사항 찾기 — 해당 인적사항(humanId)의 경력증명서 행 목록을 반환한다.
 export function getHumanCertificatesEndpoint(humanId: number): string {
-  return `/api/certificates/${humanId}`;
+  return `/api/humans/${humanId}/certificates`;
 }
 
-// 경력증명서 수정 — certificateId 기준. (명세상 목록 조회와 동일 경로 패턴 — 백엔드 확인 사항)
 export function getCertificateUpdateEndpoint(certificateId: number): string {
   return `/api/certificates/${certificateId}`;
 }
@@ -32,6 +32,10 @@ export const CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE =
   "대상 인력 또는 경력사항을 찾을 수 없습니다. 대상자를 다시 조회해 주세요.";
 export const CERTIFICATE_ISSUE_CONFLICT_MESSAGE =
   "문서번호 발급이 중복되었습니다. 잠시 후 다시 시도해 주세요.";
+export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
+  "본인 경력만 발급할 수 있습니다.";
+export const CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE =
+  "발급할 경력 사항이 없습니다.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
@@ -58,6 +62,12 @@ export interface HumanCertificate {
 export interface IssueCertificateRequest {
   humanId: number;
   certificateIds: number[];
+  purpose: string;
+  otherMatters: string;
+}
+
+// 민원인 본인 발급 — 본인의 전체 경력을 대상으로 하므로 대상 id를 받지 않는다.
+export interface IssueSelfCertificateRequest {
   purpose: string;
   otherMatters: string;
 }
@@ -211,6 +221,31 @@ export async function issueCertificate(
       401: CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
       404: CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
       409: CERTIFICATE_ISSUE_CONFLICT_MESSAGE,
+    },
+  });
+
+  const issued = normalizeIssuedCertificate(response);
+
+  if (!issued) {
+    throw new ApiError(201, CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE);
+  }
+
+  return issued;
+}
+
+export async function issueSelfCertificate(
+  requestBody: IssueSelfCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<IssuedCertificate> {
+  const response = await request<unknown>(CERTIFICATE_SELF_ENDPOINT, {
+    method: "POST",
+    body: requestBody,
+    token,
+    signal,
+    errorMessages: {
+      401: CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+      403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
+      404: CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
     },
   });
 
