@@ -199,3 +199,19 @@ export type {
   IssuanceHistoryPage,
   IssuanceHistoryType,
 } from "./issuanceHistories";
+export {
+  JUSO_DEFAULT_PAGE_SIZE,
+  JUSO_INVALID_RESPONSE_MESSAGE,
+  JUSO_MAX_PAGE_SIZE,
+  JUSO_MISSING_KEY_MESSAGE,
+  JUSO_SEARCH_ENDPOINT,
+  JUSO_TIMEOUT_MESSAGE,
+  getJusoConfirmKey,
+  searchAddresses,
+} from "./juso";
+export type {
+  JusoAddress,
+  JusoSearchOptions,
+  JusoSearchQuery,
+  JusoSearchResult,
+} from "./juso";

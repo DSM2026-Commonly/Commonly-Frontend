@@ -44,6 +44,13 @@ export type {
   IntegratedRegistrationNoticeProps,
   IntegratedRegistrationNoticeStep,
 } from "./registration/integrated-registration/IntegratedRegistrationNotice";
+export { default as AddressSearchModal } from "./registration/address-search/AddressSearchModal";
+export type {
+  AddressSearchItem,
+  AddressSearchModalProps,
+  AddressSearchQuery,
+  AddressSearchResult,
+} from "./registration/address-search/AddressSearchModal";
 export { default as IndividualRegistrationSubject } from "./registration/individual-registration-subject/IndividualRegistrationSubject";
 export type {
   IndividualRegistrationDuplicateCandidate,
