@@ -44,6 +44,13 @@ export type {
   IntegratedRegistrationNoticeProps,
   IntegratedRegistrationNoticeStep,
 } from "./registration/integrated-registration/IntegratedRegistrationNotice";
+export { default as AddressSearchModal } from "./registration/address-search/AddressSearchModal";
+export type {
+  AddressSearchItem,
+  AddressSearchModalProps,
+  AddressSearchQuery,
+  AddressSearchResult,
+} from "./registration/address-search/AddressSearchModal";
 export { default as IndividualRegistrationSubject } from "./registration/individual-registration-subject/IndividualRegistrationSubject";
 export type {
   IndividualRegistrationDuplicateCandidate,
@@ -106,6 +113,8 @@ export type {
   UserManagementCompletionDetail,
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";
+export { default as useAuthSession } from "./hooks/useAuthSession";
+export type { AuthSessionState } from "./hooks/useAuthSession";
 
 // 앱 간 공유 페이지 (API 연동 포함)
 export { default as LoginPage } from "./pages/LoginPage";

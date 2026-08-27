@@ -10,7 +10,6 @@ COPY package.json bun.lock turbo.json ./
 COPY apps/admin-web/package.json apps/admin-web/package.json
 COPY apps/civil-web/package.json apps/civil-web/package.json
 COPY apps/user-web/package.json apps/user-web/package.json
-COPY packages/hooks/package.json packages/hooks/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/utils/package.json packages/utils/package.json
 

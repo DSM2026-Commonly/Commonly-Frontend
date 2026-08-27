@@ -1,6 +1,10 @@
 import { Button } from "krds-react";
 import DetailsStep from "../steps/DetailsStep";
-import type { CertificateIssueType } from "../CareerCertificateIssue.types";
+import { FlowError } from "../CareerCertificateIssue.styles";
+import type {
+  CertificateCareerRow,
+  CertificateIssueType,
+} from "../CareerCertificateIssue.types";
 import {
   CivilActionRow,
   CivilApplicationPage,
@@ -16,7 +20,10 @@ import {
 
 interface CivilCertificateApplicationViewProps {
   issueType: CertificateIssueType;
+  careerRows: readonly CertificateCareerRow[];
   selectedCareerIds: string[];
+  isLoadingCareerRows?: boolean;
+  loadError?: string;
   canContinue: boolean;
   purpose: string;
   onIssueTypeChange: (issueType: CertificateIssueType) => void;
@@ -29,7 +36,10 @@ interface CivilCertificateApplicationViewProps {
 
 function CivilCertificateApplicationView({
   issueType,
+  careerRows,
   selectedCareerIds,
+  isLoadingCareerRows = false,
+  loadError = "",
   canContinue,
   purpose,
   onIssueTypeChange,
@@ -69,7 +79,9 @@ function CivilCertificateApplicationView({
       <DetailsStep
         variant="civil"
         issueType={issueType}
+        careerRows={careerRows}
         selectedCareerIds={selectedCareerIds}
+        isLoadingCareerRows={isLoadingCareerRows}
         additionalNote=""
         purpose={purpose}
         onIssueTypeChange={onIssueTypeChange}
@@ -78,6 +90,8 @@ function CivilCertificateApplicationView({
         onAdditionalNoteChange={() => undefined}
         onPurposeChange={onPurposeChange}
       />
+
+      {loadError && <FlowError role="alert">{loadError}</FlowError>}
 
       <CivilActionRow>
         {issueType === "selected" && (

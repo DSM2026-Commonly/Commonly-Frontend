@@ -194,6 +194,7 @@ function Login({
         <Checkbox
           id={rememberCheckboxId}
           checked={rememberLoginId}
+          aria-label="아이디 저장"
           onChange={(event) => setRememberLoginId(event.target.checked)}
         >
           아이디 저장

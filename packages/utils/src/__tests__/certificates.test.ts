@@ -7,6 +7,7 @@ import {
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
+  fetchSelfCertificates,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -68,6 +69,30 @@ function mockFetch(
     });
   }) as typeof fetch;
 }
+
+describe("fetchSelfCertificates", () => {
+  test("requests the self endpoint with the bearer token", async () => {
+    mockFetch(200, [humanCertificate], (url, init) => {
+      expect(url).toBe(CERTIFICATE_SELF_ENDPOINT);
+      expect(init?.method ?? "GET").toBe("GET");
+      expect(new Headers(init?.headers).get("Authorization")).toBe(
+        "Bearer token-1",
+      );
+    });
+
+    expect(await fetchSelfCertificates({ token: "token-1" })).toEqual([
+      humanCertificate,
+    ]);
+  });
+
+  test("rejects a non-array response", async () => {
+    mockFetch(200, { certificates: [] });
+
+    await expect(fetchSelfCertificates()).rejects.toThrow(
+      HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+});
 
 describe("fetchHumanCertificates", () => {
   test("GETs the human's certificates with auth header", async () => {

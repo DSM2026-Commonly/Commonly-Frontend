@@ -36,6 +36,10 @@ export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
   "본인 경력만 발급할 수 있습니다.";
 export const CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE =
   "발급할 경력 사항이 없습니다.";
+export const SELF_CERTIFICATES_FORBIDDEN_MESSAGE =
+  "본인 경력만 조회할 수 있습니다.";
+export const SELF_CERTIFICATES_NOT_FOUND_MESSAGE =
+  "조회된 경력 사항이 없습니다.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
@@ -66,8 +70,10 @@ export interface IssueCertificateRequest {
   otherMatters: string;
 }
 
-// 민원인 본인 발급 — 본인의 전체 경력을 대상으로 하므로 대상 id를 받지 않는다.
+// 민원인 본인 발급 — 대상자는 로그인 토큰으로 정해지므로 humanId 를 받지 않는다.
+// certificateIds 를 생략하면 본인의 전체 경력을 발급한다.
 export interface IssueSelfCertificateRequest {
+  certificateIds?: number[];
   purpose: string;
   otherMatters: string;
 }
@@ -169,6 +175,10 @@ export async function fetchHumanCertificates(
     },
   });
 
+  return normalizeHumanCertificates(response);
+}
+
+function normalizeHumanCertificates(response: unknown): HumanCertificate[] {
   if (!Array.isArray(response)) {
     throw new ApiError(200, HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE);
   }
@@ -184,6 +194,24 @@ export async function fetchHumanCertificates(
   }
 
   return certificates;
+}
+
+/** 민원인 본인의 경력증명 사항 목록. 대상자는 로그인 토큰으로 정해진다. */
+export async function fetchSelfCertificates({
+  token,
+  signal,
+}: CertificateRequestOptions = {}): Promise<HumanCertificate[]> {
+  const response = await request<unknown>(CERTIFICATE_SELF_ENDPOINT, {
+    token,
+    signal,
+    errorMessages: {
+      401: HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+      403: SELF_CERTIFICATES_FORBIDDEN_MESSAGE,
+      404: SELF_CERTIFICATES_NOT_FOUND_MESSAGE,
+    },
+  });
+
+  return normalizeHumanCertificates(response);
 }
 
 function normalizeIssuedCertificate(value: unknown): IssuedCertificate | null {
