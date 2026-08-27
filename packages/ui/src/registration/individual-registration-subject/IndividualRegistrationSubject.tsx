@@ -46,6 +46,11 @@ import {
   sanitizeDatePart,
 } from "../../career-certificate/CareerCertificateIssue.validation";
 import { findDuplicateCandidates } from "./IndividualRegistrationSubject.utils";
+import AddressSearchModal, {
+  type AddressSearchItem,
+  type AddressSearchQuery,
+  type AddressSearchResult,
+} from "../address-search/AddressSearchModal";
 
 export interface IndividualRegistrationSubjectStep {
   id: string;
@@ -79,7 +84,8 @@ export interface IndividualRegistrationSubjectProps {
   currentStep?: number;
   stepLabel?: string;
   stepTitle?: string;
-  addressSearchResult?: string;
+  /** 도로명주소 검색. 지정하지 않으면 검색 버튼을 눌렀을 때 안내 문구를 보여준다. */
+  onSearchAddress?: (query: AddressSearchQuery) => Promise<AddressSearchResult>;
   duplicateCandidates?: readonly IndividualRegistrationDuplicateCandidate[];
   previousLabel?: string;
   nextLabel?: string;
@@ -87,32 +93,14 @@ export interface IndividualRegistrationSubjectProps {
   onNext?: (subject: IndividualRegistrationSubjectData) => void;
 }
 
+const EMPTY_DUPLICATE_CANDIDATES: readonly IndividualRegistrationDuplicateCandidate[] =
+  [];
+
 const defaultSteps = [
   { id: "notice", title: "유의사항 확인" },
   { id: "subject", title: "대상자 입력" },
   { id: "career", title: "경력사항 입력" },
 ] as const satisfies readonly IndividualRegistrationSubjectStep[];
-
-const defaultDuplicateCandidates = [
-  {
-    id: "jeon-jaejun-1",
-    name: "전재준",
-    gender: "male",
-    birthYear: "2009",
-    birthMonth: "02",
-    birthDay: "10",
-    address: "대전광역시 유성구 가정북로 76",
-  },
-  {
-    id: "jeon-jaejun-2",
-    name: "전재준",
-    gender: "male",
-    birthYear: "2009",
-    birthMonth: "02",
-    birthDay: "10",
-    address: "대전광역시 유성구 가정북로 76",
-  },
-] as const satisfies readonly IndividualRegistrationDuplicateCandidate[];
 
 function IndividualRegistrationSubject({
   title = "경력사항 개별 등록",
@@ -120,8 +108,8 @@ function IndividualRegistrationSubject({
   currentStep = 1,
   stepLabel = "2단계 / 3단계",
   stepTitle = "대상자 입력",
-  addressSearchResult = "대전광역시 유성구 가정북로 76",
-  duplicateCandidates = defaultDuplicateCandidates,
+  onSearchAddress,
+  duplicateCandidates = EMPTY_DUPLICATE_CANDIDATES,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
   onPrevious,
@@ -138,6 +126,8 @@ function IndividualRegistrationSubject({
     "idle" | "available" | "duplicate"
   >("idle");
   const [selectedDuplicateId, setSelectedDuplicateId] = useState("");
+  const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false);
+  const [addressSearchError, setAddressSearchError] = useState("");
 
   const hasRequiredInformation = useMemo(
     () =>
@@ -215,7 +205,18 @@ function IndividualRegistrationSubject({
   };
 
   const handleAddressSearch = () => {
-    setAddress(addressSearchResult);
+    if (!onSearchAddress) {
+      setAddressSearchError("주소 검색 기능이 연결되지 않았습니다.");
+      return;
+    }
+
+    setAddressSearchError("");
+    setIsAddressSearchOpen(true);
+  };
+
+  const handleAddressSelect = (selectedAddress: AddressSearchItem) => {
+    setAddress(selectedAddress.roadAddress);
+    setIsAddressSearchOpen(false);
     resetDuplicateCheck();
   };
 
@@ -394,6 +395,7 @@ function IndividualRegistrationSubject({
                 size="large"
                 placeholder="검색 버튼을 눌러주세요"
                 value={address}
+                error={addressSearchError || undefined}
                 disabled
               />
               <Button
@@ -533,6 +535,14 @@ function IndividualRegistrationSubject({
           )}
         </ActionBar>
       </FormFlow>
+      {onSearchAddress && (
+        <AddressSearchModal
+          open={isAddressSearchOpen}
+          onOpenChange={setIsAddressSearchOpen}
+          onSearch={onSearchAddress}
+          onSelect={handleAddressSelect}
+        />
+      )}
     </IndividualRegistrationSubjectRoot>
   );
 }

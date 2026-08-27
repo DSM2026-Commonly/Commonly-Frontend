@@ -8,12 +8,18 @@ import AdminLayout from "../layout/AdminLayout";
 import CareerCertificateIssuePage from "../pages/CareerCertificateIssuePage";
 import CareerEditPage from "../pages/CareerEditPage";
 import HomePage from "../pages/HomePage";
+import IndividualRegistrationCareerPage from "../pages/IndividualRegistrationCareerPage";
+import IndividualRegistrationCompletePage from "../pages/IndividualRegistrationCompletePage";
+import IndividualRegistrationNoticePage from "../pages/IndividualRegistrationNoticePage";
+import IndividualRegistrationSubjectPage from "../pages/IndividualRegistrationSubjectPage";
 import IntegratedRegistrationCompletePage from "../pages/IntegratedRegistrationCompletePage";
 import IntegratedRegistrationConfirmPage from "../pages/IntegratedRegistrationConfirmPage";
 import IntegratedRegistrationNoticePage from "../pages/IntegratedRegistrationNoticePage";
+import IntegratedRegistrationPreviewPage from "../pages/IntegratedRegistrationPreviewPage";
 import IntegratedRegistrationUploadPage from "../pages/IntegratedRegistrationUploadPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import RegistrationMethodPage from "../pages/RegistrationMethodPage";
 import UserDeletionCompletePage from "../pages/UserDeletionCompletePage";
 import UserDeletionPage from "../pages/UserDeletionPage";
 import UserListPage from "../pages/UserListPage";
@@ -58,12 +64,27 @@ export const router = createBrowserRouter([
       },
       {
         path: "career/register",
-        Component: IntegratedRegistrationNoticePage,
+        Component: RegistrationMethodPage,
       },
       {
-        // admin 에는 등록 방식 선택 화면이 없어 bulk 경로를 유의사항 화면으로 통일한다.
+        path: "career/register/individual",
+        Component: IndividualRegistrationNoticePage,
+      },
+      {
+        path: "career/register/individual/subject",
+        Component: IndividualRegistrationSubjectPage,
+      },
+      {
+        path: "career/register/individual/career",
+        Component: IndividualRegistrationCareerPage,
+      },
+      {
+        path: "career/register/individual/complete",
+        Component: IndividualRegistrationCompletePage,
+      },
+      {
         path: "career/register/bulk",
-        loader: () => redirect("/career/register"),
+        Component: IntegratedRegistrationNoticePage,
       },
       {
         path: "career/register/bulk/upload",
@@ -72,6 +93,10 @@ export const router = createBrowserRouter([
       {
         path: "career/register/bulk/confirm",
         Component: IntegratedRegistrationConfirmPage,
+      },
+      {
+        path: "career/register/bulk/preview",
+        Component: IntegratedRegistrationPreviewPage,
       },
       {
         path: "career/register/bulk/complete",

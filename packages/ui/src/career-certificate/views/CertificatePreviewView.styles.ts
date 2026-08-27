@@ -99,13 +99,99 @@ export const DocumentViewer = styled.div<CivilLayoutProps>`
   }
 `;
 
-export const CertificateImage = styled.img<CivilLayoutProps>`
-  display: block;
+export const DocumentSheet = styled.article<CivilLayoutProps>`
+  display: flex;
   width: min(${({ $civil }) => ($civil ? "842px" : "640px")}, 100%);
-  height: auto;
   flex: 0 0 auto;
+  flex-direction: column;
+  gap: 32px;
+  padding: 56px 48px;
   background: #ffffff;
+  color: #1e1e1e;
   box-shadow: 0 2px 10px rgb(0 0 0 / 16%);
+  font-family: Pretendard, "Pretendard GOV", sans-serif;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    gap: 24px;
+    padding: 32px 20px;
+  }
+`;
+
+export const DocumentTitle = styled.h2`
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  text-align: center;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    font-size: 24px;
+    letter-spacing: 4px;
+  }
+`;
+
+export const DocumentBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+export const DocumentTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.5;
+  table-layout: fixed;
+
+  th,
+  td {
+    padding: 10px 12px;
+    border: 1px solid #1e1e1e;
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+  }
+
+  th {
+    width: 22%;
+    background: #f2f2f2;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  thead th {
+    width: auto;
+  }
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    font-size: 13px;
+
+    th,
+    td {
+      padding: 8px;
+    }
+  }
+`;
+
+export const DocumentFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 16px;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+`;
+
+export const DocumentIssuer = styled.p`
+  margin: 16px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-align: center;
 `;
 
 export const PreviewActions = styled.div`
