@@ -23,6 +23,9 @@ ARG APP_NAME
 # 이 build arg가 없으면 프로덕션 번들의 API 주소가 빈 문자열이 된다.
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+# 도로명주소 검색 API 승인키. 없으면 주소 검색 기능이 동작하지 않는다.
+ARG VITE_JUSO_CONFM_KEY
+ENV VITE_JUSO_CONFM_KEY=${VITE_JUSO_CONFM_KEY}
 RUN case "${APP_NAME}" in \
       admin-web|civil-web|user-web) ;; \
       *) echo "Unsupported APP_NAME: ${APP_NAME}" >&2; exit 1 ;; \
