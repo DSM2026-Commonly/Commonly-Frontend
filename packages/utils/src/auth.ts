@@ -213,8 +213,3 @@ export function getSafeRedirectPath(
     return fallback;
   }
 }
-
-export function createLocalSessionToken(): string {
-  const randomId = globalThis.crypto?.randomUUID?.();
-  return `local-session:${randomId ?? `${Date.now()}-${Math.random()}`}`;
-}

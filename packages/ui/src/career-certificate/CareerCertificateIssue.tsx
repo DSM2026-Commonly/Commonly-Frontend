@@ -101,8 +101,9 @@ function CareerCertificateIssue({
     (currentStep !== 0 || noticeAccepted) &&
     (currentStep !== 2 || Boolean(selectedPerson)) &&
     (currentStep !== 3 ||
-      issueType === "all" ||
-      selectedCareerIds.length > 0);
+      ((issueType === "all" || selectedCareerIds.length > 0) &&
+        // 발급 용도는 증명서에 기재되는 필수 항목이다.
+        purpose.trim().length > 0));
   const selectedApplicantName = applicants.find(
     (applicant) => applicant.id === selectedPerson,
   )?.name;
@@ -115,6 +116,11 @@ function CareerCertificateIssue({
   };
 
   const handlePrevious = () => {
+    // 경력 로딩 중 이전 단계로 이동하면 로딩 완료 시 details 로 강제 이동되므로 막는다.
+    if (isLoadingCareerRows) {
+      return;
+    }
+
     if (variant === "civil" && view === "details") {
       if (issueType === "selected") {
         setIssueType("all");
@@ -300,6 +306,8 @@ function CareerCertificateIssue({
 
   const handleRestart = () => {
     setNoticeAccepted(false);
+    setReason("visit");
+    setNote("");
     setIssueType("all");
     setCareerRows(onLoadCareerRows ? [] : CAREER_ROWS);
     setSelectedCareerIds(

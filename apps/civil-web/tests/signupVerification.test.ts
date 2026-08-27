@@ -32,4 +32,11 @@ describe("requestTestSignupIdentity", () => {
     expect(requestTestSignupIdentity(prompt)).toBeNull();
     expect(prompt).toHaveBeenCalledTimes(2);
   });
+
+  it("treats empty or whitespace-only input as a failed verification", () => {
+    const prompt = mock().mockReturnValueOnce("홍길동").mockReturnValueOnce("   ");
+
+    expect(requestTestSignupIdentity(prompt)).toBeNull();
+    expect(prompt).toHaveBeenCalledTimes(2);
+  });
 });

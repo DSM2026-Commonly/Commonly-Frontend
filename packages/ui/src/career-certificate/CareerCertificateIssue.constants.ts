@@ -61,7 +61,9 @@ export const CAREER_ROWS = [
   },
 ];
 
-export const LATEST_BIRTH_YEAR = 2026;
+// 하드코딩하면 해가 바뀔 때 당해 연도 선택이 불가능해지므로 현재 연도로 계산한다.
+// (근무 기간 입력도 이 옵션을 공유한다.)
+export const LATEST_BIRTH_YEAR = new Date().getFullYear();
 export const EARLIEST_BIRTH_YEAR = 1900;
 
 export const YEAR_OPTIONS = [

@@ -4,7 +4,6 @@ export {
   REMEMBERED_LOGIN_ID_STORAGE_KEY,
   clearAuthToken,
   clearRememberedLoginId,
-  createLocalSessionToken,
   getAuthToken,
   getRefreshToken,
   getRememberedLoginId,

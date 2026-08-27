@@ -60,13 +60,16 @@ export function requestTestSignupIdentity(
 
   for (const [field, message] of verificationPrompts) {
     const value = prompt(message);
+    const trimmedValue = value?.trim();
 
-    if (value === null) {
+    // 취소뿐 아니라 빈 값도 인증 실패로 처리한다. 빈 값이 통과하면
+    // 가입 폼에서 readOnly 로 잠겨 제출이 영구히 불가능해진다.
+    if (!trimmedValue) {
       return null;
     }
 
     identity[field] =
-      field === "birthDate" ? formatBirthDate(value) : value.trim();
+      field === "birthDate" ? formatBirthDate(trimmedValue) : trimmedValue;
   }
 
   return identity;

@@ -6,6 +6,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_NAME: admin-web
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://localhost:8080}
     pull_policy: build
     restart: unless-stopped
     ports:
@@ -20,6 +21,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_NAME: civil-web
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://localhost:8080}
     pull_policy: build
     restart: unless-stopped
     ports:
@@ -34,6 +36,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_NAME: user-web
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://localhost:8080}
     pull_policy: build
     restart: unless-stopped
     ports:

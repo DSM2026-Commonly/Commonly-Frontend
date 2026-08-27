@@ -1,8 +1,8 @@
 import "krds-react/dist/index.css";
 
-import type { FormEvent } from "react";
+import type { FormEvent, MouseEvent } from "react";
 import { useId, useState } from "react";
-import { TextInput } from "krds-react";
+import { Checkbox, TextInput } from "krds-react";
 import ApplicationShell from "../layout/ApplicationShell";
 import {
   AccountHelpLink,
@@ -23,6 +23,7 @@ import {
   LoginHeadingArea,
   LoginPanel,
   LoginSubmitButton,
+  RememberRow,
   SectionDivider,
 } from "./login.styles";
 
@@ -38,6 +39,8 @@ export interface LoginProps {
   initialLoginId?: string;
   onSubmit: (data: LoginFormData) => void | Promise<void>;
   signupHref?: string;
+  /** SPA 라우터로 회원가입 페이지로 이동할 때 전달한다. 없으면 일반 링크로 동작한다. */
+  onNavigateSignup?: () => void;
   variant?: LoginVariant;
 }
 
@@ -53,12 +56,18 @@ function Login({
   initialLoginId = "",
   onSubmit,
   signupHref = "#login-help",
+  onNavigateSignup,
   variant = "default",
 }: LoginProps) {
   const titleId = useId();
   const loginIdInputId = useId();
   const passwordInputId = useId();
+  const rememberCheckboxId = useId();
   const [loginId, setLoginId] = useState(initialLoginId);
+  // 저장된 아이디로 초기화된 경우 체크된 상태로 시작한다.
+  const [rememberLoginId, setRememberLoginId] = useState(
+    initialLoginId.trim().length > 0,
+  );
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [submissionError, setSubmissionError] = useState("");
@@ -96,7 +105,7 @@ function Login({
       await onSubmit({
         loginId: normalizedLoginId,
         password,
-        rememberLoginId: false,
+        rememberLoginId,
       });
     } catch (error) {
       setSubmissionError(
@@ -181,6 +190,16 @@ function Login({
         )}
       </FieldGroup>
 
+      <RememberRow>
+        <Checkbox
+          id={rememberCheckboxId}
+          checked={rememberLoginId}
+          onChange={(event) => setRememberLoginId(event.target.checked)}
+        >
+          아이디 저장
+        </Checkbox>
+      </RememberRow>
+
       {submissionError && <FormError role="alert">{submissionError}</FormError>}
 
       <LoginSubmitButton
@@ -200,7 +219,28 @@ function Login({
         {isCivil && (
           <>
             <AccountHelpSeparator aria-hidden="true" />
-            <AccountHelpLink href={signupHref}>회원가입</AccountHelpLink>
+            <AccountHelpLink
+              href={signupHref}
+              onClick={(event: MouseEvent<HTMLAnchorElement>) => {
+                // SPA 라우팅 콜백이 있으면 전체 페이지 리로드 대신 라우터 이동을 쓴다.
+                if (
+                  !onNavigateSignup ||
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.altKey ||
+                  event.ctrlKey ||
+                  event.shiftKey
+                ) {
+                  return;
+                }
+
+                event.preventDefault();
+                onNavigateSignup();
+              }}
+            >
+              회원가입
+            </AccountHelpLink>
           </>
         )}
       </AccountHelpLinks>

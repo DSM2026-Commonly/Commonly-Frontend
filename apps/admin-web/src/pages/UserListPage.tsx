@@ -40,6 +40,8 @@ function UserListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  // 같은 조건으로 다시 검색해도(URL 불변) 재조회되도록 하는 카운터.
+  const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
     setKeyword(submittedKeyword);
@@ -92,10 +94,15 @@ function UserListPage() {
       });
 
     return () => controller.abort();
-  }, [page, submittedKeyword, setSearchParams]);
+  }, [page, submittedKeyword, setSearchParams, reloadCount]);
 
   const updateSearchParams = (nextPage: number, nextKeyword: string) => {
     setSearchParams(buildSearchParams(nextPage, nextKeyword));
+  };
+
+  const handleSearch = (nextKeyword: string) => {
+    updateSearchParams(1, nextKeyword);
+    setReloadCount((count) => count + 1);
   };
 
   return (
@@ -111,7 +118,7 @@ function UserListPage() {
       onPageChange={(nextPage) => updateSearchParams(nextPage, submittedKeyword)}
       keyword={keyword}
       onKeywordChange={setKeyword}
-      onSearch={(nextKeyword) => updateSearchParams(1, nextKeyword)}
+      onSearch={handleSearch}
       isLoading={isLoading}
       errorMessage={errorMessage}
       emptyMessage={

@@ -1,6 +1,6 @@
 import "krds-react/dist/index.css";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   Button,
   Radio,
@@ -145,6 +145,8 @@ interface EditDetailsStepProps {
 interface CareerDateInputProps {
   idPrefix: string;
   label: string;
+  /** 라벨 옆 괄호 안내 문구. 생략하면 숫자 입력 안내를 보여준다. */
+  hint?: string;
   value: string;
   onChange: (value: string) => void;
 }
@@ -208,6 +210,13 @@ function isValidEditableDate(value: string) {
   const { year, month, day } = getEditableDateParts(value);
 
   return isValidBirthDate(year, month, day);
+}
+
+// 재직 중 경력은 종료일이 비어 있으므로 "모든 부분이 빈 날짜"를 구분한다.
+function isEmptyEditableDate(value: string) {
+  const { year, month, day } = getEditableDateParts(value);
+
+  return !year && !month && !day;
 }
 
 function normalizeEditableDate(value: string) {
@@ -732,6 +741,7 @@ function PersonalDetailsStep({
 function CareerDateInput({
   idPrefix,
   label,
+  hint = "숫자만 입력해주세요",
   value,
   onChange,
 }: CareerDateInputProps) {
@@ -753,7 +763,7 @@ function CareerDateInput({
   return (
     <div>
       <ApplicantFieldLabel>
-        {label} (숫자만 입력해주세요)
+        {label} ({hint})
       </ApplicantFieldLabel>
       <ApplicantDateFields>
         <Select
@@ -842,6 +852,7 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
             <CareerDateInput
               idPrefix="career-edit-end-date"
               label="근무 종료일"
+              hint="재직 중이면 비워 두세요"
               value={record.endDate}
               onChange={(value) => onChange("endDate", value)}
             />
@@ -981,6 +992,8 @@ function CareerEdit({
   const [recordsError, setRecordsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
+  // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
+  const searchRequestIdRef = useRef(0);
   const careerEditView = completedSubmission
     ? "success"
     : `step-${currentStep}`;
@@ -1026,7 +1039,9 @@ function CareerEdit({
     draftRecord.duties.trim().length > 0 &&
     draftRecord.department.trim().length > 0 &&
     isValidEditableDate(draftRecord.startDate) &&
-    isValidEditableDate(draftRecord.endDate);
+    // 재직 중(퇴직일 없음) 경력은 종료일을 비워둔 채 저장할 수 있어야 한다.
+    (isEmptyEditableDate(draftRecord.endDate) ||
+      isValidEditableDate(draftRecord.endDate));
   const canContinue =
     (currentStep === 0 && noticeAccepted) ||
     (currentStep === 1 &&
@@ -1040,6 +1055,7 @@ function CareerEdit({
         : canSaveCareerInfo));
 
   const resetSearchResult = () => {
+    searchRequestIdRef.current += 1;
     setHasSearchResult(false);
     setSelectedApplicantId("");
     setPersonalInfo(createPersonalInfo(undefined));
@@ -1093,6 +1109,8 @@ function CareerEdit({
       return;
     }
 
+    const requestId = ++searchRequestIdRef.current;
+
     setIsSearching(true);
     setSearchError("");
 
@@ -1101,6 +1119,12 @@ function CareerEdit({
         name: applicantName.trim(),
         birthDate: `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
       });
+
+      // 응답 대기 중 입력이 바뀌어 리셋됐다면 이전 응답으로 화면을 덮어쓰지 않는다.
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
       const onlyMatch = results.length === 1 ? results[0] : undefined;
 
       setFetchedApplicants(results);
@@ -1108,6 +1132,10 @@ function CareerEdit({
       setSelectedApplicantId(onlyMatch?.id ?? "");
       setPersonalInfo(createPersonalInfo(onlyMatch));
     } catch (error) {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
       setFetchedApplicants(null);
       setHasSearchResult(false);
       setSelectedApplicantId("");
@@ -1267,7 +1295,10 @@ function CareerEdit({
             record: {
               ...draftRecord,
               startDate: normalizeEditableDate(draftRecord.startDate),
-              endDate: normalizeEditableDate(draftRecord.endDate),
+              // 재직 중 경력은 종료일을 빈 문자열로 넘긴다("..") 형태 방지).
+              endDate: isEmptyEditableDate(draftRecord.endDate)
+                ? ""
+                : normalizeEditableDate(draftRecord.endDate),
             },
           };
 

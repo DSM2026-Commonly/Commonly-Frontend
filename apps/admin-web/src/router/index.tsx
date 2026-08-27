@@ -61,8 +61,9 @@ export const router = createBrowserRouter([
         Component: IntegratedRegistrationNoticePage,
       },
       {
+        // admin 에는 등록 방식 선택 화면이 없어 bulk 경로를 유의사항 화면으로 통일한다.
         path: "career/register/bulk",
-        Component: IntegratedRegistrationNoticePage,
+        loader: () => redirect("/career/register"),
       },
       {
         path: "career/register/bulk/upload",

@@ -2,6 +2,7 @@ import { IntegratedRegistrationUpload } from "@commonly/ui";
 import {
   clearRegistrationSession,
   getAuthToken,
+  getRegistrationSession,
   getUploadErrorMessage,
   updateRegistrationSession,
   uploadFile,
@@ -11,6 +12,8 @@ import { useNavigate } from "react-router";
 
 function IntegratedRegistrationUploadPage() {
   const navigate = useNavigate();
+  // 새로고침/뒤로가기로 돌아온 경우 세션의 업로드 결과를 복원해 재업로드를 요구하지 않는다.
+  const [initialSession] = useState(getRegistrationSession);
   const [errorMessage, setErrorMessage] = useState("");
   // 진행 중인 업로드 요청. 삭제/새 업로드/페이지 이탈 시 이전 요청을 무효화해
   // 늦게 완료된 요청이 새 등록 세션을 덮어쓰지 못하게 한다.
@@ -64,11 +67,22 @@ function IntegratedRegistrationUploadPage() {
   return (
     <IntegratedRegistrationUpload
       errorMessage={errorMessage}
+      initialFileName={initialSession.uploadedFile?.fileName}
       onFileUpload={handleFileUpload}
-      onFileDelete={() => {
+      onFileDelete={(_fileId, remainingFiles) => {
         abortPendingUpload();
         setErrorMessage("");
-        clearRegistrationSession();
+
+        // 완료된 업로드가 목록에 남아 있으면 세션을 유지한다. 업로드 완료 직후
+        // 늦게 커밋된 목록 교체가 삭제로 오인되어 방금 저장한 세션을 지우는
+        // 레이스를 막기 위한 가드다.
+        const hasRemainingUpload = remainingFiles.some(
+          (file) => file.status === "completed" || file.status === "ready",
+        );
+
+        if (!hasRemainingUpload) {
+          clearRegistrationSession();
+        }
       }}
       onPrevious={() => void navigate("/career/register/bulk")}
       onNext={() => void navigate("/career/register/bulk/confirm")}

@@ -35,6 +35,8 @@ export interface IntegratedRegistrationConfirmStep {
 export interface IntegratedRegistrationConfirmField {
   id: string;
   label: string;
+  /** 매핑이 반드시 필요한 필드인지. 생략하면 선택 필드로 취급한다. */
+  required?: boolean;
 }
 
 export interface IntegratedRegistrationConfirmMapping {
@@ -71,13 +73,15 @@ const defaultSteps = [
   { id: "confirm", title: "데이터 확인" },
 ] as const satisfies readonly IntegratedRegistrationConfirmStep[];
 
+// 성명·생년월일·채용일은 경력 데이터 식별에 필요한 최소 필드라 매핑을 강제하고,
+// 나머지는 파일에 해당 열이 없어도 등록할 수 있도록 선택 필드로 둔다.
 const defaultFields = [
-  { id: "name", label: "성명" },
-  { id: "birthDate", label: "생년\n월일" },
+  { id: "name", label: "성명", required: true },
+  { id: "birthDate", label: "생년\n월일", required: true },
   { id: "gender", label: "성별" },
   { id: "jobTitle", label: "직종명" },
   { id: "keyResponsibilities", label: "담당\n업무" },
-  { id: "hireDate", label: "채용일" },
+  { id: "hireDate", label: "채용일", required: true },
   { id: "expirationDate", label: "만료\n예정일" },
   { id: "retirementDate", label: "퇴직일" },
   { id: "division", label: "구분" },
@@ -138,7 +142,9 @@ function IntegratedRegistrationConfirm({
 
   const canProceed =
     fields.length > 0 &&
-    fields.every((field) => Boolean(selectedRows[field.id])) &&
+    fields.every(
+      (field) => !field.required || Boolean(selectedRows[field.id]),
+    ) &&
     !isSubmitting &&
     Boolean(onNext);
 
@@ -176,11 +182,14 @@ function IntegratedRegistrationConfirm({
       return;
     }
 
+    // 매핑하지 않은 선택 필드는 요청에서 제외한다.
     void onNext?.(
-      fields.map((field) => ({
-        fieldId: field.id,
-        selectedRow: selectedRows[field.id] ?? "",
-      })),
+      fields
+        .filter((field) => Boolean(selectedRows[field.id]))
+        .map((field) => ({
+          fieldId: field.id,
+          selectedRow: selectedRows[field.id] ?? "",
+        })),
     );
   };
 
@@ -217,6 +226,11 @@ function IntegratedRegistrationConfirm({
                 <FieldRow key={field.id}>
                   <FieldLabel htmlFor={`${titleId}-${field.id}`}>
                     {field.label}
+                    {field.required && (
+                      <span aria-hidden="true" title="필수 매핑 항목">
+                        {" *"}
+                      </span>
+                    )}
                   </FieldLabel>
                   <StyledSelect>
                     <Select
@@ -225,7 +239,8 @@ function IntegratedRegistrationConfirm({
                       options={getAvailableOptions(field.id)}
                       value={selectedRows[field.id] ?? ""}
                       onChange={(value) => handleSelect(field.id, value)}
-                      aria-label={`${field.label.replace("\n", " ")} 행 선택`}
+                      aria-label={`${field.label.replace("\n", " ")} 행 선택${field.required ? " (필수)" : ""}`}
+                      aria-required={field.required ?? false}
                     />
                   </StyledSelect>
                 </FieldRow>

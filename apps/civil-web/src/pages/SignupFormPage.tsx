@@ -10,7 +10,7 @@ import {
 import styled from "@emotion/styled";
 import { Button, TextInput } from "krds-react";
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import {
   toApiBirthDate,
   toApiPhoneNumber,
@@ -368,6 +368,11 @@ function SignupFormPage() {
     !loginIdError &&
     !passwordError &&
     !isSubmitting;
+
+  // 본인인증 없이 URL로 직접 진입한 경우 인증 단계로 되돌린다.
+  if (!verifiedIdentity) {
+    return <Navigate replace to="/signup" />;
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

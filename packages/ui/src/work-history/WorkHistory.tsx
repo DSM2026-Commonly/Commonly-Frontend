@@ -113,13 +113,18 @@ function WorkHistory({
   const [internalPage, setInternalPage] = useState(
     Math.max(1, Math.floor(initialPage)),
   );
-  const currentPage =
+  const requestedPage =
     page === undefined ? internalPage : Math.max(1, Math.floor(page));
+  const knownTotalPages =
+    totalPages === undefined ? undefined : Math.max(1, Math.floor(totalPages));
+  // 범위 밖 페이지로 초기화되어도 마지막 페이지로 보정한다.
+  const currentPage =
+    knownTotalPages === undefined
+      ? requestedPage
+      : Math.min(requestedPage, knownTotalPages);
   // totalPages 를 모르는 경우 현재 페이지(+다음 페이지 존재 시 1)까지만 노출한다.
   const normalizedTotalPages =
-    totalPages === undefined
-      ? currentPage + (hasNextPage ? 1 : 0)
-      : Math.max(1, Math.floor(totalPages));
+    knownTotalPages ?? (currentPage + (hasNextPage ? 1 : 0));
   const visiblePages = getVisiblePages(currentPage, normalizedTotalPages);
   const isLastPage =
     totalPages === undefined ? !hasNextPage : currentPage >= normalizedTotalPages;
