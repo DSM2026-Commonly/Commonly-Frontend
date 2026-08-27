@@ -3,7 +3,7 @@ import {
   getRememberedLoginId,
   getSafeRedirectPath,
   login,
-  setAuthTokens,
+  setAuthToken,
   setRememberedLoginId,
 } from "@commonly/utils";
 import { useLocation, useNavigate } from "react-router";
@@ -24,14 +24,14 @@ function LoginPage({ variant, signupHref }: LoginPageProps) {
   );
 
   const handleLogin = async (formData: LoginFormData) => {
-    const tokens = await login({
+    const { accessToken } = await login({
       accountId: formData.loginId,
       password: formData.password,
     });
 
-    const didStoreTokens = setAuthTokens(tokens);
+    const didStoreToken = setAuthToken(accessToken);
 
-    if (!didStoreTokens) {
+    if (!didStoreToken) {
       throw new Error(
         "브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다.",
       );
