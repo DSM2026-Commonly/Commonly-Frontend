@@ -101,8 +101,18 @@ describe("fetchAdminUsers", () => {
     });
   });
 
-  test("non-array or malformed item throws invalid response", async () => {
-    for (const body of [[], {}, { content: [{ accountId: "a" }] }, "x"]) {
+  test("malformed rows are skipped", async () => {
+    mockFetch(200, {
+      content: [{ accountId: "a" }, { userId: 3, accountId: "ok", name: "n" }],
+      totalCount: 2,
+      totalPages: 1,
+    });
+    const page = await fetchAdminUsers();
+    expect(page.content.map((user) => user.userId)).toEqual([3]);
+  });
+
+  test("non-array body throws invalid response", async () => {
+    for (const body of [[], {}, "x"]) {
       mockFetch(200, body);
       const error = await fetchAdminUsers().catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ApiError);

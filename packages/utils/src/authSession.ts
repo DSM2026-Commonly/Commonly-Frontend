@@ -113,3 +113,22 @@ export function formatRemainingSessionTime(
 
   return `${String(minutes).padStart(2, "0")}분 ${String(seconds).padStart(2, "0")}초`;
 }
+
+/** 저장된 토큰이 있고 만료되지 않았는지. 라우트 가드에서 쓴다. exp 가 없는 토큰은 유효한 것으로 본다. */
+export function hasValidAuthToken(storage?: AuthStorage, now = Date.now()): boolean {
+  const token = getAuthToken(storage);
+
+  if (!token) {
+    return false;
+  }
+
+  // JWT 로 해석되지 않는 토큰은 만료 여부를 알 수 없으므로 존재하면 유효한 것으로 본다.
+  // (그렇지 않으면 로그인 직후 가드에 막혀 로그인 화면으로 되돌아가는 루프가 생긴다.)
+  const session = getAuthSession(storage);
+
+  if (!session) {
+    return true;
+  }
+
+  return session.expiresAt === null || session.expiresAt > now;
+}

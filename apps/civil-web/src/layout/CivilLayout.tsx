@@ -3,9 +3,10 @@ import {
   type FooterProps,
   type HeaderProps,
   useScrollToTopOnChange,
+  useSessionGuard,
 } from "@commonly/ui";
 import { clearAuthToken } from "@commonly/utils";
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 
 export interface CivilLayoutProps {
@@ -24,6 +25,14 @@ function CivilLayout({
   const [issueFlowKey, setIssueFlowKey] = useState(0);
 
   useScrollToTopOnChange(pathname);
+  useSessionGuard(
+    useCallback(() => {
+      void navigate(
+        `/login?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
+        { replace: true },
+      );
+    }, [navigate, pathname]),
+  );
   const handleNavigate = (href: string) => {
     if (href === "/") {
       setIssueFlowKey((currentKey) => currentKey + 1);

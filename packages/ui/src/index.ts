@@ -45,6 +45,7 @@ export type {
   IntegratedRegistrationNoticeStep,
 } from "./registration/integrated-registration/IntegratedRegistrationNotice";
 export { default as AddressSearchModal } from "./registration/address-search/AddressSearchModal";
+export { searchRoadAddresses } from "./registration/address-search/searchRoadAddresses";
 export type {
   AddressSearchItem,
   AddressSearchModalProps,
@@ -114,6 +115,7 @@ export type {
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";
 export { default as useAuthSession } from "./hooks/useAuthSession";
+export { default as useSessionGuard } from "./hooks/useSessionGuard";
 export type { AuthSessionState } from "./hooks/useAuthSession";
 
 // 앱 간 공유 페이지 (API 연동 포함)

@@ -107,11 +107,10 @@ export async function fetchAdminUsers(
   for (const item of content) {
     const user = normalizeAdminUser(item);
 
-    if (!user) {
-      throw new ApiError(200, ADMIN_USERS_INVALID_RESPONSE_MESSAGE);
+    // 형식이 맞지 않는 행은 건너뛴다(humans 와 동일 정책). 한 행 때문에 목록 전체가 실패하지 않게 한다.
+    if (user) {
+      users.push(user);
     }
-
-    users.push(user);
   }
 
   return {

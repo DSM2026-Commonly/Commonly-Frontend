@@ -37,6 +37,7 @@ import {
   FieldGroup,
 } from "./individualRegistrationCareer.styles";
 import { isValidCareerDateRange } from "./IndividualRegistrationCareer.validation";
+import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 
 export interface IndividualRegistrationCareerStep {
   id: string;
@@ -65,6 +66,10 @@ export interface IndividualRegistrationCareerProps {
   stepTitle?: string;
   previousLabel?: string;
   submitLabel?: string;
+  /** 등록 요청 진행 중이면 제출 버튼을 잠근다. */
+  isSubmitting?: boolean;
+  /** 등록 실패 메시지. */
+  errorMessage?: string;
   onPrevious?: () => void;
   onSubmit?: (career: IndividualRegistrationCareerData) => void;
 }
@@ -107,6 +112,8 @@ function IndividualRegistrationCareer({
   stepTitle = "경력사항 입력",
   previousLabel = "이전으로",
   submitLabel = "등록하기",
+  isSubmitting = false,
+  errorMessage,
   onPrevious,
   onSubmit,
 }: IndividualRegistrationCareerProps) {
@@ -195,7 +202,7 @@ function IndividualRegistrationCareer({
           onSubmit={(event) => {
             event.preventDefault();
 
-            if (!canSubmit) {
+            if (!canSubmit || isSubmitting) {
               return;
             }
 
@@ -363,12 +370,15 @@ function IndividualRegistrationCareer({
             </CareerCardBody>
           </CareerCard>
 
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
+
           <ActionBar>
             <ButtonGroup>
               <Button
                 variant="tertiary"
                 size="xlarge"
                 type="button"
+                disabled={isSubmitting}
                 onClick={onPrevious}
               >
                 {previousLabel}
@@ -379,9 +389,9 @@ function IndividualRegistrationCareer({
                 variant="primary"
                 size="xlarge"
                 type="submit"
-                disabled={!canSubmit}
+                disabled={!canSubmit || isSubmitting}
               >
-                {submitLabel}
+                {isSubmitting ? "등록 중..." : submitLabel}
               </Button>
             </ButtonGroup>
           </ActionBar>

@@ -9,6 +9,7 @@ import {
 import { useRef } from "react";
 import { useNavigate } from "react-router";
 import CareerEdit from "../career-edit/CareerEdit";
+import { searchRoadAddresses } from "../registration/address-search/searchRoadAddresses";
 import type {
   CareerEditApplicant,
   CareerEditRecord,
@@ -168,6 +169,7 @@ function StaffCareerEditPage() {
     <CareerEdit
       onCancel={navigateHome}
       onHome={navigateHome}
+      onSearchAddress={searchRoadAddresses}
       onSearch={handleSearch}
       onLoadCareerRecords={handleLoadCareerRecords}
       onComplete={handleComplete}
