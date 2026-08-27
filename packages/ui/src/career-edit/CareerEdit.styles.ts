@@ -364,3 +364,11 @@ export const SuccessActions = styled.div`
     }
   }
 `;
+
+export const FlowError = styled.p`
+  margin: 0;
+  color: var(--krds-light-color-danger, #de3412);
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: right;
+`;

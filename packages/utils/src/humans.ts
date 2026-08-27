@@ -1,6 +1,7 @@
 import { ApiError, request } from "./api";
 
 export const HUMAN_SEARCH_ENDPOINT = "/api/human/search";
+export const HUMAN_UPDATE_ENDPOINT = "/api/human";
 
 export const HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE =
   "대상자 조회 응답이 올바르지 않습니다.";
@@ -8,6 +9,14 @@ export const HUMAN_SEARCH_BAD_REQUEST_MESSAGE =
   "검색 조건이 올바르지 않습니다. 생년월일 범위를 확인해 주세요.";
 export const HUMAN_SEARCH_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const HUMAN_UPDATE_BAD_REQUEST_MESSAGE =
+  "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
+export const HUMAN_UPDATE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const HUMAN_UPDATE_NOT_FOUND_MESSAGE =
+  "대상자의 인적사항을 찾을 수 없습니다. 다시 조회해 주세요.";
+export const HUMAN_UPDATE_CONFLICT_MESSAGE =
+  "동일한 성명과 생년월일의 인적사항이 이미 존재합니다.";
 
 export interface HumanSummary {
   humanId: number;
@@ -23,6 +32,14 @@ export interface SearchHumansQuery {
   birthDateFrom?: string;
   birthDateTo?: string;
   address?: string;
+}
+
+export interface UpdateHumanRequest {
+  humanId: number;
+  name: string;
+  gender: "M" | "F";
+  birthDate: string;
+  address: string | null;
 }
 
 export interface HumanRequestOptions {
@@ -49,7 +66,7 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
     unknown
   >;
 
-  // gender/address는 명세상 nullable이므로 humanId·name·birthDate만 필수로 검증한다.
+  // gender/address는 비어 있을 수 있으므로 humanId·name·birthDate만 필수로 검증한다.
   if (
     typeof humanId !== "number" ||
     !Number.isFinite(humanId) ||
@@ -111,4 +128,23 @@ export async function searchHumans(
   }
 
   return humans;
+}
+
+export async function updateHuman(
+  body: UpdateHumanRequest,
+  { token, signal }: HumanRequestOptions = {},
+): Promise<void> {
+  // 204 No Content 응답이라 본문 검증 없이 성공으로 처리한다.
+  await request<unknown>(HUMAN_UPDATE_ENDPOINT, {
+    method: "PUT",
+    body,
+    token,
+    signal,
+    errorMessages: {
+      400: HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
+      401: HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
+      404: HUMAN_UPDATE_NOT_FOUND_MESSAGE,
+      409: HUMAN_UPDATE_CONFLICT_MESSAGE,
+    },
+  });
 }

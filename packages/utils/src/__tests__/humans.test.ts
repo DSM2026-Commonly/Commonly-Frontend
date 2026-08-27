@@ -3,13 +3,23 @@ import { ApiError } from "../api";
 import {
   HUMAN_SEARCH_ENDPOINT,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
+  HUMAN_UPDATE_ENDPOINT,
   searchHumans,
+  updateHuman,
 } from "../humans";
 
 const hongHuman = {
   humanId: 1,
   name: "홍길동",
   gender: "M",
+  birthDate: "1990-01-01",
+  address: "세종특별자치시 한누리대로 2130",
+};
+
+const updateRequest = {
+  humanId: 1,
+  name: "홍길동",
+  gender: "M" as const,
   birthDate: "1990-01-01",
   address: "세종특별자치시 한누리대로 2130",
 };
@@ -111,6 +121,52 @@ describe("searchHumans", () => {
     for (const [status, message] of cases) {
       mockFetch(status, undefined);
       const error = await searchHumans({ name: "홍" }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(status);
+      expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("updateHuman", () => {
+  test("PUTs the human with all keys and auth header", async () => {
+    mockFetch(204, undefined, (url, init) => {
+      expect(url).toBe(HUMAN_UPDATE_ENDPOINT);
+      expect(init?.method).toBe("PUT");
+      const headers = init?.headers as Record<string, string>;
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers.Authorization).toBe("Bearer token-1");
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body).toEqual(updateRequest);
+      expect(Object.keys(body).sort()).toEqual([
+        "address",
+        "birthDate",
+        "gender",
+        "humanId",
+        "name",
+      ]);
+    });
+
+    await updateHuman(updateRequest, { token: "token-1" });
+  });
+
+  test("resolves on 204 with an empty body", async () => {
+    mockFetch(204, undefined);
+    await updateHuman(updateRequest);
+  });
+
+  test("maps error statuses to Korean messages", async () => {
+    const cases = [
+      [400, "입력값이 올바르지 않습니다"],
+      [401, "로그인이 만료되었습니다"],
+      [404, "찾을 수 없습니다"],
+      [409, "이미 존재합니다"],
+      [500, "일시적인 오류"],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+      const error = await updateHuman(updateRequest).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);

@@ -114,12 +114,19 @@ export {
   HUMAN_SEARCH_ENDPOINT,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
   HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
+  HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
+  HUMAN_UPDATE_CONFLICT_MESSAGE,
+  HUMAN_UPDATE_ENDPOINT,
+  HUMAN_UPDATE_NOT_FOUND_MESSAGE,
+  HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
   searchHumans,
+  updateHuman,
 } from "./humans";
 export type {
   HumanRequestOptions,
   HumanSummary,
   SearchHumansQuery,
+  UpdateHumanRequest,
 } from "./humans";
 export {
   CERTIFICATES_ENDPOINT,
@@ -130,6 +137,8 @@ export {
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
   CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
   CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
+  CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
   HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
@@ -137,15 +146,18 @@ export {
   downloadCertificate,
   fetchHumanCertificates,
   getCertificateDownloadEndpoint,
+  getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
   issueCertificate,
   saveBlobAsFile,
+  updateCertificate,
 } from "./certificates";
 export type {
   CertificateRequestOptions,
   HumanCertificate,
   IssueCertificateRequest,
   IssuedCertificate,
+  UpdateCertificateRequest,
 } from "./certificates";
 export {
   ADMIN_USERS_DEFAULT_PAGE_SIZE,

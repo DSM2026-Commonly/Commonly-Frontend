@@ -7,8 +7,10 @@ import {
   downloadCertificate,
   fetchHumanCertificates,
   getCertificateDownloadEndpoint,
+  getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
   issueCertificate,
+  updateCertificate,
 } from "../certificates";
 
 const humanCertificate = {
@@ -34,6 +36,21 @@ const issuedResponse = {
   certificateId: 5,
   documentNo: "유성구-2026-000001",
   downloadUrl: "/api/certificates/5/download",
+};
+
+const updateRequest = {
+  name: "홍길동",
+  birthDate: "1990-01-01",
+  gender: "M" as const,
+  jobTitle: "사무원",
+  keyResponsibilities: "행정지원",
+  hireDate: "2024-03-01",
+  expirationDate: "2025-02-28",
+  retirementDate: "2025-02-28",
+  division: "채용",
+  reason: "신규채용",
+  employmentType: "기간제",
+  note: "",
 };
 
 function mockFetch(
@@ -194,6 +211,65 @@ describe("issueCertificate", () => {
     for (const [status, message] of cases) {
       mockFetch(status, undefined);
       const error = await issueCertificate(issueRequest).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(status);
+      expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("updateCertificate", () => {
+  test("PUTs the camelCase body to the certificate endpoint", async () => {
+    mockFetch(204, undefined, (url, init) => {
+      expect(url).toBe(getCertificateUpdateEndpoint(7));
+      expect(url).toBe("/api/certificates/7");
+      expect(init?.method).toBe("PUT");
+      const headers = init?.headers as Record<string, string>;
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers.Authorization).toBe("Bearer token-1");
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body).toEqual(updateRequest);
+      expect(Object.keys(body).sort()).toEqual([
+        "birthDate",
+        "division",
+        "employmentType",
+        "expirationDate",
+        "gender",
+        "hireDate",
+        "jobTitle",
+        "keyResponsibilities",
+        "name",
+        "note",
+        "reason",
+        "retirementDate",
+      ]);
+    });
+
+    await updateCertificate(7, updateRequest, { token: "token-1" });
+  });
+
+  test("resolves on 200 with an unexpected body (tolerated)", async () => {
+    mockFetch(200, { insertedCount: 0, failedRows: [{ rowIndex: 0, reason: "x" }] });
+    await updateCertificate(7, updateRequest);
+  });
+
+  test("resolves on 204 with an empty body", async () => {
+    mockFetch(204, undefined);
+    await updateCertificate(7, updateRequest);
+  });
+
+  test("maps error statuses to Korean messages", async () => {
+    const cases = [
+      [401, "로그인이 만료되었습니다"],
+      [404, "찾을 수 없습니다"],
+      [500, "일시적인 오류"],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+      const error = await updateCertificate(7, updateRequest).catch(
         (e: unknown) => e,
       );
       expect(error).toBeInstanceOf(ApiError);

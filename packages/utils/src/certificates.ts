@@ -7,6 +7,11 @@ export function getHumanCertificatesEndpoint(humanId: number): string {
   return `/api/certificates/${humanId}`;
 }
 
+// 경력증명서 수정 — certificateId 기준. (명세상 목록 조회와 동일 경로 패턴 — 백엔드 확인 사항)
+export function getCertificateUpdateEndpoint(certificateId: number): string {
+  return `/api/certificates/${certificateId}`;
+}
+
 export function getCertificateDownloadEndpoint(certificateId: number): string {
   return `/api/certificates/${certificateId}/download`;
 }
@@ -33,6 +38,10 @@ export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
   "증명서를 내려받을 권한이 없습니다.";
 export const CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE =
   "증명서를 찾을 수 없습니다. 다시 발급해 주세요.";
+export const CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE =
+  "해당 경력증명서를 찾을 수 없습니다. 다시 조회해 주세요.";
 
 export interface HumanCertificate {
   certificateId: number;
@@ -57,6 +66,21 @@ export interface IssuedCertificate {
   certificateId: number;
   documentNo: string;
   downloadUrl: string;
+}
+
+export interface UpdateCertificateRequest {
+  name: string;
+  birthDate: string;
+  gender: "M" | "F" | "";
+  jobTitle: string;
+  keyResponsibilities: string;
+  hireDate: string;
+  expirationDate: string;
+  retirementDate: string;
+  division: string;
+  reason: string;
+  employmentType: string;
+  note: string;
 }
 
 export interface CertificateRequestOptions {
@@ -211,6 +235,25 @@ export async function downloadCertificate(
       401: CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
       403: CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
       404: CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
+    },
+  });
+}
+
+export async function updateCertificate(
+  certificateId: number,
+  body: UpdateCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<void> {
+  // 204 No Content 응답이라 본문 검증 없이 성공으로 처리한다.
+  // 에러 명세가 없어 401/404만 방어적으로 매핑한다.
+  await request<unknown>(getCertificateUpdateEndpoint(certificateId), {
+    method: "PUT",
+    body,
+    token,
+    signal,
+    errorMessages: {
+      401: CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
+      404: CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
     },
   });
 }
