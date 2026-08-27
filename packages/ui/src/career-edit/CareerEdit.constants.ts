@@ -1,9 +1,4 @@
-import type {
-  CareerEditApplicant,
-  CareerEditReason,
-  CareerEditRecord,
-  CareerEditTarget,
-} from "./CareerEdit.types";
+import type { CareerEditReason, CareerEditTarget } from "./CareerEdit.types";
 
 export const CAREER_EDIT_STEPS = [
   { id: "notice", step: "1단계", title: "유의사항" },
@@ -39,44 +34,3 @@ export const CAREER_EDIT_TARGET_OPTIONS = [
   label: string;
 }[];
 
-export const DEFAULT_CAREER_EDIT_APPLICANTS = [
-  {
-    id: "jeon-jaejun",
-    name: "전재준",
-    birthDate: "2009.02.10",
-    address: "대전광역시 유성구 가정북로 76",
-  },
-] as const satisfies readonly CareerEditApplicant[];
-
-export const DEFAULT_CAREER_EDIT_RECORDS = [
-  {
-    id: "career-1",
-    position: "조사원",
-    duties: "인구/주택 총 조사 조사원",
-    department: "OOOO과",
-    startDate: "2009.02.10",
-    endDate: "2009.02.11",
-    retirementReason: "계약기간 만료",
-    note: "",
-  },
-  {
-    id: "career-2",
-    position: "조사원",
-    duties: "인구/주택 총 조사 조사원",
-    department: "OOO과",
-    startDate: "2009.02.10",
-    endDate: "2009.02.11",
-    retirementReason: "계약기간 만료",
-    note: "",
-  },
-  {
-    id: "career-3",
-    position: "조사원",
-    duties: "인구/주택 총 조사 조사원",
-    department: "OOO과",
-    startDate: "2009.02.10",
-    endDate: "2009.02.11",
-    retirementReason: "계약기간 만료",
-    note: "",
-  },
-] as const satisfies readonly CareerEditRecord[];

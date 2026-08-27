@@ -42,21 +42,8 @@ export interface WorkHistoryProps {
   emptyMessage?: string;
 }
 
-const DEFAULT_RECORDS: readonly WorkHistoryRecord[] = Array.from(
-  { length: 10 },
-  (_, index) => ({
-    id: String(index + 1).padStart(3, "0"),
-    category:
-      index === 1
-        ? "경력사항 수정"
-        : index === 2
-          ? "증명서 발급"
-          : "경력사항 등록",
-    occurredAt: "2026-02-01",
-    details: "대전광역시 유성구 가정북로 76",
-    operator: "전재준",
-  }),
-);
+// 실제 데이터는 페이지가 API 로 조회해 넘긴다. 기본값은 빈 목록.
+const DEFAULT_RECORDS: readonly WorkHistoryRecord[] = [];
 
 const DEFAULT_EMPTY_MESSAGE = "조회된 이력이 없습니다.";
 
