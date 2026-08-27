@@ -27,6 +27,7 @@ export interface HumanSummary {
   gender: string;
   birthDate: string;
   address: string;
+  department: string;
 }
 
 export interface SearchHumansQuery {
@@ -64,12 +65,10 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
     return null;
   }
 
-  const { humanId, name, gender, birthDate, address } = value as Record<
-    string,
-    unknown
-  >;
+  const { humanId, name, gender, birthDate, address, department } =
+    value as Record<string, unknown>;
 
-  // gender/address는 비어 있을 수 있으므로 humanId·name·birthDate만 필수로 검증한다.
+  // gender/address/department는 비어 있을 수 있으므로 humanId·name·birthDate만 필수로 검증한다.
   if (
     typeof humanId !== "number" ||
     !Number.isFinite(humanId) ||
@@ -81,8 +80,13 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
 
   const normalizedGender = normalizeOptionalString(gender);
   const normalizedAddress = normalizeOptionalString(address);
+  const normalizedDepartment = normalizeOptionalString(department);
 
-  if (normalizedGender === null || normalizedAddress === null) {
+  if (
+    normalizedGender === null ||
+    normalizedAddress === null ||
+    normalizedDepartment === null
+  ) {
     return null;
   }
 
@@ -92,6 +96,7 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
     gender: normalizedGender,
     birthDate,
     address: normalizedAddress,
+    department: normalizedDepartment,
   };
 }
 

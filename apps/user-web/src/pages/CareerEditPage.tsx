@@ -35,6 +35,9 @@ function CareerEditPage() {
   // 경력 수정 PUT은 12필드 전체를 요구하므로, 화면에 노출하지 않는
   // employmentType/expirationDate 원본을 목록 조회 결과에서 보존한다.
   const certificatesRef = useRef(new Map<string, HumanCertificate>());
+  // 인적사항 수정 PUT도 전체 교체라, 화면에 노출하지 않는 department 원본을
+  // 검색 결과에서 보존한다.
+  const humanDepartmentsRef = useRef(new Map<string, string>());
 
   const handleSearch = async (query: {
     name: string;
@@ -47,6 +50,10 @@ function CareerEditPage() {
         birthDateTo: query.birthDate,
       },
       { token: getAuthToken() },
+    );
+
+    humanDepartmentsRef.current = new Map(
+      humans.map((human) => [String(human.humanId), human.department]),
     );
 
     return humans.map((human) => ({
@@ -114,8 +121,8 @@ function CareerEditPage() {
           gender: personalInfo.gender === "male" ? "M" : "F",
           birthDate: `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, "0")}-${personalInfo.birthDay.padStart(2, "0")}`,
           address: personalInfo.address || null,
-          // 인적사항 검색 응답에 department가 없어 원본값을 알 수 없다 — 백엔드 확인 사항.
-          department: "",
+          department:
+            humanDepartmentsRef.current.get(submission.applicant.id) ?? "",
         },
         { token },
       );

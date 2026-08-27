@@ -11,7 +11,11 @@ import styled from "@emotion/styled";
 import { Button, TextInput } from "krds-react";
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import type { VerifiedSignupIdentity } from "./signupVerification";
+import {
+  toApiBirthDate,
+  toApiPhoneNumber,
+  type VerifiedSignupIdentity,
+} from "./signupVerification";
 
 const SignupContent = styled.section`
   width: min(792px, calc(100% - 40px));
@@ -379,6 +383,9 @@ function SignupFormPage() {
       const tokens = await signup({
         accountId: formValues.loginId,
         password: formValues.password,
+        name: formValues.name.trim(),
+        phoneNumber: toApiPhoneNumber(formValues.phoneNumber),
+        birthDate: toApiBirthDate(formValues.birthDate),
       });
 
       if (!setAuthTokens(tokens)) {

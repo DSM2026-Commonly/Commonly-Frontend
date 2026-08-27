@@ -14,6 +14,7 @@ const hongHuman = {
   gender: "M",
   birthDate: "1990-01-01",
   address: "세종특별자치시 한누리대로 2130",
+  department: "민원과",
 };
 
 const updateRequest = {
@@ -74,6 +75,7 @@ describe("searchHumans", () => {
         { ...hongHuman, humanId: "2" },
         { ...hongHuman, name: null },
         { ...hongHuman, address: 5 },
+        { ...hongHuman, department: 7 },
         null,
       ],
     });
@@ -95,6 +97,7 @@ describe("searchHumans", () => {
         gender: "",
         birthDate: "1990-01-01",
         address: "",
+        department: "",
       },
     ]);
   });

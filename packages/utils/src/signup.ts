@@ -14,6 +14,12 @@ export const SIGNUP_INVALID_RESPONSE_MESSAGE =
 export interface SignupRequest {
   accountId: string;
   password: string;
+  /** 20자 이내 */
+  name: string;
+  /** 010-1234-5678 형식 */
+  phoneNumber: string;
+  /** ISO LocalDate (예: 1995-04-12) */
+  birthDate: string;
 }
 
 export type SignupResponse = AuthTokens;

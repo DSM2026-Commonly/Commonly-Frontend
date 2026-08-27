@@ -9,6 +9,9 @@ function mockFetch(status: number, body?: unknown) {
     expect(JSON.parse(String(init?.body))).toEqual({
       accountId: "user01",
       password: "password123",
+      name: "홍길동",
+      phoneNumber: "010-1234-5678",
+      birthDate: "1995-04-12",
     });
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status,
@@ -17,7 +20,13 @@ function mockFetch(status: number, body?: unknown) {
   }) as typeof fetch;
 }
 
-const credentials = { accountId: "user01", password: "password123" };
+const credentials = {
+  accountId: "user01",
+  password: "password123",
+  name: "홍길동",
+  phoneNumber: "010-1234-5678",
+  birthDate: "1995-04-12",
+};
 
 describe("signup", () => {
   test("200 returns trimmed tokens", async () => {
