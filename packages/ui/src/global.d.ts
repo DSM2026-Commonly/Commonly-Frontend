@@ -29,6 +29,7 @@ declare module "*.css";
 // import.meta.env 를 최소한으로 선언한다. 앱에서는 vite/client 와 병합된다.
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
+  readonly VITE_JUSO_CONFM_KEY?: string;
 }
 
 interface ImportMeta {

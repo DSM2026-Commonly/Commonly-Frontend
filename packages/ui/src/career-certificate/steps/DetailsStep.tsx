@@ -1,5 +1,4 @@
 import { Checkbox, Radio, RadioGroup, Table, TextInput } from "krds-react";
-import { CAREER_ROWS } from "../CareerCertificateIssue.constants";
 import {
   CardStack,
   CardSubheading,
@@ -24,6 +23,7 @@ interface DetailsStepProps {
   issueType: CertificateIssueType;
   careerRows?: readonly CertificateCareerRow[];
   selectedCareerIds: string[];
+  isLoadingCareerRows?: boolean;
   additionalNote: string;
   purpose: string;
   onIssueTypeChange: (issueType: CertificateIssueType) => void;
@@ -75,8 +75,9 @@ function CertificateExtraFields({
 function DetailsStep({
   variant = "staff",
   issueType,
-  careerRows = CAREER_ROWS,
+  careerRows = [],
   selectedCareerIds,
+  isLoadingCareerRows = false,
   additionalNote,
   purpose,
   onIssueTypeChange,
@@ -164,6 +165,15 @@ function DetailsStep({
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
+                {careerRows.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={4} align="center">
+                      {isLoadingCareerRows
+                        ? "경력 사항을 불러오는 중입니다..."
+                        : "조회된 경력 사항이 없습니다."}
+                    </Table.Td>
+                  </Table.Tr>
+                )}
                 {careerRows.map((row) => (
                   <Table.Tr key={row.id}>
                     <Table.Td>

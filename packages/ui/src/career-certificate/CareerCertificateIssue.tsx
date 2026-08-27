@@ -1,11 +1,5 @@
-import { useRef, useState } from "react";
-import certificatePreview from "../assets/career-certificate-preview.png";
-import {
-  CAREER_ROWS,
-  DEMO_APPLICANTS,
-  getStepIndex,
-  STEP_VIEWS,
-} from "./CareerCertificateIssue.constants";
+import { useEffect, useRef, useState } from "react";
+import { getStepIndex, STEP_VIEWS } from "./CareerCertificateIssue.constants";
 import { FlowError, FlowRoot } from "./CareerCertificateIssue.styles";
 import type {
   CareerCertificateApplicationData,
@@ -52,6 +46,7 @@ function getErrorMessage(error: unknown): string {
 function CareerCertificateIssue({
   initialView,
   variant = "staff",
+  applicantName: fixedApplicantName = "",
   onCancel,
   onSearchApplicants,
   onLoadCareerRows,
@@ -77,13 +72,11 @@ function CareerCertificateIssue({
   const [searchError, setSearchError] = useState("");
   const [issueType, setIssueType] = useState<CertificateIssueType>("all");
   const [careerRows, setCareerRows] = useState<readonly CertificateCareerRow[]>(
-    CAREER_ROWS,
+    [],
   );
   const [isLoadingCareerRows, setIsLoadingCareerRows] = useState(false);
   const [stepError, setStepError] = useState("");
-  const [selectedCareerIds, setSelectedCareerIds] = useState<string[]>(
-    CAREER_ROWS.map((row) => row.id),
-  );
+  const [selectedCareerIds, setSelectedCareerIds] = useState<string[]>([]);
   const [additionalNote, setAdditionalNote] = useState("");
   const [purpose, setPurpose] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +85,9 @@ function CareerCertificateIssue({
   const [downloadError, setDownloadError] = useState("");
   // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
   const searchRequestIdRef = useRef(0);
+  // 민원인 본인 경력 로딩 요청 id. 재시작으로 다시 불러올 때 이전 응답을 무시한다.
+  const careerLoadRequestIdRef = useRef(0);
+  const [civilLoadKey, setCivilLoadKey] = useState(0);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
@@ -101,14 +97,60 @@ function CareerCertificateIssue({
     (currentStep !== 0 || noticeAccepted) &&
     (currentStep !== 2 || Boolean(selectedPerson)) &&
     (currentStep !== 3 ||
-      ((issueType === "all" || selectedCareerIds.length > 0) &&
+      (careerRows.length > 0 &&
+        (issueType === "all" || selectedCareerIds.length > 0) &&
         // 발급 용도는 증명서에 기재되는 필수 항목이다.
         purpose.trim().length > 0));
-  const selectedApplicantName = applicants.find(
-    (applicant) => applicant.id === selectedPerson,
-  )?.name;
+  const selectedApplicantName =
+    applicants.find((applicant) => applicant.id === selectedPerson)?.name ??
+    fixedApplicantName;
+  const selectedCareerRows =
+    issueType === "all"
+      ? careerRows
+      : careerRows.filter((row) => selectedCareerIds.includes(row.id));
 
   useCareerCertificateScroll(view);
+
+  // 민원인은 대상자 조회 단계가 없으므로 진입 시 본인 경력을 바로 불러온다.
+  useEffect(() => {
+    if (variant !== "civil" || !onLoadCareerRows) {
+      return;
+    }
+
+    const requestId = ++careerLoadRequestIdRef.current;
+    let isActive = true;
+
+    setIsLoadingCareerRows(true);
+    setStepError("");
+
+    onLoadCareerRows("")
+      .then((rows) => {
+        if (!isActive || requestId !== careerLoadRequestIdRef.current) {
+          return;
+        }
+
+        setCareerRows(rows);
+        setSelectedCareerIds(rows.map((row) => row.id));
+      })
+      .catch((error: unknown) => {
+        if (!isActive || requestId !== careerLoadRequestIdRef.current) {
+          return;
+        }
+
+        setStepError(getErrorMessage(error));
+      })
+      .finally(() => {
+        if (isActive && requestId === careerLoadRequestIdRef.current) {
+          setIsLoadingCareerRows(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+    // onLoadCareerRows 는 페이지가 매 렌더마다 새로 만드는 콜백이라 의존성에서 제외한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant, civilLoadKey]);
 
   const moveToView = (nextView: CareerCertificateIssueView) => {
     setStepError("");
@@ -231,9 +273,7 @@ function CareerCertificateIssue({
     }
 
     if (!onSearchApplicants) {
-      setApplicants(DEMO_APPLICANTS);
-      setHasPersonSearchResult(true);
-      setSelectedPerson(DEMO_APPLICANTS[0].id);
+      setSearchError("대상자 조회 기능이 연결되지 않았습니다.");
       return;
     }
 
@@ -309,10 +349,11 @@ function CareerCertificateIssue({
     setReason("visit");
     setNote("");
     setIssueType("all");
-    setCareerRows(onLoadCareerRows ? [] : CAREER_ROWS);
-    setSelectedCareerIds(
-      onLoadCareerRows ? [] : CAREER_ROWS.map((row) => row.id),
-    );
+    setCareerRows([]);
+    setSelectedCareerIds([]);
+    if (variant === "civil") {
+      setCivilLoadKey((currentKey) => currentKey + 1);
+    }
     setAdditionalNote("");
     setPurpose("");
     resetPersonSearchResult();
@@ -327,10 +368,7 @@ function CareerCertificateIssue({
     }
 
     if (!onDownload) {
-      const link = document.createElement("a");
-      link.href = certificatePreview;
-      link.download = "유성구청_전재준_경력증명서_A2026-001.png";
-      link.click();
+      setDownloadError("다운로드 기능이 연결되지 않았습니다.");
       return;
     }
 
@@ -410,6 +448,15 @@ function CareerCertificateIssue({
       <FlowRoot key={view}>
         <CertificatePreviewView
           variant={variant}
+          applicantName={selectedApplicantName}
+          birthDate={
+            variant === "civil"
+              ? ""
+              : `${birthYear}.${birthMonth.padStart(2, "0")}.${birthDay.padStart(2, "0")}`
+          }
+          careerRows={selectedCareerRows}
+          purpose={purpose}
+          additionalNote={additionalNote}
           isSubmitting={isSubmitting}
           submissionError={submissionError}
           onPrevious={() => moveToView("details")}
@@ -440,8 +487,11 @@ function CareerCertificateIssue({
       <FlowRoot key={view}>
         <CivilCertificateApplicationView
           issueType={issueType}
+          careerRows={careerRows}
           selectedCareerIds={selectedCareerIds}
-          canContinue={canContinue}
+          isLoadingCareerRows={isLoadingCareerRows}
+          loadError={stepError}
+          canContinue={canContinue && !isLoadingCareerRows}
           purpose={purpose}
           onIssueTypeChange={setIssueType}
           onCareerSelection={handleCareerSelection}

@@ -139,6 +139,8 @@ export {
   CERTIFICATE_SELF_ENDPOINT,
   CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
   CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
+  SELF_CERTIFICATES_FORBIDDEN_MESSAGE,
+  SELF_CERTIFICATES_NOT_FOUND_MESSAGE,
   CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
   CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
   HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
@@ -147,6 +149,7 @@ export {
   HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
+  fetchSelfCertificates,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -199,3 +202,25 @@ export type {
   IssuanceHistoryPage,
   IssuanceHistoryType,
 } from "./issuanceHistories";
+export {
+  JUSO_DEFAULT_PAGE_SIZE,
+  JUSO_INVALID_RESPONSE_MESSAGE,
+  JUSO_MAX_PAGE_SIZE,
+  JUSO_MISSING_KEY_MESSAGE,
+  JUSO_SEARCH_ENDPOINT,
+  JUSO_TIMEOUT_MESSAGE,
+  getJusoConfirmKey,
+  searchAddresses,
+} from "./juso";
+export type {
+  JusoAddress,
+  JusoSearchOptions,
+  JusoSearchQuery,
+  JusoSearchResult,
+} from "./juso";
+export {
+  decodeJwtPayload,
+  formatRemainingSessionTime,
+  getAuthSession,
+} from "./authSession";
+export type { AuthSession } from "./authSession";
