@@ -1,7 +1,4 @@
-import type {
-  CareerCertificateIssueView,
-  CertificateApplicant,
-} from "./CareerCertificateIssue.types";
+import type { CareerCertificateIssueView } from "./CareerCertificateIssue.types";
 
 export const STEP_VIEWS: CareerCertificateIssueView[] = [
   "notice",
@@ -29,36 +26,6 @@ export const REASON_OPTIONS = [
   { value: "phone", label: "민원인 발급 신청 (전화)" },
   { value: "email", label: "민원인 발급 신청 (전자우편)" },
   { value: "other", label: "기타 사유" },
-];
-
-export const DEMO_APPLICANTS: CertificateApplicant[] = [
-  {
-    id: "jeon-jaejun",
-    name: "전재준",
-    birthDate: "2009년 02월 10일",
-    address: "대전광역시 유성구 가정북로 76",
-  },
-];
-
-export const CAREER_ROWS = [
-  {
-    id: "career-1",
-    job: "인구/주택 총 조사 조사원",
-    department: "○○○과",
-    period: "2009.02.10.~2009.02.11",
-  },
-  {
-    id: "career-2",
-    job: "인구/주택 총 조사 조사원",
-    department: "○○○과",
-    period: "2009.02.10.~2009.02.11",
-  },
-  {
-    id: "career-3",
-    job: "인구/주택 총 조사 조사원",
-    department: "○○○과",
-    period: "2009.02.10.~2009.02.11",
-  },
 ];
 
 // 하드코딩하면 해가 바뀔 때 당해 연도 선택이 불가능해지므로 현재 연도로 계산한다.
