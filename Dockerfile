@@ -17,6 +17,7 @@ RUN bun install --frozen-lockfile
 
 COPY apps ./apps
 COPY packages ./packages
+COPY vite.env.ts ./
 
 ARG APP_NAME
 # 빌드 시점에 API 서버 origin을 주입한다. .env는 저장소에 없으므로
