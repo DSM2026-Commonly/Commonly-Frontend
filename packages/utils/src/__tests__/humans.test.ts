@@ -3,7 +3,7 @@ import { ApiError } from "../api";
 import {
   HUMAN_SEARCH_ENDPOINT,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
-  HUMAN_UPDATE_ENDPOINT,
+  getHumanUpdateEndpoint,
   searchHumans,
   updateHuman,
 } from "../humans";
@@ -17,11 +17,11 @@ const hongHuman = {
 };
 
 const updateRequest = {
-  humanId: 1,
   name: "홍길동",
   gender: "M" as const,
   birthDate: "1990-01-01",
   address: "세종특별자치시 한누리대로 2130",
+  department: "민원과",
 };
 
 function mockFetch(
@@ -129,9 +129,10 @@ describe("searchHumans", () => {
 });
 
 describe("updateHuman", () => {
-  test("PUTs the human with all keys and auth header", async () => {
+  test("PUTs the human by id with all keys and auth header", async () => {
     mockFetch(204, undefined, (url, init) => {
-      expect(url).toBe(HUMAN_UPDATE_ENDPOINT);
+      expect(url).toBe(getHumanUpdateEndpoint(1));
+      expect(url).toBe("/api/human/1");
       expect(init?.method).toBe("PUT");
       const headers = init?.headers as Record<string, string>;
       expect(headers["Content-Type"]).toBe("application/json");
@@ -141,18 +142,18 @@ describe("updateHuman", () => {
       expect(Object.keys(body).sort()).toEqual([
         "address",
         "birthDate",
+        "department",
         "gender",
-        "humanId",
         "name",
       ]);
     });
 
-    await updateHuman(updateRequest, { token: "token-1" });
+    await updateHuman(1, updateRequest, { token: "token-1" });
   });
 
   test("resolves on 204 with an empty body", async () => {
     mockFetch(204, undefined);
-    await updateHuman(updateRequest);
+    await updateHuman(1, updateRequest);
   });
 
   test("maps error statuses to Korean messages", async () => {
@@ -166,7 +167,9 @@ describe("updateHuman", () => {
 
     for (const [status, message] of cases) {
       mockFetch(status, undefined);
-      const error = await updateHuman(updateRequest).catch((e: unknown) => e);
+      const error = await updateHuman(1, updateRequest).catch(
+        (e: unknown) => e,
+      );
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);

@@ -1,7 +1,10 @@
 import { ApiError, request } from "./api";
 
 export const HUMAN_SEARCH_ENDPOINT = "/api/human/search";
-export const HUMAN_UPDATE_ENDPOINT = "/api/human";
+
+export function getHumanUpdateEndpoint(humanId: number): string {
+  return `/api/human/${humanId}`;
+}
 
 export const HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE =
   "대상자 조회 응답이 올바르지 않습니다.";
@@ -35,11 +38,11 @@ export interface SearchHumansQuery {
 }
 
 export interface UpdateHumanRequest {
-  humanId: number;
   name: string;
   gender: "M" | "F";
   birthDate: string;
   address: string | null;
+  department: string;
 }
 
 export interface HumanRequestOptions {
@@ -131,11 +134,12 @@ export async function searchHumans(
 }
 
 export async function updateHuman(
+  humanId: number,
   body: UpdateHumanRequest,
   { token, signal }: HumanRequestOptions = {},
 ): Promise<void> {
   // 204 No Content 응답이라 본문 검증 없이 성공으로 처리한다.
-  await request<unknown>(HUMAN_UPDATE_ENDPOINT, {
+  await request<unknown>(getHumanUpdateEndpoint(humanId), {
     method: "PUT",
     body,
     token,

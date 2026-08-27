@@ -116,9 +116,9 @@ export {
   HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
   HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
   HUMAN_UPDATE_CONFLICT_MESSAGE,
-  HUMAN_UPDATE_ENDPOINT,
   HUMAN_UPDATE_NOT_FOUND_MESSAGE,
   HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
+  getHumanUpdateEndpoint,
   searchHumans,
   updateHuman,
 } from "./humans";
@@ -137,6 +137,9 @@ export {
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
   CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
   CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_SELF_ENDPOINT,
+  CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
+  CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
   CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
   CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
   HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
@@ -149,6 +152,7 @@ export {
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
   issueCertificate,
+  issueSelfCertificate,
   saveBlobAsFile,
   updateCertificate,
 } from "./certificates";
@@ -156,6 +160,7 @@ export type {
   CertificateRequestOptions,
   HumanCertificate,
   IssueCertificateRequest,
+  IssueSelfCertificateRequest,
   IssuedCertificate,
   UpdateCertificateRequest,
 } from "./certificates";

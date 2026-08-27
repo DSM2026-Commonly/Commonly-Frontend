@@ -108,12 +108,14 @@ function CareerEditPage() {
       const { personalInfo } = submission;
 
       await updateHuman(
+        humanId,
         {
-          humanId,
           name: personalInfo.name,
           gender: personalInfo.gender === "male" ? "M" : "F",
           birthDate: `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, "0")}-${personalInfo.birthDay.padStart(2, "0")}`,
           address: personalInfo.address || null,
+          // 인적사항 검색 응답에 department가 없어 원본값을 알 수 없다 — 백엔드 확인 사항.
+          department: "",
         },
         { token },
       );
