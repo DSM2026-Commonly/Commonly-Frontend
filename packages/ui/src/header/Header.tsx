@@ -1,5 +1,6 @@
 import logo from "../assets/Logo/logo1.png";
 import type { MouseEvent } from "react";
+import useAuthSession from "../hooks/useAuthSession";
 import {
   adminHeaderMenus,
   type HeaderMenuItem,
@@ -23,12 +24,10 @@ import {
 
 export type HeaderVariant = "admin" | "user" | "civil" | "not-auth";
 
-// TODO: 로그인 사용자 정보/세션 타이머 연동 전까지 사용하는 임시 더미 데이터
-const PLACEHOLDER_USER_NAME = "전재준";
-const PLACEHOLDER_SESSION_TIME = "00분 00초";
-
 export interface HeaderProps {
   variant?: HeaderVariant;
+  /** 표시할 사용자명. 생략하면 저장된 로그인 토큰에서 읽는다. */
+  userName?: string;
   onExtend?: () => void;
   onLogout?: () => void;
   onNavigate?: (href: string) => void;
@@ -76,11 +75,14 @@ const headerConfigurations = {
 
 const Header = ({
   variant = "admin",
+  userName,
   onExtend,
   onLogout,
   onNavigate,
 }: HeaderProps) => {
   const configuration = headerConfigurations[variant];
+  const { session, remainingTime } = useAuthSession();
+  const displayName = userName ?? session?.name ?? "";
   const handleNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -109,11 +111,9 @@ const Header = ({
       <HeaderBody $compact={!configuration.showUtility}>
         {configuration.showUtility && (
           <UtilityRow>
-            <UtilityText>{PLACEHOLDER_USER_NAME} 님</UtilityText>
+            <UtilityText>{displayName ? `${displayName} 님` : "로그인 사용자"}</UtilityText>
             <UtilityDivider aria-hidden="true" />
-            <UtilityText $width={125}>
-              남은시간 {PLACEHOLDER_SESSION_TIME}
-            </UtilityText>
+            <UtilityText $width={125}>남은시간 {remainingTime}</UtilityText>
             <UtilityButton
               variant="text"
               size="small"

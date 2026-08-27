@@ -215,3 +215,9 @@ export type {
   JusoSearchQuery,
   JusoSearchResult,
 } from "./juso";
+export {
+  decodeJwtPayload,
+  formatRemainingSessionTime,
+  getAuthSession,
+} from "./authSession";
+export type { AuthSession } from "./authSession";
