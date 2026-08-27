@@ -87,7 +87,7 @@ function getVisiblePages(
 
 function WorkHistory({
   records = DEFAULT_RECORDS,
-  totalPages = records === DEFAULT_RECORDS ? 3 : undefined,
+  totalPages = records === DEFAULT_RECORDS ? 1 : undefined,
   page,
   initialPage = 1,
   hasNextPage = false,
