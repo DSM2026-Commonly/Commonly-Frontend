@@ -100,3 +100,30 @@ export const UserListTableFrame = styled.div`
     white-space: nowrap;
   }
 `;
+
+export const UserListSearchForm = styled.form`
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+
+  > :first-of-type {
+    flex: 1;
+  }
+
+  @media (max-width: ${mobileBreakpoint}) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+export const UserListStatus = styled.p<{ $tone?: "error" | "muted" }>`
+  margin: 0;
+  padding: 24px 16px;
+  color: ${({ $tone }) =>
+    $tone === "error"
+      ? "var(--krds-light-color-text-danger, #de3412)"
+      : "var(--krds-light-color-text-subtle, #464c53)"};
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: center;
+`;

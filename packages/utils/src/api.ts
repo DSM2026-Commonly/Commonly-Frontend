@@ -34,6 +34,14 @@ export const SERVER_ERROR_MESSAGE =
  * 에러 메시지 매핑. 숫자 키는 HTTP 상태 코드, 문자열 키는 응답 본문의 `code`.
  * 응답 본문의 `code`가 먼저 매칭되고, 없으면 상태 코드로 매칭된다.
  */
+/** 유한한 양의 정수로 정규화한다. 유한하지 않으면 기본값을 사용한다. */
+export function normalizePositiveInteger(
+  value: number,
+  fallback: number,
+): number {
+  return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : fallback;
+}
+
 export type ErrorMessageMap = Partial<Record<number | string, string>>;
 
 export interface RequestOptions {
@@ -42,6 +50,19 @@ export interface RequestOptions {
   token?: string | null;
   signal?: AbortSignal;
   errorMessages?: ErrorMessageMap;
+}
+
+async function throwErrorResponse(
+  response: Response,
+  errorMessages: ErrorMessageMap,
+): Promise<never> {
+  const errorBody = await parseErrorBody(response);
+  const message =
+    (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
+    errorMessages[response.status] ??
+    SERVER_ERROR_MESSAGE;
+
+  throw new ApiError(response.status, message, errorBody);
 }
 
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
@@ -110,13 +131,7 @@ export async function request<TResponse>(
   }
 
   if (!response.ok) {
-    const errorBody = await parseErrorBody(response);
-    const message =
-      (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
-      errorMessages[response.status] ??
-      SERVER_ERROR_MESSAGE;
-
-    throw new ApiError(response.status, message, errorBody);
+    await throwErrorResponse(response, errorMessages);
   }
 
   if (response.status === 204) {
@@ -135,4 +150,39 @@ export async function request<TResponse>(
     // 본문이 JSON이 아닌 성공 응답(예: DELETE 200 "삭제완료")은 본문 없음으로 취급한다.
     return undefined;
   }
+}
+
+export interface BlobRequestOptions {
+  token?: string | null;
+  signal?: AbortSignal;
+  errorMessages?: ErrorMessageMap;
+}
+
+export async function requestBlob(
+  path: string,
+  { token, signal, errorMessages = {} }: BlobRequestOptions = {},
+): Promise<Blob> {
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, { headers, signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
+    throw new ApiError(0, NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!response.ok) {
+    await throwErrorResponse(response, errorMessages);
+  }
+
+  return response.blob();
 }

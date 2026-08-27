@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "--cwd", "apps/admin-web", "dev", "--port", "5199", "--strictPort"],
       "port": 5199,
       "autoPort": false
+    },
+    {
+      "name": "civil-web",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--cwd", "apps/civil-web", "dev", "--port", "5198", "--strictPort"],
+      "port": 5198,
+      "autoPort": false
     }
   ]
 }

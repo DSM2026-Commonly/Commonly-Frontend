@@ -22,8 +22,14 @@ export {
   SERVER_ERROR_MESSAGE,
   getApiBaseUrl,
   request,
+  requestBlob,
 } from "./api";
-export type { ApiErrorBody, ErrorMessageMap, RequestOptions } from "./api";
+export type {
+  ApiErrorBody,
+  BlobRequestOptions,
+  ErrorMessageMap,
+  RequestOptions,
+} from "./api";
 export {
   ACCOUNT_ID_FORMAT_MESSAGE,
   ACCOUNT_ID_PATTERN,
@@ -79,11 +85,6 @@ export type {
   UploadedFileRow,
 } from "./files";
 export {
-  ADMIN_USERS_BAD_REQUEST_MESSAGE,
-  ADMIN_USERS_ENDPOINT,
-  ADMIN_USERS_FORBIDDEN_MESSAGE,
-  ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
-  ADMIN_USERS_UNAUTHORIZED_MESSAGE,
   ADMIN_USER_CREATE_BAD_REQUEST_MESSAGE,
   ADMIN_USER_CREATE_CONFLICT_MESSAGE,
   ADMIN_USER_CREATE_ENDPOINT,
@@ -95,14 +96,11 @@ export {
   ADMIN_USER_INITIAL_PASSWORD,
   createAdminUser,
   deleteAdminUser,
-  fetchAdminUsers,
   getAdminUserDeleteEndpoint,
 } from "./adminUsers";
 export type {
-  AdminUser,
   AdminUserRequestOptions,
   CreateAdminUserRequest,
-  FetchAdminUsersOptions,
 } from "./adminUsers";
 export {
   REGISTRATION_SESSION_STORAGE_KEY,
@@ -131,19 +129,69 @@ export type {
   UpdateHumanRequest,
 } from "./humans";
 export {
+  CERTIFICATES_ENDPOINT,
+  CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
+  CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
+  CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_ISSUE_CONFLICT_MESSAGE,
+  CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
+  CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
   CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
   CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
   HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
   HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+  downloadCertificate,
   fetchHumanCertificates,
+  getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
+  issueCertificate,
+  saveBlobAsFile,
   updateCertificate,
 } from "./certificates";
 export type {
   CertificateRequestOptions,
   HumanCertificate,
+  IssueCertificateRequest,
+  IssuedCertificate,
   UpdateCertificateRequest,
 } from "./certificates";
+export {
+  ADMIN_USERS_DEFAULT_PAGE_SIZE,
+  ADMIN_USERS_ENDPOINT,
+  ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
+  ADMIN_USERS_UNAUTHORIZED_MESSAGE,
+  buildAdminUsersPath,
+  fetchAdminUsers,
+} from "./admins";
+export type {
+  AdminUserPage,
+  AdminUserSummary,
+  FetchAdminUsersOptions,
+  FetchAdminUsersParams,
+} from "./admins";
+export {
+  ISSUANCE_HISTORIES_DEFAULT_PAGE_SIZE,
+  ISSUANCE_HISTORIES_ENDPOINT,
+  ISSUANCE_HISTORY_FORBIDDEN_MESSAGE,
+  ISSUANCE_HISTORY_INVALID_RESPONSE_MESSAGE,
+  ISSUANCE_HISTORY_NOT_FOUND_MESSAGE,
+  ISSUANCE_HISTORY_TYPES,
+  ISSUANCE_HISTORY_TYPE_LABELS,
+  ISSUANCE_HISTORY_UNAUTHORIZED_MESSAGE,
+  buildIssuanceHistoriesPath,
+  fetchIssuanceHistories,
+  getIssuanceHistoryTypeLabel,
+  isIssuanceHistoryType,
+} from "./issuanceHistories";
+export type {
+  FetchIssuanceHistoriesParams,
+  FetchIssuanceHistoryOptions,
+  IssuanceHistory,
+  IssuanceHistoryCertificate,
+  IssuanceHistoryPage,
+  IssuanceHistoryType,
+} from "./issuanceHistories";

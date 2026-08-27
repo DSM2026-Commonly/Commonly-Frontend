@@ -1,7 +1,7 @@
 import "krds-react/dist/index.css";
 
-import { Table } from "krds-react";
-import { useId, useState } from "react";
+import { Button, Table, TextInput } from "krds-react";
+import { useId, useState, type FormEvent } from "react";
 import {
   PageEllipsis,
   PageMoveButton,
@@ -16,15 +16,33 @@ import {
   UserListCard,
   UserListContent,
   UserListRoot,
+  UserListSearchForm,
+  UserListStatus,
   UserListTableFrame,
 } from "./UserList.styles";
 import { FormSectionTitle, PageTitle } from "./userManagement.styles";
 
 export interface UserListProps {
   accounts?: readonly UserAccountRecord[];
+  /**
+   * 전체 페이지 수. 서버가 전체 개수를 주지 않는 경우 생략하고
+   * `hasNextPage` 로 다음 페이지 존재 여부만 알려줄 수 있다.
+   */
   totalPages?: number;
+  /** 현재 페이지 (제어 모드). 생략하면 내부 상태로 관리한다. */
+  page?: number;
   initialPage?: number;
+  /** `totalPages` 가 없을 때 다음 페이지가 있는지 여부 */
+  hasNextPage?: boolean;
   onPageChange?: (page: number) => void;
+  /** 이름 검색어 (제어 모드). 생략하면 내부 상태로 관리한다. */
+  keyword?: string;
+  onKeywordChange?: (keyword: string) => void;
+  /** 검색 버튼 클릭 / 엔터 시 호출. 생략하면 검색 UI를 표시하지 않는다. */
+  onSearch?: (keyword: string) => void;
+  isLoading?: boolean;
+  errorMessage?: string;
+  emptyMessage?: string;
 }
 
 const DEFAULT_ACCOUNTS: readonly UserAccountRecord[] = Array.from(
@@ -36,6 +54,8 @@ const DEFAULT_ACCOUNTS: readonly UserAccountRecord[] = Array.from(
     department: "대전광역시 유성구 가정북로 76",
   }),
 );
+
+const DEFAULT_EMPTY_MESSAGE = "조회된 사용자가 없습니다.";
 
 type VisiblePage = number | "ellipsis";
 
@@ -76,25 +96,65 @@ function getVisiblePages(
 
 function UserList({
   accounts = DEFAULT_ACCOUNTS,
-  totalPages = 22,
+  totalPages,
+  page,
   initialPage = 1,
+  hasNextPage = false,
   onPageChange,
+  keyword,
+  onKeywordChange,
+  onSearch,
+  isLoading = false,
+  errorMessage = "",
+  emptyMessage = DEFAULT_EMPTY_MESSAGE,
 }: UserListProps) {
   const titleId = useId();
   const cardTitleId = useId();
-  const normalizedTotalPages = Math.max(1, Math.floor(totalPages));
-  const normalizedInitialPage = Math.max(
-    1,
-    Math.min(normalizedTotalPages, Math.floor(initialPage)),
+  const keywordInputId = useId();
+  const [internalPage, setInternalPage] = useState(
+    Math.max(1, Math.floor(initialPage)),
   );
-  const [currentPage, setCurrentPage] = useState(normalizedInitialPage);
+  const [internalKeyword, setInternalKeyword] = useState("");
+  const currentPage =
+    page === undefined ? internalPage : Math.max(1, Math.floor(page));
+  const currentKeyword = keyword === undefined ? internalKeyword : keyword;
+
+  // totalPages 를 모르는 경우 현재 페이지(+다음 페이지 존재 시 1)까지만 노출한다.
+  const normalizedTotalPages =
+    totalPages === undefined
+      ? currentPage + (hasNextPage ? 1 : 0)
+      : Math.max(1, Math.floor(totalPages));
   const visiblePages = getVisiblePages(currentPage, normalizedTotalPages);
+  const isLastPage =
+    totalPages === undefined ? !hasNextPage : currentPage >= normalizedTotalPages;
+  const hasSearch = onSearch !== undefined;
+  const showTable = !isLoading && !errorMessage && accounts.length > 0;
 
-  const changePage = (page: number) => {
-    const nextPage = Math.max(1, Math.min(normalizedTotalPages, page));
+  const changePage = (nextPage: number) => {
+    const clampedPage = Math.max(1, Math.min(normalizedTotalPages, nextPage));
 
-    setCurrentPage(nextPage);
-    onPageChange?.(nextPage);
+    if (clampedPage === currentPage) {
+      return;
+    }
+
+    if (page === undefined) {
+      setInternalPage(clampedPage);
+    }
+
+    onPageChange?.(clampedPage);
+  };
+
+  const changeKeyword = (nextKeyword: string) => {
+    if (keyword === undefined) {
+      setInternalKeyword(nextKeyword);
+    }
+
+    onKeywordChange?.(nextKeyword);
+  };
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSearch?.(currentKeyword.trim());
   };
 
   return (
@@ -104,6 +164,27 @@ function UserList({
       <UserListContent>
         <UserListCard aria-labelledby={cardTitleId}>
           <FormSectionTitle id={cardTitleId}>사용자 목록 조회</FormSectionTitle>
+
+          {hasSearch && (
+            <UserListSearchForm noValidate onSubmit={handleSearch}>
+              <TextInput
+                id={keywordInputId}
+                name="keyword"
+                label="이름"
+                placeholder="이름을 입력해주세요"
+                value={currentKeyword}
+                onChange={changeKeyword}
+              />
+              <Button
+                variant="secondary"
+                size="large"
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading ? "조회 중..." : "검색"}
+              </Button>
+            </UserListSearchForm>
+          )}
 
           <UserListTableFrame>
             <Table>
@@ -123,13 +204,29 @@ function UserList({
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {accounts.map((account) => (
-                  <Table.Tr key={account.id}>
-                    <Table.Td>{account.name}</Table.Td>
-                    <Table.Td>{account.accountId}</Table.Td>
-                    <Table.Td>{account.department}</Table.Td>
+                {showTable ? (
+                  accounts.map((account) => (
+                    <Table.Tr key={account.id}>
+                      <Table.Td>{account.name}</Table.Td>
+                      <Table.Td>{account.accountId}</Table.Td>
+                      <Table.Td>{account.department}</Table.Td>
+                    </Table.Tr>
+                  ))
+                ) : (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}>
+                      <UserListStatus
+                        $tone={errorMessage ? "error" : "muted"}
+                        role={errorMessage ? "alert" : "status"}
+                        aria-live="polite"
+                      >
+                        {isLoading
+                          ? "사용자 목록을 불러오는 중입니다."
+                          : errorMessage || emptyMessage}
+                      </UserListStatus>
+                    </Table.Td>
                   </Table.Tr>
-                ))}
+                )}
               </Table.Tbody>
             </Table>
           </UserListTableFrame>
@@ -139,7 +236,7 @@ function UserList({
               <PageMoveButton
                 $direction="prev"
                 aria-label="이전 페이지"
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isLoading}
                 type="button"
                 onClick={() => changePage(currentPage - 1)}
               >
@@ -147,21 +244,24 @@ function UserList({
                 이전
               </PageMoveButton>
               <PageNumberList>
-                {visiblePages.map((page, index) =>
-                  page === "ellipsis" ? (
+                {visiblePages.map((visiblePage, index) =>
+                  visiblePage === "ellipsis" ? (
                     <PageEllipsis aria-hidden="true" key={`ellipsis-${index}`}>
                       ···
                     </PageEllipsis>
                   ) : (
                     <PageNumberButton
-                      $active={page === currentPage}
-                      aria-current={page === currentPage ? "page" : undefined}
-                      aria-label={`${page}페이지`}
-                      key={page}
+                      $active={visiblePage === currentPage}
+                      aria-current={
+                        visiblePage === currentPage ? "page" : undefined
+                      }
+                      aria-label={`${visiblePage}페이지`}
+                      disabled={isLoading}
+                      key={visiblePage}
                       type="button"
-                      onClick={() => changePage(page)}
+                      onClick={() => changePage(visiblePage)}
                     >
-                      {page}
+                      {visiblePage}
                     </PageNumberButton>
                   ),
                 )}
@@ -169,7 +269,7 @@ function UserList({
               <PageMoveButton
                 $direction="next"
                 aria-label="다음 페이지"
-                disabled={currentPage === normalizedTotalPages}
+                disabled={isLastPage || isLoading}
                 type="button"
                 onClick={() => changePage(currentPage + 1)}
               >

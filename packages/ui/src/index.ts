@@ -12,6 +12,8 @@ export type {
   CareerCertificateIssueProps,
   CareerCertificateIssueVariant,
   CareerCertificateIssueView,
+  CertificateApplicant,
+  CertificateCareerRow,
   CertificateIssueType,
 } from "./career-certificate/CareerCertificateIssue";
 export { default as CareerEdit } from "./career-edit/CareerEdit";

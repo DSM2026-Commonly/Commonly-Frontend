@@ -72,6 +72,7 @@ describe("searchHumans", () => {
       content: [
         hongHuman,
         { ...hongHuman, humanId: "2" },
+        { ...hongHuman, name: null },
         { ...hongHuman, address: 5 },
         null,
       ],
@@ -80,13 +81,21 @@ describe("searchHumans", () => {
     expect(await searchHumans({ name: "홍" })).toEqual([hongHuman]);
   });
 
-  test("normalizes a null or omitted address to an empty string", async () => {
+  test("normalizes null or omitted optional fields to empty strings", async () => {
     mockFetch(200, {
-      content: [{ ...hongHuman, humanId: 2, address: null }],
+      content: [
+        { humanId: 2, name: "홍길동", birthDate: "1990-01-01", gender: null },
+      ],
     });
 
     expect(await searchHumans({ name: "홍" })).toEqual([
-      { ...hongHuman, humanId: 2, address: "" },
+      {
+        humanId: 2,
+        name: "홍길동",
+        gender: "",
+        birthDate: "1990-01-01",
+        address: "",
+      },
     ]);
   });
 

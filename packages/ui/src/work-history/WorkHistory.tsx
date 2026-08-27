@@ -12,6 +12,7 @@ import {
   PaginationFrame,
   PaginationNav,
   TableFrame,
+  TableStatus,
   WorkHistoryRoot,
 } from "./WorkHistory.styles";
 
@@ -25,9 +26,20 @@ export interface WorkHistoryRecord {
 
 export interface WorkHistoryProps {
   records?: readonly WorkHistoryRecord[];
+  /**
+   * 전체 페이지 수. 서버가 전체 개수를 주지 않는 경우 생략하고
+   * `hasNextPage` 로 다음 페이지 존재 여부만 알려줄 수 있다.
+   */
   totalPages?: number;
+  /** 현재 페이지 (제어 모드). 생략하면 내부 상태로 관리한다. */
+  page?: number;
   initialPage?: number;
+  /** `totalPages` 가 없을 때 다음 페이지가 있는지 여부 */
+  hasNextPage?: boolean;
   onPageChange?: (page: number) => void;
+  isLoading?: boolean;
+  errorMessage?: string;
+  emptyMessage?: string;
 }
 
 const DEFAULT_RECORDS: readonly WorkHistoryRecord[] = Array.from(
@@ -45,6 +57,8 @@ const DEFAULT_RECORDS: readonly WorkHistoryRecord[] = Array.from(
     operator: "전재준",
   }),
 );
+
+const DEFAULT_EMPTY_MESSAGE = "조회된 이력이 없습니다.";
 
 type VisiblePage = number | "ellipsis";
 
@@ -86,19 +100,43 @@ function getVisiblePages(
 
 function WorkHistory({
   records = DEFAULT_RECORDS,
-  totalPages = 3,
+  totalPages = records === DEFAULT_RECORDS ? 3 : undefined,
+  page,
   initialPage = 1,
+  hasNextPage = false,
   onPageChange,
+  isLoading = false,
+  errorMessage = "",
+  emptyMessage = DEFAULT_EMPTY_MESSAGE,
 }: WorkHistoryProps) {
   const titleId = useId();
-  const [currentPage, setCurrentPage] = useState(initialPage);
-  const visiblePages = getVisiblePages(currentPage, totalPages);
+  const [internalPage, setInternalPage] = useState(
+    Math.max(1, Math.floor(initialPage)),
+  );
+  const currentPage =
+    page === undefined ? internalPage : Math.max(1, Math.floor(page));
+  // totalPages 를 모르는 경우 현재 페이지(+다음 페이지 존재 시 1)까지만 노출한다.
+  const normalizedTotalPages =
+    totalPages === undefined
+      ? currentPage + (hasNextPage ? 1 : 0)
+      : Math.max(1, Math.floor(totalPages));
+  const visiblePages = getVisiblePages(currentPage, normalizedTotalPages);
+  const isLastPage =
+    totalPages === undefined ? !hasNextPage : currentPage >= normalizedTotalPages;
+  const showTable = !isLoading && !errorMessage && records.length > 0;
 
-  const changePage = (page: number) => {
-    const nextPage = Math.max(1, Math.min(totalPages, page));
+  const changePage = (nextPage: number) => {
+    const clampedPage = Math.max(1, Math.min(normalizedTotalPages, nextPage));
 
-    setCurrentPage(nextPage);
-    onPageChange?.(nextPage);
+    if (clampedPage === currentPage) {
+      return;
+    }
+
+    if (page === undefined) {
+      setInternalPage(clampedPage);
+    }
+
+    onPageChange?.(clampedPage);
   };
 
   return (
@@ -127,15 +165,31 @@ function WorkHistory({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {records.map((record) => (
-              <Table.Tr key={record.id}>
-                <Table.Td>{record.id}</Table.Td>
-                <Table.Td>{record.category}</Table.Td>
-                <Table.Td>{record.occurredAt}</Table.Td>
-                <Table.Td>{record.details}</Table.Td>
-                <Table.Td>{record.operator}</Table.Td>
+            {showTable ? (
+              records.map((record) => (
+                <Table.Tr key={record.id}>
+                  <Table.Td>{record.id}</Table.Td>
+                  <Table.Td>{record.category}</Table.Td>
+                  <Table.Td>{record.occurredAt}</Table.Td>
+                  <Table.Td>{record.details}</Table.Td>
+                  <Table.Td>{record.operator}</Table.Td>
+                </Table.Tr>
+              ))
+            ) : (
+              <Table.Tr>
+                <Table.Td colSpan={5}>
+                  <TableStatus
+                    $tone={errorMessage ? "error" : "muted"}
+                    role={errorMessage ? "alert" : "status"}
+                    aria-live="polite"
+                  >
+                    {isLoading
+                      ? "이력을 불러오는 중입니다."
+                      : errorMessage || emptyMessage}
+                  </TableStatus>
+                </Table.Td>
               </Table.Tr>
-            ))}
+            )}
           </Table.Tbody>
         </Table>
       </TableFrame>
@@ -145,7 +199,7 @@ function WorkHistory({
           <PageMoveButton
             $direction="prev"
             aria-label="이전 페이지"
-            disabled={currentPage === 1}
+            disabled={currentPage === 1 || isLoading}
             type="button"
             onClick={() => changePage(currentPage - 1)}
           >
@@ -153,21 +207,22 @@ function WorkHistory({
             이전
           </PageMoveButton>
           <PageNumberList>
-            {visiblePages.map((page, index) =>
-              page === "ellipsis" ? (
+            {visiblePages.map((visiblePage, index) =>
+              visiblePage === "ellipsis" ? (
                 <PageEllipsis aria-hidden="true" key={`ellipsis-${index}`}>
                   ···
                 </PageEllipsis>
               ) : (
                 <PageNumberButton
-                  $active={page === currentPage}
-                  aria-current={page === currentPage ? "page" : undefined}
-                  aria-label={`${page}페이지`}
-                  key={page}
+                  $active={visiblePage === currentPage}
+                  aria-current={visiblePage === currentPage ? "page" : undefined}
+                  aria-label={`${visiblePage}페이지`}
+                  disabled={isLoading}
+                  key={visiblePage}
                   type="button"
-                  onClick={() => changePage(page)}
+                  onClick={() => changePage(visiblePage)}
                 >
-                  {page}
+                  {visiblePage}
                 </PageNumberButton>
               ),
             )}
@@ -175,7 +230,7 @@ function WorkHistory({
           <PageMoveButton
             $direction="next"
             aria-label="다음 페이지"
-            disabled={currentPage === totalPages}
+            disabled={isLastPage || isLoading}
             type="button"
             onClick={() => changePage(currentPage + 1)}
           >

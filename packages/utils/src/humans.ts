@@ -66,24 +66,30 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
     unknown
   >;
 
+  // gender/address는 비어 있을 수 있으므로 humanId·name·birthDate만 필수로 검증한다.
   if (
     typeof humanId !== "number" ||
     !Number.isFinite(humanId) ||
     typeof name !== "string" ||
-    typeof gender !== "string" ||
     typeof birthDate !== "string"
   ) {
     return null;
   }
 
-  // 주소는 명세상 nullable(UpdateHumanRequest.address 참조)이라 빈 문자열로 정규화한다.
+  const normalizedGender = normalizeOptionalString(gender);
   const normalizedAddress = normalizeOptionalString(address);
 
-  if (normalizedAddress === null) {
+  if (normalizedGender === null || normalizedAddress === null) {
     return null;
   }
 
-  return { humanId, name, gender, birthDate, address: normalizedAddress };
+  return {
+    humanId,
+    name,
+    gender: normalizedGender,
+    birthDate,
+    address: normalizedAddress,
+  };
 }
 
 export async function searchHumans(
