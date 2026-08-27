@@ -214,7 +214,20 @@ function DetailsStep({
             onPurposeChange={onPurposeChange}
           />
         </FormCard>
-      ) : null}
+      ) : (
+        // 민원인 전체 발급: 용도는 필수 입력이므로 여기서도 입력란을 보여준다.
+        <FormCard>
+          <CardTitle>용도</CardTitle>
+          <CertificateExtraFields
+            idPrefix="certificate-all"
+            showAdditionalNote={false}
+            additionalNote={additionalNote}
+            purpose={purpose}
+            onAdditionalNoteChange={onAdditionalNoteChange}
+            onPurposeChange={onPurposeChange}
+          />
+        </FormCard>
+      )}
     </CardStack>
   );
 }
