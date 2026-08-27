@@ -29,18 +29,21 @@ const credentials = {
 };
 
 describe("signup", () => {
-  test("200 returns trimmed tokens", async () => {
-    mockFetch(200, { accessToken: " a ", refreshToken: "r\n" });
-    expect(await signup(credentials)).toEqual({
-      accessToken: "a",
-      refreshToken: "r",
-    });
+  test("200 returns the trimmed access token", async () => {
+    mockFetch(200, { accessToken: " a " });
+    expect(await signup(credentials)).toEqual({ accessToken: "a" });
   });
 
-  test("200 with empty or missing tokens throws invalid response", async () => {
+  test("200 ignores a legacy refreshToken field", async () => {
+    mockFetch(200, { accessToken: "a", refreshToken: "r" });
+    expect(await signup(credentials)).toEqual({ accessToken: "a" });
+  });
+
+  test("200 with an empty or missing access token throws invalid response", async () => {
     for (const body of [
-      { accessToken: "", refreshToken: "r" },
-      { accessToken: "a" },
+      { accessToken: "" },
+      { accessToken: "   " },
+      { accessToken: 123 },
       {},
     ]) {
       mockFetch(200, body);

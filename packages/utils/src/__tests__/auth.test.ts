@@ -3,7 +3,7 @@ import {
   AUTH_TOKEN_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
   clearAuthToken,
-  setAuthTokens,
+  setAuthToken,
   type AuthStorage,
 } from "../auth";
 
@@ -29,53 +29,49 @@ function createStorage(
   return { storage, data };
 }
 
-const tokens = { accessToken: "access", refreshToken: "refresh" };
-
-describe("setAuthTokens", () => {
-  test("stores both tokens and returns true", () => {
+describe("setAuthToken", () => {
+  test("stores the trimmed access token and returns true", () => {
     const { storage, data } = createStorage();
 
-    expect(setAuthTokens(tokens, storage)).toBe(true);
+    expect(setAuthToken("  access  ", storage)).toBe(true);
     expect(data.get(AUTH_TOKEN_STORAGE_KEY)).toBe("access");
-    expect(data.get(REFRESH_TOKEN_STORAGE_KEY)).toBe("refresh");
   });
 
-  test("returns false and removes access token when refresh token storage fails", () => {
-    const { storage, data } = createStorage({
-      failSetKeys: [REFRESH_TOKEN_STORAGE_KEY],
-    });
-
-    expect(setAuthTokens(tokens, storage)).toBe(false);
-    expect(data.has(AUTH_TOKEN_STORAGE_KEY)).toBe(false);
-    expect(data.has(REFRESH_TOKEN_STORAGE_KEY)).toBe(false);
-  });
-
-  test("returns false when access token storage fails", () => {
+  test("returns false when storage fails", () => {
     const { storage, data } = createStorage({
       failSetKeys: [AUTH_TOKEN_STORAGE_KEY],
     });
 
-    expect(setAuthTokens(tokens, storage)).toBe(false);
-    expect(data.has(REFRESH_TOKEN_STORAGE_KEY)).toBe(false);
+    expect(setAuthToken("access", storage)).toBe(false);
+    expect(data.has(AUTH_TOKEN_STORAGE_KEY)).toBe(false);
+  });
+
+  test("removes the stored token and returns false for a blank token", () => {
+    const { storage, data } = createStorage();
+    setAuthToken("access", storage);
+
+    expect(setAuthToken("   ", storage)).toBe(false);
+    expect(data.has(AUTH_TOKEN_STORAGE_KEY)).toBe(false);
   });
 });
 
 describe("clearAuthToken", () => {
-  test("removes both tokens and returns true", () => {
+  test("removes the access token and any legacy refresh token", () => {
     const { storage, data } = createStorage();
-    setAuthTokens(tokens, storage);
+    setAuthToken("access", storage);
+    data.set(REFRESH_TOKEN_STORAGE_KEY, "legacy-refresh");
 
     expect(clearAuthToken(storage)).toBe(true);
     expect(data.size).toBe(0);
   });
 
-  test("returns false when refresh token removal fails", () => {
+  test("legacy refresh cleanup is best-effort and does not fail the logout", () => {
     const { storage, data } = createStorage({
       failRemoveKeys: [REFRESH_TOKEN_STORAGE_KEY],
     });
-    setAuthTokens(tokens, storage);
+    setAuthToken("access", storage);
 
-    expect(clearAuthToken(storage)).toBe(false);
+    expect(clearAuthToken(storage)).toBe(true);
     expect(data.has(AUTH_TOKEN_STORAGE_KEY)).toBe(false);
   });
 
@@ -83,7 +79,7 @@ describe("clearAuthToken", () => {
     const { storage } = createStorage({
       failRemoveKeys: [AUTH_TOKEN_STORAGE_KEY],
     });
-    setAuthTokens(tokens, storage);
+    setAuthToken("access", storage);
 
     expect(clearAuthToken(storage)).toBe(false);
   });

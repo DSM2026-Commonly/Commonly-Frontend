@@ -5,16 +5,13 @@ export {
   clearAuthToken,
   clearRememberedLoginId,
   getAuthToken,
-  getRefreshToken,
   getRememberedLoginId,
   getSafeRedirectPath,
   hasAuthToken,
   setAuthToken,
-  setAuthTokens,
-  setRefreshToken,
   setRememberedLoginId,
 } from "./auth";
-export type { AuthStorage, AuthTokens } from "./auth";
+export type { AuthStorage } from "./auth";
 export {
   ApiError,
   NETWORK_ERROR_MESSAGE,

@@ -1,5 +1,4 @@
 import { ApiError, request } from "./api";
-import type { AuthTokens } from "./auth";
 
 export const LOGIN_ENDPOINT = "/api/auths/login";
 
@@ -19,7 +18,10 @@ export interface LoginRequest {
   password: string;
 }
 
-export type LoginResponse = AuthTokens;
+// 백엔드는 refreshToken 없이 accessToken(JWT, 1시간) 만 발급한다.
+export interface LoginResponse {
+  accessToken: string;
+}
 
 export function isValidAccountId(accountId: string): boolean {
   return ACCOUNT_ID_PATTERN.test(accountId);
@@ -44,13 +46,12 @@ export async function login(
   });
 
   const accessToken = normalizeToken(response?.accessToken);
-  const refreshToken = normalizeToken(response?.refreshToken);
 
-  if (!accessToken || !refreshToken) {
+  if (!accessToken) {
     throw new ApiError(200, "로그인 응답이 올바르지 않습니다.");
   }
 
-  return { accessToken, refreshToken };
+  return { accessToken };
 }
 
 export function normalizeToken(value: unknown): string | null {

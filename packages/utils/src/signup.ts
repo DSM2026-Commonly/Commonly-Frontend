@@ -1,5 +1,4 @@
 import { ApiError, request } from "./api";
-import type { AuthTokens } from "./auth";
 import { normalizeToken } from "./login";
 
 export const SIGNUP_ENDPOINT = "/api/auths/signup";
@@ -22,7 +21,10 @@ export interface SignupRequest {
   birthDate: string;
 }
 
-export type SignupResponse = AuthTokens;
+// 로그인과 동일하게 accessToken 만 발급된다. refreshToken 이 와도 무시한다.
+export interface SignupResponse {
+  accessToken: string;
+}
 
 export async function signup(
   credentials: SignupRequest,
@@ -39,11 +41,10 @@ export async function signup(
   });
 
   const accessToken = normalizeToken(response?.accessToken);
-  const refreshToken = normalizeToken(response?.refreshToken);
 
-  if (!accessToken || !refreshToken) {
+  if (!accessToken) {
     throw new ApiError(200, SIGNUP_INVALID_RESPONSE_MESSAGE);
   }
 
-  return { accessToken, refreshToken };
+  return { accessToken };
 }

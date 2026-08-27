@@ -19,22 +19,26 @@ function mockFetch(status: number, body?: unknown) {
 const credentials = { accountId: "user01", password: "password123" };
 
 describe("login", () => {
-  test("200 returns tokens", async () => {
+  test("200 returns the access token", async () => {
+    mockFetch(200, { accessToken: "a" });
+    expect(await login(credentials)).toEqual({ accessToken: "a" });
+  });
+
+  test("200 trims the access token", async () => {
+    mockFetch(200, { accessToken: "  a  " });
+    expect(await login(credentials)).toEqual({ accessToken: "a" });
+  });
+
+  test("200 ignores a legacy refreshToken field", async () => {
     mockFetch(200, { accessToken: "a", refreshToken: "r" });
-    expect(await login(credentials)).toEqual({ accessToken: "a", refreshToken: "r" });
+    expect(await login(credentials)).toEqual({ accessToken: "a" });
   });
 
-  test("200 trims tokens", async () => {
-    mockFetch(200, { accessToken: "  a  ", refreshToken: "\tr\n" });
-    expect(await login(credentials)).toEqual({ accessToken: "a", refreshToken: "r" });
-  });
-
-  test("200 with empty or missing tokens throws invalid response", async () => {
+  test("200 with an empty or missing access token throws invalid response", async () => {
     for (const body of [
-      { accessToken: "", refreshToken: "r" },
-      { accessToken: "a", refreshToken: "   " },
-      { accessToken: 123, refreshToken: "r" },
-      { accessToken: "a" },
+      { accessToken: "" },
+      { accessToken: "   " },
+      { accessToken: 123 },
       {},
     ]) {
       mockFetch(200, body);
