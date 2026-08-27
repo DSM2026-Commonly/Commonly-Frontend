@@ -14,6 +14,7 @@ import {
   FieldGrid,
   FieldLabel,
   FieldRow,
+  FormError,
   FormFlow,
   FormMainContent,
   PageHeader,
@@ -34,6 +35,8 @@ export interface IntegratedRegistrationConfirmStep {
 export interface IntegratedRegistrationConfirmField {
   id: string;
   label: string;
+  /** 매핑이 반드시 필요한 필드인지. 생략하면 선택 필드로 취급한다. */
+  required?: boolean;
 }
 
 export interface IntegratedRegistrationConfirmMapping {
@@ -49,10 +52,19 @@ export interface IntegratedRegistrationConfirmProps {
   stepTitle?: string;
   fields?: readonly IntegratedRegistrationConfirmField[];
   rowOptions?: readonly string[];
+  /** `fieldId -> rowOption` 형태의 초기 선택값 (예: 열 이름 자동 매칭 결과) */
+  initialSelections?: Readonly<Record<string, string>>;
+  /** 제출 중이면 버튼을 잠근다. */
+  isSubmitting?: boolean;
+  submittingLabel?: string;
+  /** 제출 실패 등 사용자에게 보여줄 오류 메시지 */
+  errorMessage?: string;
   previousLabel?: string;
   nextLabel?: string;
   onPrevious?: () => void;
-  onNext?: (mappings: IntegratedRegistrationConfirmMapping[]) => void;
+  onNext?: (
+    mappings: IntegratedRegistrationConfirmMapping[],
+  ) => void | Promise<void>;
 }
 
 const defaultSteps = [
@@ -61,17 +73,21 @@ const defaultSteps = [
   { id: "confirm", title: "데이터 확인" },
 ] as const satisfies readonly IntegratedRegistrationConfirmStep[];
 
+// 성명·생년월일·채용일은 경력 데이터 식별에 필요한 최소 필드라 매핑을 강제하고,
+// 나머지는 파일에 해당 열이 없어도 등록할 수 있도록 선택 필드로 둔다.
 const defaultFields = [
-  { id: "name", label: "이름" },
+  { id: "name", label: "성명", required: true },
+  { id: "birthDate", label: "생년\n월일", required: true },
   { id: "gender", label: "성별" },
-  { id: "birthDate", label: "생년\n월일" },
-  { id: "address", label: "주소" },
-  { id: "jobType", label: "직종" },
-  { id: "task", label: "담당\n업무" },
-  { id: "department", label: "부서" },
-  { id: "retirementReason", label: "퇴직\n사유" },
-  { id: "workStartDate", label: "근무\n시작" },
-  { id: "workEndDate", label: "근무\n종료" },
+  { id: "jobTitle", label: "직종명" },
+  { id: "keyResponsibilities", label: "담당\n업무" },
+  { id: "hireDate", label: "채용일", required: true },
+  { id: "expirationDate", label: "만료\n예정일" },
+  { id: "retirementDate", label: "퇴직일" },
+  { id: "division", label: "구분" },
+  { id: "reason", label: "사유" },
+  { id: "employmentType", label: "근무\n형태" },
+  { id: "note", label: "비고" },
 ] as const satisfies readonly IntegratedRegistrationConfirmField[];
 
 const defaultRowOptions = [
@@ -96,13 +112,19 @@ function IntegratedRegistrationConfirm({
   stepTitle = "데이터 확인",
   fields = defaultFields,
   rowOptions = defaultRowOptions,
+  initialSelections,
+  isSubmitting = false,
+  submittingLabel = "등록 중...",
+  errorMessage,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
   onPrevious,
   onNext,
 }: IntegratedRegistrationConfirmProps) {
   const titleId = useId();
-  const [selectedRows, setSelectedRows] = useState<Record<string, string>>({});
+  const [selectedRows, setSelectedRows] = useState<Record<string, string>>(
+    () => ({ ...initialSelections }),
+  );
 
   const selectOptions = useMemo(
     () =>
@@ -120,7 +142,10 @@ function IntegratedRegistrationConfirm({
 
   const canProceed =
     fields.length > 0 &&
-    fields.every((field) => Boolean(selectedRows[field.id])) &&
+    fields.every(
+      (field) => !field.required || Boolean(selectedRows[field.id]),
+    ) &&
+    !isSubmitting &&
     Boolean(onNext);
 
   const getAvailableOptions = (fieldId: string) => {
@@ -157,11 +182,14 @@ function IntegratedRegistrationConfirm({
       return;
     }
 
-    onNext?.(
-      fields.map((field) => ({
-        fieldId: field.id,
-        selectedRow: selectedRows[field.id] ?? "",
-      })),
+    // 매핑하지 않은 선택 필드는 요청에서 제외한다.
+    void onNext?.(
+      fields
+        .filter((field) => Boolean(selectedRows[field.id]))
+        .map((field) => ({
+          fieldId: field.id,
+          selectedRow: selectedRows[field.id] ?? "",
+        })),
     );
   };
 
@@ -198,6 +226,11 @@ function IntegratedRegistrationConfirm({
                 <FieldRow key={field.id}>
                   <FieldLabel htmlFor={`${titleId}-${field.id}`}>
                     {field.label}
+                    {field.required && (
+                      <span aria-hidden="true" title="필수 매핑 항목">
+                        {" *"}
+                      </span>
+                    )}
                   </FieldLabel>
                   <StyledSelect>
                     <Select
@@ -206,21 +239,24 @@ function IntegratedRegistrationConfirm({
                       options={getAvailableOptions(field.id)}
                       value={selectedRows[field.id] ?? ""}
                       onChange={(value) => handleSelect(field.id, value)}
-                      aria-label={`${field.label.replace("\n", " ")} 행 선택`}
+                      aria-label={`${field.label.replace("\n", " ")} 행 선택${field.required ? " (필수)" : ""}`}
+                      aria-required={field.required ?? false}
                     />
                   </StyledSelect>
                 </FieldRow>
               ))}
             </FieldGrid>
           </ConfirmCard>
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>
 
         <ActionBar>
           <ButtonGroup>
             <Button
-              variant="secondary"
+              variant="tertiary"
               size="xlarge"
               type="button"
+              disabled={isSubmitting}
               onClick={onPrevious}
             >
               {previousLabel}
@@ -234,7 +270,7 @@ function IntegratedRegistrationConfirm({
               disabled={!canProceed}
               onClick={handleNext}
             >
-              {nextLabel}
+              {isSubmitting ? submittingLabel : nextLabel}
             </Button>
           </ButtonGroup>
         </ActionBar>

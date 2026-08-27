@@ -26,10 +26,10 @@ export interface UserAccountRecord {
 }
 
 export interface UserDeletionProps {
-  initialAccountId?: string;
+  initialName?: string;
   onSearch?: (
-    accountId: string,
-  ) => UserAccountRecord | null | Promise<UserAccountRecord | null>;
+    name: string,
+  ) => readonly UserAccountRecord[] | Promise<readonly UserAccountRecord[]>;
   onPrevious?: () => void;
   onDelete: (account: UserAccountRecord) => void | Promise<void>;
 }
@@ -42,17 +42,17 @@ const defaultAccount: UserAccountRecord = {
 };
 
 function UserDeletion({
-  initialAccountId = "",
+  initialName = "",
   onSearch,
   onPrevious,
   onDelete,
 }: UserDeletionProps) {
   const titleId = useId();
-  const accountIdInputId = useId();
-  const [accountId, setAccountId] = useState(initialAccountId);
-  const [searchResult, setSearchResult] = useState<UserAccountRecord | null>(
-    null,
-  );
+  const nameInputId = useId();
+  const [name, setName] = useState(initialName);
+  const [searchResults, setSearchResults] = useState<
+    readonly UserAccountRecord[]
+  >([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [searchError, setSearchError] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
@@ -60,8 +60,11 @@ function UserDeletion({
   const [deletionError, setDeletionError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const selectedAccount =
+    searchResults.find((account) => account.id === selectedAccountId) ?? null;
+
   const resetSearchResult = () => {
-    setSearchResult(null);
+    setSearchResults([]);
     setSelectedAccountId("");
     setHasSearched(false);
     setSearchError("");
@@ -71,11 +74,11 @@ function UserDeletion({
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const normalizedAccountId = accountId.trim();
+    const normalizedName = name.trim();
 
-    if (!normalizedAccountId) {
-      setSearchError("조회할 아이디를 입력해 주세요.");
-      setSearchResult(null);
+    if (!normalizedName) {
+      setSearchError("조회할 이름을 입력해주세요.");
+      setSearchResults([]);
       setSelectedAccountId("");
       setHasSearched(false);
       return;
@@ -86,17 +89,17 @@ function UserDeletion({
     setDeletionError("");
 
     try {
-      const result = onSearch
-        ? await onSearch(normalizedAccountId)
-        : { ...defaultAccount, accountId: normalizedAccountId };
+      const results = onSearch
+        ? await onSearch(normalizedName)
+        : [{ ...defaultAccount, name: normalizedName }];
 
-      setSearchResult(result);
-      setSelectedAccountId(result?.id ?? "");
+      setSearchResults(results);
+      setSelectedAccountId(results.length === 1 ? results[0].id : "");
       setHasSearched(true);
     } catch (error) {
-      setSearchResult(null);
+      setSearchResults([]);
       setSelectedAccountId("");
-      setHasSearched(true);
+      setHasSearched(false);
       setSearchError(
         error instanceof Error
           ? error.message
@@ -108,7 +111,15 @@ function UserDeletion({
   };
 
   const handleDelete = async () => {
-    if (!searchResult || selectedAccountId !== searchResult.id) {
+    if (!selectedAccount) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `${selectedAccount.name}(${selectedAccount.accountId}) 사용자를 삭제하시겠습니까?`,
+      )
+    ) {
       return;
     }
 
@@ -116,7 +127,7 @@ function UserDeletion({
     setDeletionError("");
 
     try {
-      await onDelete(searchResult);
+      await onDelete(selectedAccount);
     } catch (error) {
       setDeletionError(
         error instanceof Error
@@ -136,15 +147,15 @@ function UserDeletion({
         <FormSectionTitle>사용자 삭제</FormSectionTitle>
         <FieldStack>
           <TextInput
-            id={accountIdInputId}
-            name="accountId"
-            label="아이디"
-            placeholder="아이디를 입력해주세요"
-            value={accountId}
+            id={nameInputId}
+            name="name"
+            label="이름"
+            placeholder="이름을 입력해주세요"
+            value={name}
             error={searchError || undefined}
-            autoComplete="username"
+            autoComplete="off"
             onChange={(value) => {
-              setAccountId(value);
+              setName(value);
               resetSearchResult();
             }}
           />
@@ -167,7 +178,7 @@ function UserDeletion({
             사용자 선택
           </FormSectionTitle>
 
-          {searchResult ? (
+          {searchResults.length > 0 ? (
             <TableFrame>
               <Table>
                 <Table.Caption className="sr-only">
@@ -188,30 +199,32 @@ function UserDeletion({
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Radio
-                        id={`delete-account-${searchResult.id}`}
-                        name="delete-account"
-                        value={searchResult.id}
-                        checked={selectedAccountId === searchResult.id}
-                        onChange={() => setSelectedAccountId(searchResult.id)}
-                      >
-                        <span className="sr-only">
-                          {searchResult.name} 선택
-                        </span>
-                      </Radio>
-                    </Table.Td>
-                    <Table.Td>{searchResult.name}</Table.Td>
-                    <Table.Td>{searchResult.accountId}</Table.Td>
-                    <Table.Td>{searchResult.department}</Table.Td>
-                  </Table.Tr>
+                  {searchResults.map((account) => (
+                    <Table.Tr key={account.id}>
+                      <Table.Td>
+                        <Radio
+                          id={`delete-account-${account.id}`}
+                          name="delete-account"
+                          value={account.id}
+                          checked={selectedAccountId === account.id}
+                          onChange={() => setSelectedAccountId(account.id)}
+                        >
+                          <span className="sr-only">
+                            {account.name}({account.accountId}) 선택
+                          </span>
+                        </Radio>
+                      </Table.Td>
+                      <Table.Td>{account.name}</Table.Td>
+                      <Table.Td>{account.accountId}</Table.Td>
+                      <Table.Td>{account.department}</Table.Td>
+                    </Table.Tr>
+                  ))}
                 </Table.Tbody>
               </Table>
             </TableFrame>
           ) : (
             <SearchStatus role="status">
-              입력한 아이디와 일치하는 사용자가 없습니다.
+              입력한 이름과 일치하는 사용자가 없습니다.
             </SearchStatus>
           )}
         </ResultCard>
@@ -234,11 +247,7 @@ function UserDeletion({
           variant="primary"
           size="xlarge"
           type="button"
-          disabled={
-            !searchResult ||
-            selectedAccountId !== searchResult.id ||
-            isDeleting
-          }
+          disabled={!selectedAccount || isDeleting}
           onClick={() => void handleDelete()}
         >
           {isDeleting ? "삭제 중..." : "삭제하기"}

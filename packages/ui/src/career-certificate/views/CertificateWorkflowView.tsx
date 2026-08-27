@@ -20,6 +20,7 @@ import {
 interface CertificateWorkflowViewProps {
   currentStep: number;
   canContinue: boolean;
+  nextPending?: boolean;
   children: ReactNode;
   onPrevious: () => void;
   onNext: () => void;
@@ -28,6 +29,7 @@ interface CertificateWorkflowViewProps {
 function CertificateWorkflowView({
   currentStep,
   canContinue,
+  nextPending = false,
   children,
   onPrevious,
   onNext,
@@ -55,14 +57,18 @@ function CertificateWorkflowView({
         <StageContent>{children}</StageContent>
         <ActionRow>
           <Button variant="tertiary" size="xlarge" onClick={onPrevious}>
-            {currentStep === 0 ? "취소하기" : "이전으로"}
+            이전으로
           </Button>
           <Button
             size="xlarge"
-            disabled={!canContinue}
+            disabled={!canContinue || nextPending}
             onClick={onNext}
           >
-            {currentStep === 3 ? "신청하기" : "다음으로"}
+            {nextPending
+              ? "불러오는 중..."
+              : currentStep === 3
+                ? "신청하기"
+                : "다음으로"}
           </Button>
         </ActionRow>
       </Stage>

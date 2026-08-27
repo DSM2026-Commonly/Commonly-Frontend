@@ -1,10 +1,2 @@
-import { CareerCertificateIssue } from "@commonly/ui";
-import { useNavigate } from "react-router";
-
-function CareerCertificateIssuePage() {
-  const navigate = useNavigate();
-
-  return <CareerCertificateIssue onCancel={() => void navigate("/")} />;
-}
-
-export default CareerCertificateIssuePage;
+// admin-web/user-web 공통 구현은 @commonly/ui 의 공유 페이지에 있다.
+export { StaffCareerCertificateIssuePage as default } from "@commonly/ui";

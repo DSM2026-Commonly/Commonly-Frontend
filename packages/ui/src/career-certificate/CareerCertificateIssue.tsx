@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import certificatePreview from "../assets/career-certificate-preview.png";
 import {
   CAREER_ROWS,
+  DEMO_APPLICANTS,
   getStepIndex,
   STEP_VIEWS,
 } from "./CareerCertificateIssue.constants";
-import { FlowRoot } from "./CareerCertificateIssue.styles";
+import { FlowError, FlowRoot } from "./CareerCertificateIssue.styles";
 import type {
+  CareerCertificateApplicationData,
   CareerCertificateIssueProps,
   CareerCertificateIssueView,
+  CertificateApplicant,
+  CertificateCareerRow,
   CertificateIssueType,
 } from "./CareerCertificateIssue.types";
 import {
@@ -31,13 +35,26 @@ export type {
   CareerCertificateIssueProps,
   CareerCertificateIssueVariant,
   CareerCertificateIssueView,
+  CertificateApplicant,
+  CertificateCareerRow,
   CertificateIssueType,
 } from "./CareerCertificateIssue.types";
+
+const UNEXPECTED_ERROR_MESSAGE =
+  "처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : UNEXPECTED_ERROR_MESSAGE;
+}
 
 function CareerCertificateIssue({
   initialView,
   variant = "staff",
   onCancel,
+  onSearchApplicants,
+  onLoadCareerRows,
   onComplete,
   onDownload,
 }: CareerCertificateIssueProps) {
@@ -53,12 +70,28 @@ function CareerCertificateIssue({
   const [birthDay, setBirthDay] = useState("");
   const [hasPersonSearchResult, setHasPersonSearchResult] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState("");
+  const [applicants, setApplicants] = useState<readonly CertificateApplicant[]>(
+    [],
+  );
+  const [isSearchingApplicants, setIsSearchingApplicants] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [issueType, setIssueType] = useState<CertificateIssueType>("all");
+  const [careerRows, setCareerRows] = useState<readonly CertificateCareerRow[]>(
+    CAREER_ROWS,
+  );
+  const [isLoadingCareerRows, setIsLoadingCareerRows] = useState(false);
+  const [stepError, setStepError] = useState("");
   const [selectedCareerIds, setSelectedCareerIds] = useState<string[]>(
     CAREER_ROWS.map((row) => row.id),
   );
   const [additionalNote, setAdditionalNote] = useState("");
   const [purpose, setPurpose] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+  // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
+  const searchRequestIdRef = useRef(0);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
@@ -68,16 +101,26 @@ function CareerCertificateIssue({
     (currentStep !== 0 || noticeAccepted) &&
     (currentStep !== 2 || Boolean(selectedPerson)) &&
     (currentStep !== 3 ||
-      issueType === "all" ||
-      selectedCareerIds.length > 0);
+      ((issueType === "all" || selectedCareerIds.length > 0) &&
+        // 발급 용도는 증명서에 기재되는 필수 항목이다.
+        purpose.trim().length > 0));
+  const selectedApplicantName = applicants.find(
+    (applicant) => applicant.id === selectedPerson,
+  )?.name;
 
   useCareerCertificateScroll(view);
 
   const moveToView = (nextView: CareerCertificateIssueView) => {
+    setStepError("");
     setView(nextView);
   };
 
   const handlePrevious = () => {
+    // 경력 로딩 중 이전 단계로 이동하면 로딩 완료 시 details 로 강제 이동되므로 막는다.
+    if (isLoadingCareerRows) {
+      return;
+    }
+
     if (variant === "civil" && view === "details") {
       if (issueType === "selected") {
         setIssueType("all");
@@ -96,8 +139,27 @@ function CareerCertificateIssue({
     moveToView(STEP_VIEWS[currentStep - 1]);
   };
 
-  const handleNext = () => {
-    if (!canContinue) {
+  const handleNext = async () => {
+    if (!canContinue || isLoadingCareerRows) {
+      return;
+    }
+
+    if (view === "applicant" && onLoadCareerRows) {
+      setStepError("");
+      setIsLoadingCareerRows(true);
+
+      try {
+        const rows = await onLoadCareerRows(selectedPerson);
+        setCareerRows(rows);
+        setSelectedCareerIds(rows.map((row) => row.id));
+      } catch (error) {
+        setStepError(getErrorMessage(error));
+        return;
+      } finally {
+        setIsLoadingCareerRows(false);
+      }
+
+      moveToView("details");
       return;
     }
 
@@ -109,20 +171,44 @@ function CareerCertificateIssue({
     moveToView("preview");
   };
 
-  const handlePreviewNext = () => {
-    onComplete?.({
+  const handlePreviewNext = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    const applicationData: CareerCertificateApplicationData = {
       issueType,
       reason,
       note,
+      applicantId: selectedPerson,
       applicantName,
       birthYear,
       birthMonth,
       birthDay,
-      selectedCareerIds,
+      selectedCareerIds:
+        issueType === "all"
+          ? careerRows.map((row) => row.id)
+          : selectedCareerIds,
       additionalNote,
       purpose,
-    });
-    moveToView("success");
+    };
+
+    if (!onComplete) {
+      moveToView("success");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmissionError("");
+
+    try {
+      await onComplete(applicationData);
+      moveToView("success");
+    } catch (error) {
+      setSubmissionError(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCareerSelection = (id: string, checked: boolean) => {
@@ -136,21 +222,60 @@ function CareerCertificateIssue({
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedCareerIds(checked ? CAREER_ROWS.map((row) => row.id) : []);
+    setSelectedCareerIds(checked ? careerRows.map((row) => row.id) : []);
   };
 
-  const handlePersonSearch = () => {
-    if (!canSearchPerson) {
+  const handlePersonSearch = async () => {
+    if (!canSearchPerson || isSearchingApplicants) {
       return;
     }
 
-    setHasPersonSearchResult(true);
-    setSelectedPerson("jeon-jaejun");
+    if (!onSearchApplicants) {
+      setApplicants(DEMO_APPLICANTS);
+      setHasPersonSearchResult(true);
+      setSelectedPerson(DEMO_APPLICANTS[0].id);
+      return;
+    }
+
+    const requestId = ++searchRequestIdRef.current;
+
+    setIsSearchingApplicants(true);
+    setSearchError("");
+
+    try {
+      const birthDate = `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`;
+      const result = await onSearchApplicants({
+        name: applicantName.trim(),
+        birthDate,
+      });
+
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      setApplicants(result);
+      setHasPersonSearchResult(true);
+      setSelectedPerson(result.length === 1 ? result[0].id : "");
+    } catch (error) {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      setApplicants([]);
+      setHasPersonSearchResult(false);
+      setSelectedPerson("");
+      setSearchError(getErrorMessage(error));
+    } finally {
+      setIsSearchingApplicants(false);
+    }
   };
 
   const resetPersonSearchResult = () => {
+    searchRequestIdRef.current += 1;
     setHasPersonSearchResult(false);
     setSelectedPerson("");
+    setApplicants([]);
+    setSearchError("");
   };
 
   const handleApplicantNameChange = (value: string) => {
@@ -181,23 +306,44 @@ function CareerCertificateIssue({
 
   const handleRestart = () => {
     setNoticeAccepted(false);
+    setReason("visit");
+    setNote("");
     setIssueType("all");
-    setSelectedCareerIds(CAREER_ROWS.map((row) => row.id));
+    setCareerRows(onLoadCareerRows ? [] : CAREER_ROWS);
+    setSelectedCareerIds(
+      onLoadCareerRows ? [] : CAREER_ROWS.map((row) => row.id),
+    );
     setAdditionalNote("");
     setPurpose("");
+    resetPersonSearchResult();
+    setSubmissionError("");
+    setDownloadError("");
     moveToView(variant === "civil" ? "details" : "notice");
   };
 
-  const handleDownload = () => {
-    if (onDownload) {
-      onDownload();
+  const handleDownload = async () => {
+    if (isDownloading) {
       return;
     }
 
-    const link = document.createElement("a");
-    link.href = certificatePreview;
-    link.download = "유성구청_전재준_경력증명서_A2026-001.png";
-    link.click();
+    if (!onDownload) {
+      const link = document.createElement("a");
+      link.href = certificatePreview;
+      link.download = "유성구청_전재준_경력증명서_A2026-001.png";
+      link.click();
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadError("");
+
+    try {
+      await onDownload();
+    } catch (error) {
+      setDownloadError(getErrorMessage(error));
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const renderCurrentStep = () => {
@@ -227,12 +373,15 @@ function CareerCertificateIssue({
             birthDay={birthDay}
             canSearch={canSearchPerson}
             hasSearchResult={hasPersonSearchResult}
+            applicants={applicants}
+            isSearching={isSearchingApplicants}
+            searchError={searchError}
             selectedPerson={selectedPerson}
             onApplicantNameChange={handleApplicantNameChange}
             onBirthYearChange={handleBirthYearChange}
             onBirthMonthChange={handleBirthMonthChange}
             onBirthDayChange={handleBirthDayChange}
-            onSearch={handlePersonSearch}
+            onSearch={() => void handlePersonSearch()}
             onSelectedPersonChange={setSelectedPerson}
           />
         );
@@ -240,6 +389,7 @@ function CareerCertificateIssue({
         return (
           <DetailsStep
             issueType={issueType}
+            careerRows={careerRows}
             selectedCareerIds={selectedCareerIds}
             additionalNote={additionalNote}
             purpose={purpose}
@@ -260,8 +410,10 @@ function CareerCertificateIssue({
       <FlowRoot key={view}>
         <CertificatePreviewView
           variant={variant}
+          isSubmitting={isSubmitting}
+          submissionError={submissionError}
           onPrevious={() => moveToView("details")}
-          onNext={handlePreviewNext}
+          onNext={() => void handlePreviewNext()}
         />
       </FlowRoot>
     );
@@ -273,8 +425,11 @@ function CareerCertificateIssue({
         <CertificateSuccessView
           variant={variant}
           issueType={issueType}
+          applicantName={selectedApplicantName}
+          isDownloading={isDownloading}
+          downloadError={downloadError}
           onRestart={handleRestart}
-          onDownload={handleDownload}
+          onDownload={() => void handleDownload()}
         />
       </FlowRoot>
     );
@@ -293,7 +448,7 @@ function CareerCertificateIssue({
           onSelectAll={handleSelectAll}
           onPurposeChange={setPurpose}
           onPrevious={handlePrevious}
-          onNext={handleNext}
+          onNext={() => void handleNext()}
         />
       </FlowRoot>
     );
@@ -304,10 +459,12 @@ function CareerCertificateIssue({
       <CertificateWorkflowView
         currentStep={currentStep}
         canContinue={canContinue}
+        nextPending={isLoadingCareerRows}
         onPrevious={handlePrevious}
-        onNext={handleNext}
+        onNext={() => void handleNext()}
       >
         {renderCurrentStep()}
+        {stepError && <FlowError role="alert">{stepError}</FlowError>}
       </CertificateWorkflowView>
     </FlowRoot>
   );

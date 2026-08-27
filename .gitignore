@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +24,7 @@ dist-ssr
 *.sln
 *.sw?
 .turbo
+
+# AI agent runtime state
+.omc/
+.omx/

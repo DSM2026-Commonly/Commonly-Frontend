@@ -35,6 +35,7 @@
 | `CIVIL_WEB_PORT` | `8082` | 민원인 앱 외부 포트 |
 | `USER_WEB_PORT` | `8083` | 내부 사용자 앱 외부 포트 |
 | `IMAGE_TAG` | `latest` | Portainer에서 빌드한 세 이미지의 공통 태그 |
+| `VITE_API_BASE_URL` | `` | 빌드에 주입되는 API 서버 origin (변경 시 재배포 필요) |
 
 같은 서버에서 이미 사용 중인 포트는 Portainer의 환경변수 값으로 변경해야
 합니다. 서버 방화벽이나 클라우드 보안 그룹에서도 선택한 포트의 인바운드

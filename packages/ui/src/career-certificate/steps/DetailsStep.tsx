@@ -14,11 +14,15 @@ import {
   SelectionToolbar,
   TableFrame,
 } from "./DetailsStep.styles";
-import type { CertificateIssueType } from "../CareerCertificateIssue.types";
+import type {
+  CertificateCareerRow,
+  CertificateIssueType,
+} from "../CareerCertificateIssue.types";
 
 interface DetailsStepProps {
   variant?: "staff" | "civil";
   issueType: CertificateIssueType;
+  careerRows?: readonly CertificateCareerRow[];
   selectedCareerIds: string[];
   additionalNote: string;
   purpose: string;
@@ -71,6 +75,7 @@ function CertificateExtraFields({
 function DetailsStep({
   variant = "staff",
   issueType,
+  careerRows = CAREER_ROWS,
   selectedCareerIds,
   additionalNote,
   purpose,
@@ -80,7 +85,8 @@ function DetailsStep({
   onAdditionalNoteChange,
   onPurposeChange,
 }: DetailsStepProps) {
-  const allCareersSelected = selectedCareerIds.length === CAREER_ROWS.length;
+  const allCareersSelected =
+    careerRows.length > 0 && selectedCareerIds.length === careerRows.length;
   const isCivil = variant === "civil";
 
   return (
@@ -116,7 +122,7 @@ function DetailsStep({
             <CardSubheading>포함할 내역</CardSubheading>
             <SelectionToolbar>
               <SelectionCount aria-live="polite">
-                {CAREER_ROWS.length}건 중{" "}
+                {careerRows.length}건 중{" "}
                 <strong>{selectedCareerIds.length}건</strong> 선택됨
               </SelectionCount>
               {isCivil && (
@@ -152,13 +158,13 @@ function DetailsStep({
                       }
                     />
                   </Table.Th>
-                  <Table.Th scope="col">담당 업무</Table.Th>
-                  <Table.Th scope="col">근무 부서</Table.Th>
+                  <Table.Th scope="col">담당업무</Table.Th>
+                  <Table.Th scope="col">근무부서</Table.Th>
                   <Table.Th scope="col">근무 기간</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {CAREER_ROWS.map((row) => (
+                {careerRows.map((row) => (
                   <Table.Tr key={row.id}>
                     <Table.Td>
                       <Checkbox

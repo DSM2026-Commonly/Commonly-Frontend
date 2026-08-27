@@ -1,11 +1,2 @@
-import { CareerEdit } from "@commonly/ui";
-import { useNavigate } from "react-router";
-
-function CareerEditPage() {
-  const navigate = useNavigate();
-  const navigateHome = () => void navigate("/");
-
-  return <CareerEdit onCancel={navigateHome} onHome={navigateHome} />;
-}
-
-export default CareerEditPage;
+// admin-web/user-web 공통 구현은 @commonly/ui 의 공유 페이지에 있다.
+export { StaffCareerEditPage as default } from "@commonly/ui";

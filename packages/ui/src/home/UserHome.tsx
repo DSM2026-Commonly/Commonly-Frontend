@@ -18,10 +18,12 @@ import {
 import { homeServices } from "./homeServices";
 
 export interface UserHomeProps {
+  /** 서비스 목록 섹션 제목. 관리자 화면 등 문맥에 맞게 바꿀 수 있다. */
+  servicesTitle?: string;
   onNavigate?: (href: string) => void;
 }
 
-function UserHome({ onNavigate }: UserHomeProps) {
+function UserHome({ servicesTitle = "민원 서비스", onNavigate }: UserHomeProps) {
   const handleNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -60,7 +62,7 @@ function UserHome({ onNavigate }: UserHomeProps) {
 
         <ServicesSection aria-labelledby="user-home-services-title">
           <ServicesTitle id="user-home-services-title">
-            민원 서비스
+            {servicesTitle}
           </ServicesTitle>
           <ServiceList>
             {homeServices.map((service) => (

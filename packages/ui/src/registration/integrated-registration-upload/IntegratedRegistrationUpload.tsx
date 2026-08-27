@@ -1,6 +1,6 @@
 import "krds-react/dist/index.css";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   Button,
   StepIndicator,
@@ -9,6 +9,7 @@ import {
 import {
   ActionBar,
   ButtonGroup,
+  FormError,
   FormFlow,
   FormMainContent,
   PageHeader,
@@ -39,6 +40,14 @@ export interface IntegratedRegistrationUploadProps {
   maxFileSize?: number;
   previousLabel?: string;
   nextLabel?: string;
+  /** 이미 업로드를 마친 파일 이름. 새로고침/뒤로가기 시 목록을 복원할 때 쓴다. */
+  initialFileName?: string;
+  /** 파일이 선택될 때마다 호출된다. reject 되면 파일 상태가 error 로 표시된다. */
+  onFileUpload?: (file: File) => Promise<void>;
+  /** 파일 목록에서 파일이 제거될 때 호출된다. 남은 파일 목록을 함께 전달한다. */
+  onFileDelete?: (fileId: string, remainingFiles: FileItem[]) => void;
+  /** 업로드 실패 등 사용자에게 보여줄 오류 메시지 */
+  errorMessage?: string;
   onPrevious?: () => void;
   onNext?: (files: FileItem[]) => void;
 }
@@ -61,11 +70,29 @@ function IntegratedRegistrationUpload({
   maxFileSize = 20 * 1024 * 1024,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
+  initialFileName,
+  onFileUpload,
+  onFileDelete,
+  errorMessage,
   onPrevious,
   onNext,
 }: IntegratedRegistrationUploadProps) {
   const titleId = useId();
-  const [files, setFiles] = useState<FileItem[]>([]);
+  // 세션에 업로드가 남아 있으면(새로고침/뒤로가기) 재업로드 없이 진행할 수 있게 복원한다.
+  const [files, setFiles] = useState<FileItem[]>(() =>
+    initialFileName
+      ? [
+          {
+            id: "session-restored-file",
+            name: initialFileName,
+            size: 0,
+            type: "",
+            status: "completed",
+          },
+        ]
+      : [],
+  );
+  const isUploadingRef = useRef(false);
 
   const canProceed = useMemo(
     () =>
@@ -74,6 +101,39 @@ function IntegratedRegistrationUpload({
       Boolean(onNext),
     [files, onNext],
   );
+
+  const handleFilesChange = (nextFiles: FileItem[]) => {
+    if (onFileDelete) {
+      for (const file of files) {
+        if (!nextFiles.some((nextFile) => nextFile.id === file.id)) {
+          onFileDelete(file.id, nextFiles);
+        }
+      }
+    }
+
+    setFiles(nextFiles);
+  };
+
+  // krds FileUpload 는 업로드가 끝나야 목록을 커밋하므로 업로드 중에는
+  // maxFiles 검사가 무력화된다. 동시 업로드를 여기서 차단해 목록 커밋이
+  // 서로를 덮어쓰는 레이스를 막는다.
+  const handleFileUpload = onFileUpload
+    ? async (file: File) => {
+        if (isUploadingRef.current) {
+          throw new Error(
+            "이미 파일을 업로드하는 중입니다. 완료된 뒤 다시 시도해 주세요.",
+          );
+        }
+
+        isUploadingRef.current = true;
+
+        try {
+          await onFileUpload(file);
+        } finally {
+          isUploadingRef.current = false;
+        }
+      }
+    : undefined;
 
   const handleNext = () => {
     if (!canProceed) {
@@ -117,14 +177,16 @@ function IntegratedRegistrationUpload({
             maxFiles={maxFiles}
             maxFileSize={maxFileSize}
             files={files}
-            onFilesChange={setFiles}
+            onFilesChange={handleFilesChange}
+            onFileUpload={handleFileUpload}
           />
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>
 
         <ActionBar>
           <ButtonGroup>
             <Button
-              variant="secondary"
+              variant="tertiary"
               size="xlarge"
               type="button"
               onClick={onPrevious}

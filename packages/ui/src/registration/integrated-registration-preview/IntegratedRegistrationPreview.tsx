@@ -11,6 +11,7 @@ import {
   FieldGrid,
   FieldLabel,
   FieldRow,
+  FormError,
   FormFlow,
   FormMainContent,
   PageHeader,
@@ -40,10 +41,15 @@ export interface IntegratedRegistrationPreviewProps {
   stepLabel?: string;
   stepTitle?: string;
   fields?: readonly IntegratedRegistrationPreviewField[];
+  /** 제출 중이면 버튼을 잠근다. */
+  isSubmitting?: boolean;
+  submittingLabel?: string;
+  /** 제출 실패 등 사용자에게 보여줄 오류 메시지 */
+  errorMessage?: string;
   previousLabel?: string;
   nextLabel?: string;
   onPrevious?: () => void;
-  onNext?: () => void;
+  onNext?: () => void | Promise<void>;
 }
 
 const defaultSteps = [
@@ -72,23 +78,23 @@ function IntegratedRegistrationPreview({
   stepLabel = "3단계 / 3단계",
   stepTitle = "예시 데이터 확인",
   fields = defaultFields,
+  isSubmitting = false,
+  submittingLabel = "등록 중...",
+  errorMessage,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
   onPrevious,
   onNext,
 }: IntegratedRegistrationPreviewProps) {
   const titleId = useId();
-  const canProceed =
-    fields.length > 0 &&
-    fields.every((field) => field.value.trim().length > 0) &&
-    Boolean(onNext);
+  const canProceed = fields.length > 0 && !isSubmitting && Boolean(onNext);
 
   const handleNext = () => {
     if (!canProceed) {
       return;
     }
 
-    onNext?.();
+    void onNext?.();
   };
 
   return (
@@ -136,14 +142,16 @@ function IntegratedRegistrationPreview({
               ))}
             </FieldGrid>
           </ConfirmCard>
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>
 
         <ActionBar>
           <ButtonGroup>
             <Button
-              variant="secondary"
+              variant="tertiary"
               size="xlarge"
               type="button"
+              disabled={isSubmitting}
               onClick={onPrevious}
             >
               {previousLabel}
@@ -157,7 +165,7 @@ function IntegratedRegistrationPreview({
               disabled={!canProceed}
               onClick={handleNext}
             >
-              {nextLabel}
+              {isSubmitting ? submittingLabel : nextLabel}
             </Button>
           </ButtonGroup>
         </ActionBar>

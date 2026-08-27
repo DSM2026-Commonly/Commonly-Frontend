@@ -1,47 +1,8 @@
-import { Login, type LoginFormData } from "@commonly/ui";
-import {
-  clearRememberedLoginId,
-  createLocalSessionToken,
-  getRememberedLoginId,
-  getSafeRedirectPath,
-  setAuthToken,
-  setRememberedLoginId,
-} from "@commonly/utils";
-import { useLocation, useNavigate } from "react-router";
+import { LoginPage } from "@commonly/ui";
 
-function LoginPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const redirectPath = getSafeRedirectPath(
-    new URLSearchParams(location.search).get("redirectTo"),
-  );
-
-  const handleLogin = (formData: LoginFormData) => {
-    const didStoreToken = setAuthToken(createLocalSessionToken());
-
-    if (!didStoreToken) {
-      throw new Error(
-        "브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다.",
-      );
-    }
-
-    if (formData.rememberLoginId) {
-      setRememberedLoginId(formData.loginId);
-    } else {
-      clearRememberedLoginId();
-    }
-
-    void navigate(redirectPath, { replace: true });
-  };
-
-  return (
-    <Login
-      initialLoginId={getRememberedLoginId()}
-      onSubmit={handleLogin}
-      signupHref="/signup"
-      variant="civil"
-    />
-  );
+// 공통 구현은 @commonly/ui 의 공유 페이지에 있고, civil 변형만 지정한다.
+function CivilLoginPage() {
+  return <LoginPage signupHref="/signup" variant="civil" />;
 }
 
-export default LoginPage;
+export default CivilLoginPage;

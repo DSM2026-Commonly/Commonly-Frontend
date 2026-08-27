@@ -1,10 +1,21 @@
 import { ApplicationShell } from "@commonly/ui";
-import { createLocalSessionToken, setAuthToken } from "@commonly/utils";
+import {
+  ACCOUNT_ID_FORMAT_MESSAGE,
+  PASSWORD_FORMAT_MESSAGE,
+  isValidAccountId,
+  isValidPassword,
+  setAuthTokens,
+  signup,
+} from "@commonly/utils";
 import styled from "@emotion/styled";
 import { Button, TextInput } from "krds-react";
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
-import type { VerifiedSignupIdentity } from "./signupVerification";
+import { Link, Navigate, useLocation, useNavigate } from "react-router";
+import {
+  toApiBirthDate,
+  toApiPhoneNumber,
+  type VerifiedSignupIdentity,
+} from "./signupVerification";
 
 const SignupContent = styled.section`
   width: min(792px, calc(100% - 40px));
@@ -336,30 +347,82 @@ function SignupFormPage() {
     ...verifiedIdentity,
   }));
   const [submissionError, setSubmissionError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isFormIncomplete = Object.values(formValues).some(
     (value) => value.trim() === "",
   );
   const isPasswordMismatch =
     formValues.passwordConfirmation.length > 0 &&
     formValues.password !== formValues.passwordConfirmation;
-  const canSubmit = !isFormIncomplete && !isPasswordMismatch;
+  const loginIdError =
+    formValues.loginId.length > 0 && !isValidAccountId(formValues.loginId)
+      ? ACCOUNT_ID_FORMAT_MESSAGE
+      : undefined;
+  const passwordError =
+    formValues.password.length > 0 && !isValidPassword(formValues.password)
+      ? PASSWORD_FORMAT_MESSAGE
+      : undefined;
+  const canSubmit =
+    !isFormIncomplete &&
+    !isPasswordMismatch &&
+    !loginIdError &&
+    !passwordError &&
+    !isSubmitting;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  // 본인인증 없이 URL로 직접 진입한 경우 인증 단계로 되돌린다.
+  if (!verifiedIdentity) {
+    return <Navigate replace to="/signup" />;
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!canSubmit) {
       return;
     }
 
-    if (!setAuthToken(createLocalSessionToken())) {
-      setSubmissionError(
-        "브라우저 저장소를 사용할 수 없어 회원가입을 완료할 수 없습니다.",
-      );
-      return;
-    }
-
     setSubmissionError("");
-    void navigate("/career/issue", { replace: true });
+    setIsSubmitting(true);
+
+    try {
+      const tokens = await signup({
+        accountId: formValues.loginId,
+        password: formValues.password,
+        name: formValues.name.trim(),
+        phoneNumber: toApiPhoneNumber(formValues.phoneNumber),
+        birthDate: toApiBirthDate(formValues.birthDate),
+      });
+
+      if (!setAuthTokens(tokens)) {
+        setSubmissionError(
+          "브라우저 저장소를 사용할 수 없어 회원가입을 완료할 수 없습니다.",
+        );
+        return;
+      }
+
+      void navigate("/career/issue", { replace: true });
+    } catch (error) {
+      setSubmissionError(
+        error instanceof Error
+          ? error.message
+          : "회원가입 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getFieldError = (name: FieldName): string | undefined => {
+    switch (name) {
+      case "loginId":
+        return loginIdError;
+      case "password":
+        return passwordError;
+      case "passwordConfirmation":
+        return isPasswordMismatch ? "비밀번호가 일치하지 않습니다." : undefined;
+      default:
+        return undefined;
+    }
   };
 
   return (
@@ -372,10 +435,11 @@ function SignupFormPage() {
 
         <SignupBody>
           <SignupPanel>
-            <SignupForm noValidate onSubmit={handleSubmit}>
+            <SignupForm noValidate onSubmit={(event) => void handleSubmit(event)}>
               <FieldGroup>
                 {fields.map((field) => {
                   const inputId = `signup-${field.name}`;
+                  const fieldError = getFieldError(field.name);
 
                   return (
                     <SignupField key={field.name}>
@@ -393,16 +457,8 @@ function SignupFormPage() {
                           verifiedIdentity !== undefined &&
                           field.name in verifiedIdentity
                         }
-                        aria-invalid={
-                          field.name === "passwordConfirmation" &&
-                          isPasswordMismatch
-                        }
-                        error={
-                          field.name === "passwordConfirmation" &&
-                          isPasswordMismatch
-                            ? "비밀번호가 일치하지 않습니다."
-                            : undefined
-                        }
+                        aria-invalid={fieldError !== undefined}
+                        error={fieldError}
                         showPasswordToggle={false}
                         onChange={(value) => {
                           setSubmissionError("");
@@ -423,7 +479,7 @@ function SignupFormPage() {
                 type="submit"
                 disabled={!canSubmit}
               >
-                회원가입
+                {isSubmitting ? "회원가입 중..." : "회원가입"}
               </SignupButton>
 
               {submissionError && (

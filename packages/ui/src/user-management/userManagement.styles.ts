@@ -479,3 +479,52 @@ export const SuccessActions = styled.div`
     }
   }
 `;
+
+export const SuccessDetailSection = styled.div`
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 40px;
+`;
+
+export const SuccessResultCard = styled.dl`
+  display: flex;
+  margin: 0;
+  padding: 40px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--krds-light-color-surface-secondary-subtler, #eef2f7);
+
+  @media (max-width: ${mobileBreakpoint}) {
+    padding: 28px 20px;
+  }
+`;
+
+export const SuccessResultRow = styled.div`
+  display: grid;
+  grid-template-columns: 191px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+
+  @media (max-width: ${mobileBreakpoint}) {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+`;
+
+export const SuccessResultLabel = styled.dt`
+  margin: 0;
+  color: var(--krds-light-color-text-basic, #1e2124);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.5;
+`;
+
+export const SuccessResultValue = styled.dd`
+  margin: 0;
+  color: var(--krds-light-color-text-subtle, #464c53);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.5;
+`;

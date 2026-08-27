@@ -32,6 +32,10 @@ interface UserRegistrationErrors {
   department?: string;
 }
 
+const ACCOUNT_ID_MIN_LENGTH = 8;
+const NAME_MAX_LENGTH = 20;
+const DEPARTMENT_MAX_LENGTH = 20;
+
 function UserRegistration({
   initialValues,
   onPrevious,
@@ -64,15 +68,21 @@ function UserRegistration({
     const nextErrors: UserRegistrationErrors = {};
 
     if (!normalizedData.name) {
-      nextErrors.name = "이름을 입력해 주세요.";
+      nextErrors.name = "이름을 입력해주세요.";
+    } else if (normalizedData.name.length > NAME_MAX_LENGTH) {
+      nextErrors.name = `이름은 ${NAME_MAX_LENGTH}자 이내로 입력해주세요.`;
     }
 
     if (!normalizedData.accountId) {
-      nextErrors.accountId = "아이디를 입력해 주세요.";
+      nextErrors.accountId = "아이디를 입력해주세요.";
+    } else if (normalizedData.accountId.length < ACCOUNT_ID_MIN_LENGTH) {
+      nextErrors.accountId = `아이디는 ${ACCOUNT_ID_MIN_LENGTH}자 이상 입력해주세요.`;
     }
 
     if (!normalizedData.department) {
-      nextErrors.department = "소속 부서를 입력해 주세요.";
+      nextErrors.department = "소속 부서를 입력해주세요.";
+    } else if (normalizedData.department.length > DEPARTMENT_MAX_LENGTH) {
+      nextErrors.department = `소속 부서는 ${DEPARTMENT_MAX_LENGTH}자 이내로 입력해주세요.`;
     }
 
     setErrors(nextErrors);

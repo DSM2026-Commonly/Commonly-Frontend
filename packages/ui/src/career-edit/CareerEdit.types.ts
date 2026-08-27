@@ -56,7 +56,14 @@ export interface CareerEditProps {
   applicants?: readonly CareerEditApplicant[];
   careerRecords?: readonly CareerEditRecord[];
   onCancel?: () => void;
-  onComplete?: (submission: CareerEditSubmission) => void;
+  onSearch?: (query: {
+    name: string;
+    birthDate: string;
+  }) => Promise<readonly CareerEditApplicant[]>;
+  onLoadCareerRecords?: (
+    applicantId: string,
+  ) => Promise<readonly CareerEditRecord[]>;
+  onComplete?: (submission: CareerEditSubmission) => void | Promise<void>;
   onAddAnother?: () => void;
   onHome?: () => void;
 }

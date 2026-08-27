@@ -12,6 +12,8 @@ export type {
   CareerCertificateIssueProps,
   CareerCertificateIssueVariant,
   CareerCertificateIssueView,
+  CertificateApplicant,
+  CertificateCareerRow,
   CertificateIssueType,
 } from "./career-certificate/CareerCertificateIssue";
 export { default as CareerEdit } from "./career-edit/CareerEdit";
@@ -101,5 +103,12 @@ export { default as UserManagementComplete } from "./user-management/UserManagem
 export type {
   UserManagementCompleteProps,
   UserManagementCompletionAction,
+  UserManagementCompletionDetail,
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";
+
+// 앱 간 공유 페이지 (API 연동 포함)
+export { default as LoginPage } from "./pages/LoginPage";
+export type { LoginPageProps } from "./pages/LoginPage";
+export { default as StaffCareerCertificateIssuePage } from "./pages/StaffCareerCertificateIssuePage";
+export { default as StaffCareerEditPage } from "./pages/StaffCareerEditPage";

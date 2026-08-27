@@ -53,7 +53,7 @@ function IndividualRegistrationComplete({
             <ResultValue>{subjectName}</ResultValue>
           </ResultRow>
           <ResultRow>
-            <ResultLabel>담당 업무</ResultLabel>
+            <ResultLabel>담당업무</ResultLabel>
             <ResultValue>{duties}</ResultValue>
           </ResultRow>
         </ResultCard>

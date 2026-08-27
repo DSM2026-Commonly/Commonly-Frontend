@@ -21,11 +21,8 @@ function UserLayout({
 }: UserLayoutProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isCareerRegistrationPath =
-    pathname === "/career/register" ||
-    pathname.startsWith("/career/register/");
 
-  useScrollToTopOnChange(pathname, isCareerRegistrationPath);
+  useScrollToTopOnChange(pathname);
 
   const handleNavigate =
     headerProps?.onNavigate ?? ((href: string) => void navigate(href));
