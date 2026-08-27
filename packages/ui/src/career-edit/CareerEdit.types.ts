@@ -1,3 +1,8 @@
+import type {
+  AddressSearchQuery,
+  AddressSearchResult,
+} from "../registration/address-search/AddressSearchModal";
+
 export type CareerEditReason = "visit" | "phone" | "email" | "other";
 export type CareerEditTarget = "personal" | "career";
 export type CareerEditGender = "male" | "female";
@@ -56,6 +61,8 @@ export interface CareerEditProps {
   applicants?: readonly CareerEditApplicant[];
   careerRecords?: readonly CareerEditRecord[];
   onCancel?: () => void;
+  /** 도로명주소 검색. 지정하면 인적사항 수정의 주소 검색 버튼이 주소 검색 모달을 연다. */
+  onSearchAddress?: (query: AddressSearchQuery) => Promise<AddressSearchResult>;
   onSearch?: (query: {
     name: string;
     birthDate: string;

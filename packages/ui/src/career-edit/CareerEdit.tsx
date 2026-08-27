@@ -40,8 +40,6 @@ import {
   CAREER_EDIT_STAGE_TITLES,
   CAREER_EDIT_STEPS,
   CAREER_EDIT_TARGET_OPTIONS,
-  DEFAULT_CAREER_EDIT_APPLICANTS,
-  DEFAULT_CAREER_EDIT_RECORDS,
 } from "./CareerEdit.constants";
 import {
   CardSubheading as ReasonCardTitle,
@@ -51,6 +49,9 @@ import {
   TextareaFrame as ReasonTextareaFrame,
 } from "../career-certificate/steps/ReasonStep.styles";
 import CareerEditNoticeStep from "./CareerEditNoticeStep";
+import AddressSearchModal, {
+  type AddressSearchItem,
+} from "../registration/address-search/AddressSearchModal";
 import {
   ActionRow,
   AddressFields,
@@ -937,12 +938,17 @@ function SuccessView({
   );
 }
 
+// 실제 데이터는 onSearch / onLoadCareerRecords 로 가져온다. 기본값은 빈 목록.
+const EMPTY_APPLICANTS: readonly CareerEditApplicant[] = [];
+const EMPTY_RECORDS: readonly CareerEditRecord[] = [];
+
 function CareerEdit({
   initialStep = 0,
   initialEditTarget = "personal",
-  applicants = DEFAULT_CAREER_EDIT_APPLICANTS,
-  careerRecords = DEFAULT_CAREER_EDIT_RECORDS,
+  applicants = EMPTY_APPLICANTS,
+  careerRecords = EMPTY_RECORDS,
   onCancel,
+  onSearchAddress,
   onSearch,
   onLoadCareerRecords,
   onComplete,
@@ -950,6 +956,7 @@ function CareerEdit({
   onHome,
 }: CareerEditProps) {
   const headingId = useId();
+  const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false);
   const initialApplicant = initialStep > 2 ? applicants[0] : undefined;
   const initialBirthDate = getBirthDateParts(initialApplicant?.birthDate);
   const [currentStep, setCurrentStep] =
@@ -1191,6 +1198,12 @@ function CareerEdit({
   };
 
   const handleAddressSearch = () => {
+    if (onSearchAddress) {
+      setIsAddressSearchOpen(true);
+      return;
+    }
+
+    // 주소 검색이 연결되지 않은 경우: 조회된 대상자의 주소로 되돌린다.
     if (!selectedApplicant) {
       return;
     }
@@ -1199,6 +1212,14 @@ function CareerEdit({
       ...currentInfo,
       address: selectedApplicant.address,
     }));
+  };
+
+  const handleAddressSelect = (selectedAddress: AddressSearchItem) => {
+    setPersonalInfo((currentInfo) => ({
+      ...currentInfo,
+      address: selectedAddress.roadAddress,
+    }));
+    setIsAddressSearchOpen(false);
   };
 
   const handlePrevious = () => {
@@ -1475,6 +1496,14 @@ function CareerEdit({
             </ActionRow>
           </Stage>
         </WorkflowPage>
+      )}
+      {onSearchAddress && (
+        <AddressSearchModal
+          open={isAddressSearchOpen}
+          onOpenChange={setIsAddressSearchOpen}
+          onSearch={onSearchAddress}
+          onSelect={handleAddressSelect}
+        />
       )}
     </CareerEditRoot>
   );

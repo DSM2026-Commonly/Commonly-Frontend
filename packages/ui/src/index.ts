@@ -45,6 +45,7 @@ export type {
   IntegratedRegistrationNoticeStep,
 } from "./registration/integrated-registration/IntegratedRegistrationNotice";
 export { default as AddressSearchModal } from "./registration/address-search/AddressSearchModal";
+export { searchRoadAddresses } from "./registration/address-search/searchRoadAddresses";
 export type {
   AddressSearchItem,
   AddressSearchModalProps,
