@@ -16,6 +16,7 @@ export {
   ApiError,
   NETWORK_ERROR_MESSAGE,
   SERVER_ERROR_MESSAGE,
+  UNAUTHORIZED_EVENT,
   getApiBaseUrl,
   request,
   requestBlob,
@@ -219,5 +220,6 @@ export {
   decodeJwtPayload,
   formatRemainingSessionTime,
   getAuthSession,
+  hasValidAuthToken,
 } from "./authSession";
 export type { AuthSession } from "./authSession";

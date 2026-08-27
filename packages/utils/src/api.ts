@@ -42,6 +42,17 @@ export function normalizePositiveInteger(
   return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : fallback;
 }
 
+/** 인증 요청이 401 로 실패했을 때 window 에 발행되는 이벤트 이름. 레이아웃이 받아 로그인 화면으로 보낸다. */
+export const UNAUTHORIZED_EVENT = "commonly:unauthorized";
+
+function notifyUnauthorized(): void {
+  if (typeof window === "undefined" || typeof CustomEvent === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
+}
+
 export type ErrorMessageMap = Partial<Record<number | string, string>>;
 
 export interface RequestOptions {
@@ -57,10 +68,17 @@ async function throwErrorResponse(
   errorMessages: ErrorMessageMap,
 ): Promise<never> {
   const errorBody = await parseErrorBody(response);
+  // 백엔드 에러 본문은 {status, timestamp, message} 형식이라 code 는 오지 않는다.
+  // 매핑된 문구가 없으면 백엔드가 내려준 message 를 그대로 보여준다.
   const message =
     (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
     errorMessages[response.status] ??
+    (errorBody.message?.trim() || undefined) ??
     SERVER_ERROR_MESSAGE;
+
+  if (response.status === 401) {
+    notifyUnauthorized();
+  }
 
   throw new ApiError(response.status, message, errorBody);
 }

@@ -3,9 +3,10 @@ import {
   type FooterProps,
   type HeaderProps,
   useScrollToTopOnChange,
+  useSessionGuard,
 } from "@commonly/ui";
 import { clearAuthToken } from "@commonly/utils";
-import type { ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 
 export interface UserLayoutProps {
@@ -23,6 +24,14 @@ function UserLayout({
   const { pathname } = useLocation();
 
   useScrollToTopOnChange(pathname);
+  useSessionGuard(
+    useCallback(() => {
+      void navigate(
+        `/login?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
+        { replace: true },
+      );
+    }, [navigate, pathname]),
+  );
 
   const handleNavigate =
     headerProps?.onNavigate ?? ((href: string) => void navigate(href));

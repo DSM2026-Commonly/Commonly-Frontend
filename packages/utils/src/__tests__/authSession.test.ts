@@ -4,6 +4,7 @@ import {
   decodeJwtPayload,
   formatRemainingSessionTime,
   getAuthSession,
+  hasValidAuthToken,
 } from "../authSession";
 
 function encodeSegment(value: unknown): string {
@@ -94,5 +95,32 @@ describe("formatRemainingSessionTime", () => {
   test("clamps expired or unknown expiry to zero", () => {
     expect(formatRemainingSessionTime(500, 1_000)).toBe("00분 00초");
     expect(formatRemainingSessionTime(null)).toBe("00분 00초");
+  });
+});
+
+describe("hasValidAuthToken", () => {
+  const now = 1_700_000_000_000;
+
+  test("returns false without a token", () => {
+    expect(hasValidAuthToken(createStorage(null), now)).toBe(false);
+  });
+
+  test("returns false for an expired token", () => {
+    const token = createToken({ sub: "user01", exp: now / 1000 - 1 });
+    expect(hasValidAuthToken(createStorage(token), now)).toBe(false);
+  });
+
+  test("returns true for a token that has not expired", () => {
+    const token = createToken({ sub: "user01", exp: now / 1000 + 60 });
+    expect(hasValidAuthToken(createStorage(token), now)).toBe(true);
+  });
+
+  test("treats a non-JWT token as present and valid", () => {
+    expect(hasValidAuthToken(createStorage("opaque-token"), now)).toBe(true);
+  });
+
+  test("treats a token without exp as valid", () => {
+    const token = createToken({ sub: "user01" });
+    expect(hasValidAuthToken(createStorage(token), now)).toBe(true);
   });
 });
