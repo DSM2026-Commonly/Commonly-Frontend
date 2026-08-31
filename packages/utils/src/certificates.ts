@@ -54,8 +54,13 @@ export const CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE =
 
 export interface HumanCertificate {
   certificateId: number;
+  /** 구분(채용/전보/해지/퇴직). 근무부서가 아니다. */
   division: string;
+  /** 근무부서 */
+  department: string;
   employmentType: string;
+  /** 직종명 */
+  jobTitle: string;
   keyResponsibilities: string;
   hireDate: string;
   retirementDate: string;
@@ -113,7 +118,10 @@ export interface UpdateCertificateRequest {
   hireDate: string;
   expirationDate: string;
   retirementDate: string;
+  /** 구분(채용/전보/해지/퇴직). 백엔드가 이 네 값만 허용한다. */
   division: string;
+  /** 근무부서 */
+  department: string;
   reason: string;
   employmentType: string;
   note: string;
@@ -141,7 +149,9 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
   const {
     certificateId,
     division,
+    department,
     employmentType,
+    jobTitle,
     keyResponsibilities,
     hireDate,
     retirementDate,
@@ -162,7 +172,9 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
 
   const optionalFields = {
     division: normalizeOptionalString(division),
+    department: normalizeOptionalString(department),
     employmentType: normalizeOptionalString(employmentType),
+    jobTitle: normalizeOptionalString(jobTitle),
     keyResponsibilities: normalizeOptionalString(keyResponsibilities),
     retirementDate: normalizeOptionalString(retirementDate),
     expirationDate: normalizeOptionalString(expirationDate),

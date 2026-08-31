@@ -80,6 +80,7 @@ describe("fetchAdminUsers", () => {
       ],
       totalCount: 50,
       totalPages: 5,
+      hasNextPage: true,
     });
   });
 
@@ -89,6 +90,7 @@ describe("fetchAdminUsers", () => {
       content: [],
       totalCount: 0,
       totalPages: 1,
+      hasNextPage: false,
     });
   });
 
@@ -97,8 +99,32 @@ describe("fetchAdminUsers", () => {
     expect(await fetchAdminUsers()).toEqual({
       content: [{ userId: 1, accountId: "", name: "", department: "" }],
       totalCount: 1,
-      totalPages: 1,
+      totalPages: null,
+      hasNextPage: false,
     });
+  });
+
+  test("bare array body (current backend) is accepted", async () => {
+    const rows = Array.from({ length: 3 }, (_, index) => ({
+      userId: index + 1,
+      accountId: `user${index + 1}`,
+      name: "이름",
+      department: "부서",
+    }));
+    mockFetch(200, rows);
+    const page = await fetchAdminUsers({ page: 1, size: 3 });
+    expect(page.content.map((user) => user.userId)).toEqual([1, 2, 3]);
+    expect(page.totalPages).toBeNull();
+    // size 만큼 꽉 찼으면 다음 페이지가 있을 수 있다.
+    expect(page.hasNextPage).toBe(true);
+
+    mockFetch(200, rows.slice(0, 2));
+    expect((await fetchAdminUsers({ page: 2, size: 3 })).hasNextPage).toBe(false);
+  });
+
+  test("last known page has no next page", async () => {
+    mockFetch(200, { content: [{ userId: 1 }], totalCount: 11, totalPages: 2 });
+    expect((await fetchAdminUsers({ page: 2 })).hasNextPage).toBe(false);
   });
 
   test("malformed rows are skipped", async () => {
@@ -111,8 +137,8 @@ describe("fetchAdminUsers", () => {
     expect(page.content.map((user) => user.userId)).toEqual([3]);
   });
 
-  test("non-array body throws invalid response", async () => {
-    for (const body of [[], {}, "x"]) {
+  test("non-list body throws invalid response", async () => {
+    for (const body of [{}, "x", { content: "x" }]) {
       mockFetch(200, body);
       const error = await fetchAdminUsers().catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ApiError);

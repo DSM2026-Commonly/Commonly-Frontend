@@ -22,7 +22,9 @@ import {
 const humanCertificate = {
   certificateId: 10,
   division: "채용",
+  department: "민원과",
   employmentType: "기간제",
+  jobTitle: "사무원",
   keyResponsibilities: "행정지원",
   hireDate: "2024-03-01",
   retirementDate: "2025-02-28",
@@ -54,6 +56,7 @@ const updateRequest = {
   expirationDate: "2025-02-28",
   retirementDate: "2025-02-28",
   division: "채용",
+  department: "민원과",
   reason: "신규채용",
   employmentType: "기간제",
   note: "",
@@ -148,7 +151,9 @@ describe("fetchHumanCertificates", () => {
       {
         certificateId: 12,
         division: "",
+        department: "",
         employmentType: "기간제",
+        jobTitle: "",
         keyResponsibilities: "행정지원",
         hireDate: "2024-03-01",
         retirementDate: "",
@@ -321,6 +326,7 @@ describe("updateCertificate", () => {
       expect(body).toEqual(updateRequest);
       expect(Object.keys(body).sort()).toEqual([
         "birthDate",
+        "department",
         "division",
         "employmentType",
         "expirationDate",

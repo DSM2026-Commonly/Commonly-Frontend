@@ -14,13 +14,31 @@ export {
 export type { AuthStorage } from "./auth";
 export {
   ApiError,
+  INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
   NETWORK_ERROR_MESSAGE,
+  PASSWORD_CHANGE_REQUIRED_EVENT,
   SERVER_ERROR_MESSAGE,
   UNAUTHORIZED_EVENT,
   getApiBaseUrl,
+  isInitialPasswordNotChangedError,
+  normalizePageEnvelope,
   request,
   requestBlob,
 } from "./api";
+export {
+  INITIAL_PASSWORD_CHANGE_BAD_REQUEST_MESSAGE,
+  INITIAL_PASSWORD_CHANGE_ENDPOINT,
+  INITIAL_PASSWORD_CHANGE_FORBIDDEN_MESSAGE,
+  INITIAL_PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
+  INITIAL_PASSWORD_MAX_LENGTH,
+  INITIAL_PASSWORD_MIN_LENGTH,
+  changeInitialPassword,
+  requiresInitialPasswordChange,
+} from "./password";
+export type {
+  ChangeInitialPasswordOptions,
+  ChangeInitialPasswordRequest,
+} from "./password";
 export type {
   ApiErrorBody,
   BlobRequestOptions,
