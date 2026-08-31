@@ -12,6 +12,7 @@ import IndividualRegistrationCareerPage from "../pages/IndividualRegistrationCar
 import IndividualRegistrationCompletePage from "../pages/IndividualRegistrationCompletePage";
 import IndividualRegistrationNoticePage from "../pages/IndividualRegistrationNoticePage";
 import IndividualRegistrationSubjectPage from "../pages/IndividualRegistrationSubjectPage";
+import InitialPasswordChangePage from "../pages/InitialPasswordChangePage";
 import IntegratedRegistrationConfirmPage from "../pages/IntegratedRegistrationConfirmPage";
 import IntegratedRegistrationCompletePage from "../pages/IntegratedRegistrationCompletePage";
 import IntegratedRegistrationNoticePage from "../pages/IntegratedRegistrationNoticePage";
@@ -50,6 +51,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         Component: HomePage,
+      },
+      {
+        path: "password/initial",
+        Component: InitialPasswordChangePage,
       },
       {
         path: "career/issue",

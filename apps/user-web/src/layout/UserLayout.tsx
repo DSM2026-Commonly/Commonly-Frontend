@@ -2,6 +2,8 @@ import {
   ApplicationShell,
   type FooterProps,
   type HeaderProps,
+  INITIAL_PASSWORD_CHANGE_PATH,
+  usePasswordChangeGuard,
   useScrollToTopOnChange,
   useSessionGuard,
 } from "@commonly/ui";
@@ -28,6 +30,19 @@ function UserLayout({
     useCallback(() => {
       void navigate(
         `/login?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
+        { replace: true },
+      );
+    }, [navigate, pathname]),
+  );
+  usePasswordChangeGuard(
+    useCallback(() => {
+      // 이미 비밀번호 변경 화면이면 다시 이동하지 않는다(무한 이동 방지).
+      if (pathname === INITIAL_PASSWORD_CHANGE_PATH) {
+        return;
+      }
+
+      void navigate(
+        `${INITIAL_PASSWORD_CHANGE_PATH}?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
         { replace: true },
       );
     }, [navigate, pathname]),
