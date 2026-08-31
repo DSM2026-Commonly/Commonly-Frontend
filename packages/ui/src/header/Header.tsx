@@ -113,18 +113,15 @@ const Header = ({
             </UtilityText>
             <UtilityDivider aria-hidden="true" />
             <UtilityText $width={125}>남은시간 {remainingTime}</UtilityText>
-            {/* 세션 연장 API가 없으면 연장 버튼을 숨긴다. */}
-            {onExtend && (
-              <UtilityButton
-                variant="text"
-                size="small"
-                type="button"
-                $width={30}
-                onClick={onExtend}
-              >
-                연장
-              </UtilityButton>
-            )}
+            <UtilityButton
+              variant="text"
+              size="small"
+              type="button"
+              $width={30}
+              onClick={onExtend}
+            >
+              연장
+            </UtilityButton>
             <UtilityDivider aria-hidden="true" />
             <UtilityButton
               variant="text"
