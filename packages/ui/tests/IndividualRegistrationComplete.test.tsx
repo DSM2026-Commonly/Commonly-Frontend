@@ -3,13 +3,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import IndividualRegistrationComplete from "../src/registration/individual-registration-complete/IndividualRegistrationComplete";
 
 describe("IndividualRegistrationComplete", () => {
-  test("renders the approved default completion content", () => {
+  test("renders the completion frame without dummy data", () => {
     const markup = renderToStaticMarkup(<IndividualRegistrationComplete />);
 
     expect(markup).toContain("경력사항 개별 등록");
     expect(markup).toContain("업무 처리가");
-    expect(markup).toContain("전재준");
-    expect(markup).toContain("~~ 업무");
+    expect(markup).toContain("대상자");
+    expect(markup).toContain("담당업무");
+    expect(markup).not.toContain("전재준");
     expect(markup).toContain("추가 등록하기");
     expect(markup).toContain("홈으로 돌아가기");
   });
