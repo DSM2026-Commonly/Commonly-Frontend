@@ -92,9 +92,11 @@ export interface IssuedCertificate {
 
 /**
  * 경력증명서 개별 등록(POST /api/certificates/create) 요청 본문.
- * 필드 구성은 수정 요청과 같고, 날짜가 없으면 null 을 보낸다.
+ * 대상자는 먼저 POST /api/human 으로 만들거나 기존 대상자를 골라 humanId 로 넘긴다.
+ * 나머지 필드 구성은 수정 요청과 같고, 날짜가 없으면 null 을 보낸다.
  */
 export interface CreateCertificateRequest {
+  humanId: number;
   name: string;
   birthDate: string;
   gender: "M" | "F";

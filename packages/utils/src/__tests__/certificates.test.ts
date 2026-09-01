@@ -430,6 +430,7 @@ describe("downloadCertificate", () => {
 
 describe("createCertificate", () => {
   const createRequest = {
+    humanId: 3,
     name: "홍길동",
     birthDate: "1990-01-02",
     gender: "M" as const,
