@@ -8,9 +8,11 @@ import {
   createCertificate,
   createHuman,
   getAuthToken,
+  searchHumans,
   updateHuman,
   type CreateCertificateRequest,
   type CreateHumanRequest,
+  type HumanRequestOptions,
 } from "@commonly/utils";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
@@ -72,6 +74,32 @@ function toCreateRequest(
   };
 }
 
+// PUT /api/human/{humanId} 는 전체 교체라서 주소를 비워 보내면 저장된 주소가 지워진다.
+// 주소를 새로 입력하지 않았으면 서버에 저장된 주소를 그대로 실어 보낸다.
+async function resolveKeptAddress(
+  humanId: number,
+  subject: IndividualRegistrationSubjectData,
+  options: HumanRequestOptions,
+): Promise<string | null> {
+  const birthDate = toIsoDate(
+    subject.birthYear,
+    subject.birthMonth,
+    subject.birthDay,
+  );
+  const humans = await searchHumans(
+    {
+      name: subject.name.trim(),
+      birthDateFrom: birthDate,
+      birthDateTo: birthDate,
+    },
+    options,
+  );
+
+  return (
+    humans.find((human) => human.humanId === humanId)?.address.trim() || null
+  );
+}
+
 // 중복 확인에서 "기존 대상자"를 고른 경우 그 id 를 돌려준다.
 function getExistingHumanId(
   subject: IndividualRegistrationSubjectData,
@@ -104,7 +132,7 @@ function IndividualRegistrationCareerPage() {
     return <Navigate to="/career/register/individual/subject" replace />;
   }
 
-  // 기존 대상자를 골랐으면 그 id 를 쓰고(주소를 새로 입력했을 때만 인적사항 갱신),
+  // 기존 대상자를 골랐으면 그 id 를 쓰고(근무부서는 경력 입력값으로 항상 갱신),
   // 아니면 새 대상자를 만든다.
   const resolveHumanId = async (
     career: IndividualRegistrationCareerData,
@@ -119,9 +147,15 @@ function IndividualRegistrationCareerPage() {
     const existingHumanId = getExistingHumanId(subject);
 
     if (existingHumanId !== null) {
-      if (humanRequest.address) {
-        await updateHuman(existingHumanId, humanRequest, { token, signal });
-      }
+      const address =
+        humanRequest.address ??
+        (await resolveKeptAddress(existingHumanId, subject, { token, signal }));
+
+      await updateHuman(
+        existingHumanId,
+        { ...humanRequest, address },
+        { token, signal },
+      );
 
       registeredHumanIdRef.current = existingHumanId;
       return existingHumanId;
