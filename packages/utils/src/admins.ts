@@ -137,7 +137,9 @@ export async function fetchAdminUsers(
     totalPages: knownTotalPages,
     hasNextPage:
       knownTotalPages === null
-        ? users.length >= requestedSize
+        ? // 형식이 맞지 않아 걸러낸 행도 서버가 내려준 한 페이지 분량이므로
+          // 다음 페이지 존재 여부는 원본 응답 행 수로 판단한다.
+          content.length >= requestedSize
         : requestedPage < knownTotalPages,
   };
 }

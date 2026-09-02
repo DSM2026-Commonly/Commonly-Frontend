@@ -137,6 +137,18 @@ describe("fetchAdminUsers", () => {
     expect(page.content.map((user) => user.userId)).toEqual([3]);
   });
 
+  test("skipped rows still count toward next page", async () => {
+    mockFetch(200, [
+      { accountId: "broken" },
+      { userId: 2, accountId: "b", name: "이름", department: "부서" },
+      { userId: 3, accountId: "c", name: "이름", department: "부서" },
+    ]);
+    const page = await fetchAdminUsers({ page: 1, size: 3 });
+    expect(page.content.map((user) => user.userId)).toEqual([2, 3]);
+    // 형식이 맞지 않아 걸러낸 행도 서버가 채워 보낸 한 페이지 분량이다.
+    expect(page.hasNextPage).toBe(true);
+  });
+
   test("non-list body throws invalid response", async () => {
     for (const body of [{}, "x", { content: "x" }]) {
       mockFetch(200, body);
