@@ -1,11 +1,8 @@
 import "krds-react/dist/index.css";
 
+import { CERTIFICATE_TARGET_FIELDS } from "@commonly/utils";
 import { useId, useMemo, useState } from "react";
-import {
-  Button,
-  Select,
-  StepIndicator,
-} from "krds-react";
+import { Button, Select, StepIndicator } from "krds-react";
 import {
   ActionBar,
   ButtonGroup,
@@ -51,7 +48,8 @@ export interface IntegratedRegistrationConfirmProps {
   stepLabel?: string;
   stepTitle?: string;
   fields?: readonly IntegratedRegistrationConfirmField[];
-  rowOptions?: readonly string[];
+  /** 첫 항목은 "열 선택" 같은 플레이스홀더로 취급한다. */
+  rowOptions: readonly string[];
   /** `fieldId -> rowOption` 형태의 초기 선택값 (예: 열 이름 자동 매칭 결과) */
   initialSelections?: Readonly<Record<string, string>>;
   /** 제출 중이면 버튼을 잠근다. */
@@ -75,34 +73,23 @@ const defaultSteps = [
 
 // 성명·생년월일·채용일은 경력 데이터 식별에 필요한 최소 필드라 매핑을 강제하고,
 // 나머지는 파일에 해당 열이 없어도 등록할 수 있도록 선택 필드로 둔다.
-const defaultFields = [
-  { id: "name", label: "성명", required: true },
-  { id: "birthDate", label: "생년\n월일", required: true },
-  { id: "gender", label: "성별" },
-  { id: "jobTitle", label: "직종명" },
-  { id: "keyResponsibilities", label: "담당\n업무" },
-  { id: "hireDate", label: "채용일", required: true },
-  { id: "expirationDate", label: "만료\n예정일" },
-  { id: "retirementDate", label: "퇴직일" },
-  { id: "division", label: "구분" },
-  { id: "reason", label: "사유" },
-  { id: "employmentType", label: "근무\n형태" },
-  { id: "note", label: "비고" },
-] as const satisfies readonly IntegratedRegistrationConfirmField[];
+const REQUIRED_FIELD_IDS = new Set<string>(["name", "birthDate", "hireDate"]);
 
-const defaultRowOptions = [
-  "행 선택",
-  "1행",
-  "2행",
-  "3행",
-  "4행",
-  "5행",
-  "6행",
-  "7행",
-  "8행",
-  "9행",
-  "10행",
-] as const;
+// 좁은 라벨 칸에 맞추기 위해 긴 라벨은 줄바꿈해서 표시한다.
+const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
+  birthDate: "생년\n월일",
+  keyResponsibilities: "담당\n업무",
+  expirationDate: "만료\n예정일",
+  employmentType: "근무\n형태",
+};
+
+// 매핑 대상 필드 목록은 @commonly/utils 의 CERTIFICATE_TARGET_FIELDS 를 단일 소스로 쓴다.
+const defaultFields: readonly IntegratedRegistrationConfirmField[] =
+  CERTIFICATE_TARGET_FIELDS.map((field) => ({
+    id: field.id,
+    label: LABEL_OVERRIDES[field.id] ?? field.label,
+    required: REQUIRED_FIELD_IDS.has(field.id),
+  }));
 
 function IntegratedRegistrationConfirm({
   title = "경력사항 통합 등록",
@@ -111,7 +98,7 @@ function IntegratedRegistrationConfirm({
   stepLabel = "3단계 / 3단계",
   stepTitle = "데이터 확인",
   fields = defaultFields,
-  rowOptions = defaultRowOptions,
+  rowOptions,
   initialSelections,
   isSubmitting = false,
   submittingLabel = "등록 중...",

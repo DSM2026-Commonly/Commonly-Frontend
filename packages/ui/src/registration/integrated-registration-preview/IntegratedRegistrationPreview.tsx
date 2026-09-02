@@ -16,6 +16,10 @@ import {
   FormMainContent,
   PageHeader,
   PageTitle,
+  PreviewBody,
+  RowNavigator,
+  RowNavigatorButtons,
+  RowNavigatorCounter,
   StepCurrentText,
   StepEyebrow,
   StepHeader,
@@ -40,7 +44,12 @@ export interface IntegratedRegistrationPreviewProps {
   currentStep?: number;
   stepLabel?: string;
   stepTitle?: string;
-  fields?: readonly IntegratedRegistrationPreviewField[];
+  fields: readonly IntegratedRegistrationPreviewField[];
+  /** 현재 표시 중인 행의 0 기반 위치. `rowCount`·`onRowChange` 와 함께 주면 행 이동 UI를 보여준다. */
+  rowIndex?: number;
+  /** 미리볼 수 있는 전체 행 수 */
+  rowCount?: number;
+  onRowChange?: (rowIndex: number) => void;
   /** 제출 중이면 버튼을 잠근다. */
   isSubmitting?: boolean;
   submittingLabel?: string;
@@ -58,26 +67,16 @@ const defaultSteps = [
   { id: "confirm", title: "데이터 확인" },
 ] as const satisfies readonly IntegratedRegistrationPreviewStep[];
 
-const defaultFields = [
-  { id: "name", label: "이름", value: "홍길동" },
-  { id: "gender", label: "성별", value: "남" },
-  { id: "birthDate", label: "생년\n월일", value: "090210" },
-  { id: "address", label: "주소", value: "대전광역시 서구 둔산로 100" },
-  { id: "jobType", label: "직종", value: "사무직" },
-  { id: "task", label: "담당\n업무", value: "총무" },
-  { id: "department", label: "부서", value: "운영지원팀" },
-  { id: "retirementReason", label: "퇴직\n사유", value: "계약만료" },
-  { id: "workStartDate", label: "근무\n시작", value: "2021.03.01" },
-  { id: "workEndDate", label: "근무\n종료", value: "2024.12.31" },
-] as const satisfies readonly IntegratedRegistrationPreviewField[];
-
 function IntegratedRegistrationPreview({
   title = "경력사항 통합 등록",
   steps = defaultSteps,
   currentStep = 2,
   stepLabel = "3단계 / 3단계",
   stepTitle = "예시 데이터 확인",
-  fields = defaultFields,
+  fields,
+  rowIndex = 0,
+  rowCount = 0,
+  onRowChange,
   isSubmitting = false,
   submittingLabel = "등록 중...",
   errorMessage,
@@ -88,6 +87,9 @@ function IntegratedRegistrationPreview({
 }: IntegratedRegistrationPreviewProps) {
   const titleId = useId();
   const canProceed = fields.length > 0 && !isSubmitting && Boolean(onNext);
+  const showRowNavigator = rowCount > 0 && Boolean(onRowChange);
+  const canGoPrevious = !isSubmitting && rowIndex > 0;
+  const canGoNext = !isSubmitting && rowIndex < rowCount - 1;
 
   const handleNext = () => {
     if (!canProceed) {
@@ -125,22 +127,51 @@ function IntegratedRegistrationPreview({
 
         <FormMainContent>
           <ConfirmCard aria-label={stepTitle}>
-            <FieldGrid>
-              {fields.map((field) => (
-                <FieldRow key={field.id}>
-                  <FieldLabel htmlFor={`${titleId}-${field.id}`}>
-                    {field.label}
-                  </FieldLabel>
-                  <DisabledValueInput
-                    id={`${titleId}-${field.id}`}
-                    value={field.value}
-                    size="large"
-                    disabled
-                    aria-label={`${field.label.replace("\n", " ")} 예시 값`}
-                  />
-                </FieldRow>
-              ))}
-            </FieldGrid>
+            <PreviewBody>
+              {showRowNavigator && (
+                <RowNavigator>
+                  <RowNavigatorCounter aria-live="polite">
+                    {rowIndex + 1}행 / 총 {rowCount}행
+                  </RowNavigatorCounter>
+                  <RowNavigatorButtons>
+                    <Button
+                      variant="tertiary"
+                      size="medium"
+                      type="button"
+                      disabled={!canGoPrevious}
+                      onClick={() => onRowChange?.(rowIndex - 1)}
+                    >
+                      이전 행
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      size="medium"
+                      type="button"
+                      disabled={!canGoNext}
+                      onClick={() => onRowChange?.(rowIndex + 1)}
+                    >
+                      다음 행
+                    </Button>
+                  </RowNavigatorButtons>
+                </RowNavigator>
+              )}
+              <FieldGrid>
+                {fields.map((field) => (
+                  <FieldRow key={field.id}>
+                    <FieldLabel htmlFor={`${titleId}-${field.id}`}>
+                      {field.label}
+                    </FieldLabel>
+                    <DisabledValueInput
+                      id={`${titleId}-${field.id}`}
+                      value={field.value}
+                      size="large"
+                      disabled
+                      aria-label={`${field.label.replace("\n", " ")} 값`}
+                    />
+                  </FieldRow>
+                ))}
+              </FieldGrid>
+            </PreviewBody>
           </ConfirmCard>
           {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>

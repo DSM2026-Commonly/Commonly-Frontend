@@ -1,4 +1,8 @@
-import { ApiError, normalizePositiveInteger, request } from "./api";
+import {
+  normalizePageEnvelope,
+  normalizePositiveInteger,
+  request,
+} from "./api";
 
 export const ADMIN_USERS_ENDPOINT = "/api/admins";
 
@@ -18,8 +22,15 @@ export interface AdminUserSummary {
 
 export interface AdminUserPage {
   content: AdminUserSummary[];
+  /** 서버가 전체 건수를 주지 않으면 현재 페이지 건수 */
   totalCount: number;
-  totalPages: number;
+  /** 서버가 전체 페이지 수를 주지 않으면 null */
+  totalPages: number | null;
+  /**
+   * 다음 페이지가 있을 가능성. 전체 페이지 수를 알면 그것으로,
+   * 모르면 "요청한 size 만큼 꽉 찼는지"로 판단한다.
+   */
+  hasNextPage: boolean;
 }
 
 export interface FetchAdminUsersParams {
@@ -89,18 +100,12 @@ export async function fetchAdminUsers(
     },
   });
 
-  if (!response || typeof response !== "object" || Array.isArray(response)) {
-    throw new ApiError(200, ADMIN_USERS_INVALID_RESPONSE_MESSAGE);
-  }
-
-  const { content, totalCount, totalPages } = response as Record<
-    string,
-    unknown
-  >;
-
-  if (!Array.isArray(content)) {
-    throw new ApiError(200, ADMIN_USERS_INVALID_RESPONSE_MESSAGE);
-  }
+  // 백엔드(GET /api/admins)는 페이지 메타 없이 배열만 내려준다.
+  // 명세의 {content, totalCount, totalPages} 형태도 함께 받는다.
+  const { content, totalCount, totalPages } = normalizePageEnvelope(
+    response,
+    ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
+  );
 
   const users: AdminUserSummary[] = [];
 
@@ -113,15 +118,28 @@ export async function fetchAdminUsers(
     }
   }
 
+  const knownTotalPages =
+    typeof totalPages === "number" && Number.isFinite(totalPages)
+      ? Math.max(1, Math.floor(totalPages))
+      : null;
+  const requestedPage = normalizePositiveInteger(params.page ?? 1, 1);
+  const requestedSize = normalizePositiveInteger(
+    params.size ?? ADMIN_USERS_DEFAULT_PAGE_SIZE,
+    ADMIN_USERS_DEFAULT_PAGE_SIZE,
+  );
+
   return {
     content: users,
     totalCount:
       typeof totalCount === "number" && Number.isFinite(totalCount)
         ? Math.max(0, Math.floor(totalCount))
         : users.length,
-    totalPages:
-      typeof totalPages === "number" && Number.isFinite(totalPages)
-        ? Math.max(1, Math.floor(totalPages))
-        : 1,
+    totalPages: knownTotalPages,
+    hasNextPage:
+      knownTotalPages === null
+        ? // 형식이 맞지 않아 걸러낸 행도 서버가 내려준 한 페이지 분량이므로
+          // 다음 페이지 존재 여부는 원본 응답 행 수로 판단한다.
+          content.length >= requestedSize
+        : requestedPage < knownTotalPages,
   };
 }

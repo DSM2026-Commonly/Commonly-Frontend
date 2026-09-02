@@ -44,13 +44,71 @@ export function normalizePositiveInteger(
 
 /** 인증 요청이 401 로 실패했을 때 window 에 발행되는 이벤트 이름. 레이아웃이 받아 로그인 화면으로 보낸다. */
 export const UNAUTHORIZED_EVENT = "commonly:unauthorized";
+/**
+ * 초기 비밀번호를 아직 바꾸지 않은 직원 계정이 다른 API 를 호출해 403 을 받았을 때 발행되는 이벤트 이름.
+ * 레이아웃이 받아 비밀번호 변경 화면으로 보낸다.
+ */
+export const PASSWORD_CHANGE_REQUIRED_EVENT = "commonly:password-change-required";
+/** 백엔드 InitialPasswordFilter 가 내려주는 메시지. 에러 코드가 없어 이 문구로 구분한다. */
+export const INITIAL_PASSWORD_NOT_CHANGED_MESSAGE =
+  "초기 비밀번호를 변경한 후 이용할 수 있습니다.";
 
-function notifyUnauthorized(): void {
+function dispatchWindowEvent(name: string): void {
   if (typeof window === "undefined" || typeof CustomEvent === "undefined") {
     return;
   }
 
-  window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
+  window.dispatchEvent(new CustomEvent(name));
+}
+
+function notifyUnauthorized(): void {
+  dispatchWindowEvent(UNAUTHORIZED_EVENT);
+}
+
+export function isInitialPasswordNotChangedError(
+  status: number,
+  body: ApiErrorBody,
+): boolean {
+  return (
+    status === 403 &&
+    (body.message?.trim() ?? "") === INITIAL_PASSWORD_NOT_CHANGED_MESSAGE
+  );
+}
+
+/**
+ * 목록 응답을 `{content, totalCount, <totalPagesKey>}` 로 정규화한다.
+ * 백엔드가 배열만 내려주는 경우(현재 /api/admins, /api/issuance-histories)도 받는다.
+ */
+export function normalizePageEnvelope(
+  response: unknown,
+  invalidMessage: string,
+  totalPagesKey: "totalPages" | "totalPage" = "totalPages",
+): { content: unknown[]; totalCount: unknown; totalPages: unknown; totalPage: unknown } {
+  if (Array.isArray(response)) {
+    return {
+      content: response,
+      totalCount: undefined,
+      totalPages: undefined,
+      totalPage: undefined,
+    };
+  }
+
+  if (!response || typeof response !== "object") {
+    throw new ApiError(200, invalidMessage);
+  }
+
+  const record = response as Record<string, unknown>;
+
+  if (!Array.isArray(record.content)) {
+    throw new ApiError(200, invalidMessage);
+  }
+
+  return {
+    content: record.content,
+    totalCount: record.totalCount,
+    totalPages: record[totalPagesKey],
+    totalPage: record[totalPagesKey],
+  };
 }
 
 export type ErrorMessageMap = Partial<Record<number | string, string>>;
@@ -78,9 +136,18 @@ async function throwErrorResponse(
 
   if (response.status === 401) {
     notifyUnauthorized();
+  } else if (isInitialPasswordNotChangedError(response.status, errorBody)) {
+    dispatchWindowEvent(PASSWORD_CHANGE_REQUIRED_EVENT);
   }
 
-  throw new ApiError(response.status, message, errorBody);
+  throw new ApiError(
+    response.status,
+    // 초기 비밀번호 미변경 403 은 화면별 문구 매핑보다 백엔드 안내가 정확하다.
+    isInitialPasswordNotChangedError(response.status, errorBody)
+      ? INITIAL_PASSWORD_NOT_CHANGED_MESSAGE
+      : message,
+    errorBody,
+  );
 }
 
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {

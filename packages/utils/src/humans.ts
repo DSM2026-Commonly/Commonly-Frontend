@@ -1,5 +1,6 @@
 import { ApiError, request } from "./api";
 
+export const HUMAN_ENDPOINT = "/api/human";
 export const HUMAN_SEARCH_ENDPOINT = "/api/human/search";
 
 export function getHumanUpdateEndpoint(humanId: number): string {
@@ -12,6 +13,14 @@ export const HUMAN_SEARCH_BAD_REQUEST_MESSAGE =
   "검색 조건이 올바르지 않습니다. 생년월일 범위를 확인해 주세요.";
 export const HUMAN_SEARCH_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const HUMAN_CREATE_INVALID_RESPONSE_MESSAGE =
+  "대상자 등록 응답이 올바르지 않습니다.";
+export const HUMAN_CREATE_BAD_REQUEST_MESSAGE =
+  "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
+export const HUMAN_CREATE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const HUMAN_CREATE_CONFLICT_MESSAGE =
+  "동일한 성명과 생년월일의 대상자가 이미 등록되어 있습니다. 중복 확인에서 기존 대상자를 선택해 주세요.";
 export const HUMAN_UPDATE_BAD_REQUEST_MESSAGE =
   "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
 export const HUMAN_UPDATE_UNAUTHORIZED_MESSAGE =
@@ -38,12 +47,18 @@ export interface SearchHumansQuery {
   address?: string;
 }
 
-export interface UpdateHumanRequest {
+export interface CreateHumanRequest {
   name: string;
   gender: "M" | "F";
   birthDate: string;
   address: string | null;
   department: string;
+}
+
+export type UpdateHumanRequest = CreateHumanRequest;
+
+export interface CreatedHuman {
+  humanId: number;
 }
 
 export interface HumanRequestOptions {
@@ -136,6 +151,40 @@ export async function searchHumans(
   }
 
   return humans;
+}
+
+export async function createHuman(
+  body: CreateHumanRequest,
+  { token, signal }: HumanRequestOptions = {},
+): Promise<CreatedHuman> {
+  // 201 Created, 본문은 { humanId }.
+  const response = await request<unknown>(HUMAN_ENDPOINT, {
+    method: "POST",
+    body,
+    token,
+    signal,
+    errorMessages: {
+      400: HUMAN_CREATE_BAD_REQUEST_MESSAGE,
+      401: HUMAN_CREATE_UNAUTHORIZED_MESSAGE,
+      409: HUMAN_CREATE_CONFLICT_MESSAGE,
+    },
+  });
+
+  if (!response || typeof response !== "object") {
+    throw new ApiError(201, HUMAN_CREATE_INVALID_RESPONSE_MESSAGE);
+  }
+
+  const { humanId } = response as Record<string, unknown>;
+
+  if (
+    typeof humanId !== "number" ||
+    !Number.isInteger(humanId) ||
+    humanId <= 0
+  ) {
+    throw new ApiError(201, HUMAN_CREATE_INVALID_RESPONSE_MESSAGE);
+  }
+
+  return { humanId };
 }
 
 export async function updateHuman(

@@ -34,8 +34,8 @@ function toApiGender(gender: CareerEditApplicant["gender"]): "M" | "F" | "" {
 function StaffCareerEditPage() {
   const navigate = useNavigate();
   const navigateHome = () => void navigate("/");
-  // 경력 수정 PUT은 12필드 전체를 요구하므로, 화면에 노출하지 않는
-  // employmentType/expirationDate 원본을 목록 조회 결과에서 보존한다.
+  // 경력 수정 PUT은 전체 필드를 요구하므로, 화면에 노출하지 않는
+  // division(구분)/employmentType/expirationDate 원본을 목록 조회 결과에서 보존한다.
   const certificatesRef = useRef(new Map<string, HumanCertificate>());
   // 인적사항 수정 PUT도 전체 교체라, 화면에 노출하지 않는 department 원본을
   // 검색 결과에서 보존한다.
@@ -94,9 +94,9 @@ function StaffCareerEditPage() {
 
     return certificates.map((certificate) => ({
       id: String(certificate.certificateId),
-      position: "",
+      position: certificate.jobTitle,
       duties: certificate.keyResponsibilities,
-      department: certificate.division,
+      department: certificate.department,
       startDate: certificate.hireDate.replaceAll("-", "."),
       endDate: certificate.retirementDate.replaceAll("-", "."),
       retirementReason: certificate.reason,
@@ -156,7 +156,9 @@ function StaffCareerEditPage() {
         hireDate: toIsoDate(record.startDate),
         expirationDate: original.expirationDate,
         retirementDate: record.endDate ? toIsoDate(record.endDate) : "",
-        division: record.department,
+        // 구분(채용/전보/해지/퇴직)은 화면에서 편집하지 않으므로 원본을 유지한다.
+        division: original.division,
+        department: record.department,
         reason: record.retirementReason,
         employmentType: original.employmentType,
         note: record.note,

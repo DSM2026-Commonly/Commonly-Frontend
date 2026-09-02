@@ -14,13 +14,31 @@ export {
 export type { AuthStorage } from "./auth";
 export {
   ApiError,
+  INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
   NETWORK_ERROR_MESSAGE,
+  PASSWORD_CHANGE_REQUIRED_EVENT,
   SERVER_ERROR_MESSAGE,
   UNAUTHORIZED_EVENT,
   getApiBaseUrl,
+  isInitialPasswordNotChangedError,
+  normalizePageEnvelope,
   request,
   requestBlob,
 } from "./api";
+export {
+  INITIAL_PASSWORD_CHANGE_BAD_REQUEST_MESSAGE,
+  INITIAL_PASSWORD_CHANGE_ENDPOINT,
+  INITIAL_PASSWORD_CHANGE_FORBIDDEN_MESSAGE,
+  INITIAL_PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
+  INITIAL_PASSWORD_MAX_LENGTH,
+  INITIAL_PASSWORD_MIN_LENGTH,
+  changeInitialPassword,
+  requiresInitialPasswordChange,
+} from "./password";
+export type {
+  ChangeInitialPasswordOptions,
+  ChangeInitialPasswordRequest,
+} from "./password";
 export type {
   ApiErrorBody,
   BlobRequestOptions,
@@ -109,17 +127,25 @@ export type { IntegratedRegistrationSession } from "./registrationSession";
 export {
   HUMAN_SEARCH_BAD_REQUEST_MESSAGE,
   HUMAN_SEARCH_ENDPOINT,
+  HUMAN_CREATE_BAD_REQUEST_MESSAGE,
+  HUMAN_CREATE_CONFLICT_MESSAGE,
+  HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
+  HUMAN_CREATE_UNAUTHORIZED_MESSAGE,
+  HUMAN_ENDPOINT,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
   HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
   HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
   HUMAN_UPDATE_CONFLICT_MESSAGE,
   HUMAN_UPDATE_NOT_FOUND_MESSAGE,
   HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
+  createHuman,
   getHumanUpdateEndpoint,
   searchHumans,
   updateHuman,
 } from "./humans";
 export type {
+  CreateHumanRequest,
+  CreatedHuman,
   HumanRequestOptions,
   HumanSummary,
   SearchHumansQuery,

@@ -1,8 +1,18 @@
 import "krds-react/dist/index.css";
 
-import { Table } from "krds-react";
-import { useId, useState } from "react";
+import { Button, Table, TextInput } from "krds-react";
+import { useId, useState, type FormEvent } from "react";
 import {
+  EMPTY_WORK_HISTORY_FILTERS,
+  getWorkHistoryFilterError,
+  submitWorkHistoryFilters,
+  type WorkHistoryFilters,
+} from "./workHistoryFilters";
+import {
+  FilterActions,
+  FilterError,
+  FilterField,
+  FilterForm,
   PageTitle,
   PageEllipsis,
   PageMoveButton,
@@ -37,6 +47,13 @@ export interface WorkHistoryProps {
   /** `totalPages` 가 없을 때 다음 페이지가 있는지 여부 */
   hasNextPage?: boolean;
   onPageChange?: (page: number) => void;
+  /** 조회 조건 (제어 모드). 생략하면 내부 상태로 관리한다. */
+  filters?: WorkHistoryFilters;
+  onFiltersChange?: (filters: WorkHistoryFilters) => void;
+  /** 검색 버튼 클릭 / 엔터 시 호출. 생략하면 조회 조건 UI를 표시하지 않는다. */
+  onSearch?: (filters: WorkHistoryFilters) => void;
+  /** 초기화 버튼 클릭 시 호출. 생략하면 빈 조건으로 `onSearch` 를 호출한다. */
+  onReset?: (filters: WorkHistoryFilters) => void;
   isLoading?: boolean;
   errorMessage?: string;
   emptyMessage?: string;
@@ -85,6 +102,52 @@ function getVisiblePages(
   ];
 }
 
+interface DateFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  max?: string;
+  min?: string;
+  describedBy?: string;
+  invalid: boolean;
+  onChange: (value: string) => void;
+}
+
+/** krds TextInput 과 같은 마크업을 사용해 높이/테두리를 맞춘 날짜 입력 */
+function DateField({
+  id,
+  label,
+  value,
+  max,
+  min,
+  describedBy,
+  invalid,
+  onChange,
+}: DateFieldProps) {
+  return (
+    <FilterField>
+      <div className="form-group">
+        <div className="form-tit">
+          <label htmlFor={id}>{label}</label>
+        </div>
+        <div className="form-conts">
+          <input
+            id={id}
+            type="date"
+            className="krds-input large"
+            aria-describedby={describedBy}
+            aria-invalid={invalid || undefined}
+            max={max || undefined}
+            min={min || undefined}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
+      </div>
+    </FilterField>
+  );
+}
+
 function WorkHistory({
   records = DEFAULT_RECORDS,
   totalPages = records === DEFAULT_RECORDS ? 1 : undefined,
@@ -92,14 +155,25 @@ function WorkHistory({
   initialPage = 1,
   hasNextPage = false,
   onPageChange,
+  filters,
+  onFiltersChange,
+  onSearch,
+  onReset,
   isLoading = false,
   errorMessage = "",
   emptyMessage = DEFAULT_EMPTY_MESSAGE,
 }: WorkHistoryProps) {
   const titleId = useId();
+  const startDateInputId = useId();
+  const endDateInputId = useId();
+  const keywordInputId = useId();
+  const filterErrorId = useId();
   const [internalPage, setInternalPage] = useState(
     Math.max(1, Math.floor(initialPage)),
   );
+  const [internalFilters, setInternalFilters] = useState<WorkHistoryFilters>({
+    ...EMPTY_WORK_HISTORY_FILTERS,
+  });
   const requestedPage =
     page === undefined ? internalPage : Math.max(1, Math.floor(page));
   const knownTotalPages =
@@ -109,12 +183,15 @@ function WorkHistory({
     knownTotalPages === undefined
       ? requestedPage
       : Math.min(requestedPage, knownTotalPages);
+  const currentFilters = filters === undefined ? internalFilters : filters;
   // totalPages 를 모르는 경우 현재 페이지(+다음 페이지 존재 시 1)까지만 노출한다.
   const normalizedTotalPages =
     knownTotalPages ?? (currentPage + (hasNextPage ? 1 : 0));
   const visiblePages = getVisiblePages(currentPage, normalizedTotalPages);
   const isLastPage =
     totalPages === undefined ? !hasNextPage : currentPage >= normalizedTotalPages;
+  const hasSearch = onSearch !== undefined;
+  const filterError = hasSearch ? getWorkHistoryFilterError(currentFilters) : "";
   const showTable = !isLoading && !errorMessage && records.length > 0;
 
   const changePage = (nextPage: number) => {
@@ -131,9 +208,96 @@ function WorkHistory({
     onPageChange?.(clampedPage);
   };
 
+  const changeFilters = (nextFilters: WorkHistoryFilters) => {
+    if (filters === undefined) {
+      setInternalFilters(nextFilters);
+    }
+
+    onFiltersChange?.(nextFilters);
+  };
+
+  const changeFilter = (field: keyof WorkHistoryFilters, value: string) => {
+    changeFilters({ ...currentFilters, [field]: value });
+  };
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!onSearch) {
+      return;
+    }
+
+    // 잘못된 기간이면 안내 문구만 보여주고 조회하지 않는다.
+    submitWorkHistoryFilters(currentFilters, onSearch);
+  };
+
+  const handleReset = () => {
+    const emptyFilters = { ...EMPTY_WORK_HISTORY_FILTERS };
+
+    changeFilters(emptyFilters);
+    (onReset ?? onSearch)?.(emptyFilters);
+  };
+
   return (
     <WorkHistoryRoot aria-labelledby={titleId}>
       <PageTitle id={titleId}>업무 이력 조회</PageTitle>
+
+      {hasSearch && (
+        <FilterForm noValidate onSubmit={handleSearch}>
+          <DateField
+            id={startDateInputId}
+            label="시작일"
+            value={currentFilters.startDate}
+            max={currentFilters.endDate}
+            describedBy={filterError ? filterErrorId : undefined}
+            invalid={Boolean(filterError)}
+            onChange={(value) => changeFilter("startDate", value)}
+          />
+          <DateField
+            id={endDateInputId}
+            label="종료일"
+            value={currentFilters.endDate}
+            min={currentFilters.startDate}
+            describedBy={filterError ? filterErrorId : undefined}
+            invalid={Boolean(filterError)}
+            onChange={(value) => changeFilter("endDate", value)}
+          />
+          <FilterField $grow>
+            <TextInput
+              id={keywordInputId}
+              name="keyword"
+              label="대상자 성명"
+              placeholder="대상자 성명을 입력해주세요"
+              value={currentFilters.keyword}
+              onChange={(value) => changeFilter("keyword", value)}
+            />
+          </FilterField>
+          <FilterActions>
+            <Button
+              variant="secondary"
+              size="large"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "조회 중..." : "검색"}
+            </Button>
+            <Button
+              variant="tertiary"
+              size="large"
+              type="button"
+              disabled={isLoading}
+              onClick={handleReset}
+            >
+              초기화
+            </Button>
+          </FilterActions>
+          {filterError && (
+            <FilterError id={filterErrorId} role="alert">
+              {filterError}
+            </FilterError>
+          )}
+        </FilterForm>
+      )}
 
       <TableFrame>
         <Table>

@@ -9,6 +9,7 @@
       },
       "devDependencies": {
         "turbo": "^2.10.5",
+        "vite": "^8.1.1",
       },
     },
     "apps/admin-web": {

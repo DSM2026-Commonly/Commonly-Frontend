@@ -104,14 +104,13 @@ const Header = ({
   };
 
   return (
-    <HeaderRoot
-      id={`${variant}-header`}
-      $compact={!configuration.showUtility}
-    >
+    <HeaderRoot id={`${variant}-header`} $compact={!configuration.showUtility}>
       <HeaderBody $compact={!configuration.showUtility}>
         {configuration.showUtility && (
           <UtilityRow>
-            <UtilityText>{displayName ? `${displayName} 님` : "로그인 사용자"}</UtilityText>
+            <UtilityText>
+              {displayName ? `${displayName} 님` : "로그인 사용자"}
+            </UtilityText>
             <UtilityDivider aria-hidden="true" />
             <UtilityText $width={125}>남은시간 {remainingTime}</UtilityText>
             <UtilityButton
@@ -166,9 +165,7 @@ const Header = ({
                       variant="unstyled"
                       underline="none"
                       $width={menu.width}
-                      onClick={(event) =>
-                        handleNavigation(event, menu.href)
-                      }
+                      onClick={(event) => handleNavigation(event, menu.href)}
                     >
                       {menu.label}
                     </PrimaryNavigationLink>
