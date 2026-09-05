@@ -2,10 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { ApiError } from "../api";
 import {
   HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
+  HUMAN_DELETE_NOT_FOUND_MESSAGE,
+  HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
   HUMAN_ENDPOINT,
   HUMAN_SEARCH_ENDPOINT,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
   createHuman,
+  deleteHuman,
+  getHumanDeleteEndpoint,
   getHumanUpdateEndpoint,
   searchHumans,
   updateHuman,
@@ -242,6 +246,34 @@ describe("updateHuman", () => {
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("deleteHuman", () => {
+  test("DELETEs the human by id with auth header", async () => {
+    mockFetch(204, undefined, (url, init) => {
+      expect(url).toBe(getHumanDeleteEndpoint(1));
+      expect(url).toBe("/api/human/1");
+      expect(init?.method).toBe("DELETE");
+      expect(init?.body).toBeUndefined();
+      expect(new Headers(init?.headers).get("Authorization")).toBe(
+        "Bearer token-1",
+      );
+    });
+
+    await deleteHuman(1, { token: "token-1" });
+  });
+
+  test("maps error statuses to Korean messages", async () => {
+    const cases = [
+      [401, HUMAN_DELETE_UNAUTHORIZED_MESSAGE],
+      [404, HUMAN_DELETE_NOT_FOUND_MESSAGE],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+      await expect(deleteHuman(1)).rejects.toThrow(message);
     }
   });
 });
