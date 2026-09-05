@@ -15,6 +15,8 @@ export type {
   CertificateApplicant,
   CertificateCareerRow,
   CertificateIssueType,
+  IssuedCertificateSummary,
+  RestoredIssuedCertificate,
 } from "./career-certificate/CareerCertificateIssue";
 export { default as CareerEdit } from "./career-edit/CareerEdit";
 export type {

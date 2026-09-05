@@ -17,6 +17,11 @@ export function getCertificateDownloadEndpoint(certificateId: number): string {
   return `/api/certificates/${certificateId}/download`;
 }
 
+// 발급 상세 조회. 수정(PUT)과 같은 경로를 GET 으로 부른다.
+export function getCertificateDetailEndpoint(certificateId: number): string {
+  return `/api/certificates/${certificateId}`;
+}
+
 export const HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE =
   "경력 사항 응답이 올바르지 않습니다.";
 export const HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE =
@@ -51,6 +56,14 @@ export const CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE =
   "해당 경력증명서를 찾을 수 없습니다. 다시 조회해 주세요.";
+export const CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE =
+  "발급 증명서 응답이 올바르지 않습니다.";
+export const CERTIFICATE_DETAIL_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE =
+  "증명서를 조회할 권한이 없습니다.";
+export const CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE =
+  "발급된 증명서를 찾을 수 없습니다.";
 
 export interface HumanCertificate {
   certificateId: number;
@@ -88,6 +101,31 @@ export interface IssuedCertificate {
   certificateId: number;
   documentNo: string;
   downloadUrl: string;
+}
+
+/** 발급 상세의 대상자 인적사항. */
+export interface CertificateDetailHuman {
+  humanId: number;
+  name: string;
+  birthDate: string;
+  gender: string;
+  address: string;
+}
+
+/** 발급된 증명서 상세(GET /api/certificates/{certificateId}). */
+export interface CertificateDetail {
+  certificateId: number;
+  documentNo: string;
+  /** 발급 시각(ISO LocalDateTime). 응답에 없으면 빈 문자열. */
+  issuedAt: string;
+  purpose: string;
+  otherMatters: string;
+  /** 대상자 정보가 없으면 null. */
+  human: CertificateDetailHuman | null;
+  totalMonths: number;
+  totalDays: number;
+  /** 증명서에 찍힌 재직 이력. */
+  items: HumanCertificate[];
 }
 
 /**
@@ -246,6 +284,103 @@ export async function fetchSelfCertificates({
   });
 
   return normalizeHumanCertificates(response);
+}
+
+function normalizeCertificateDetailHuman(
+  value: unknown,
+): CertificateDetailHuman | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const { humanId, name, birthDate, gender, address } = value as Record<
+    string,
+    unknown
+  >;
+
+  if (typeof humanId !== "number" || !Number.isFinite(humanId)) {
+    return null;
+  }
+
+  const optionalFields = {
+    name: normalizeOptionalString(name),
+    birthDate: normalizeOptionalString(birthDate),
+    gender: normalizeOptionalString(gender),
+    address: normalizeOptionalString(address),
+  };
+
+  if (Object.values(optionalFields).some((field) => field === null)) {
+    return null;
+  }
+
+  return {
+    humanId,
+    ...(optionalFields as Record<keyof typeof optionalFields, string>),
+  };
+}
+
+function normalizeCertificateDetail(value: unknown): CertificateDetail {
+  if (!value || typeof value !== "object") {
+    throw new ApiError(200, CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE);
+  }
+
+  const {
+    certificateId,
+    documentNo,
+    issuedAt,
+    purpose,
+    otherMatters,
+    human,
+    totalMonths,
+    totalDays,
+    items,
+  } = value as Record<string, unknown>;
+
+  // 완료 화면 복구에 반드시 필요한 두 값만 필수로 본다.
+  if (
+    typeof certificateId !== "number" ||
+    !Number.isFinite(certificateId) ||
+    typeof documentNo !== "string"
+  ) {
+    throw new ApiError(200, CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE);
+  }
+
+  return {
+    certificateId,
+    documentNo,
+    issuedAt: typeof issuedAt === "string" ? issuedAt : "",
+    purpose: typeof purpose === "string" ? purpose : "",
+    otherMatters: typeof otherMatters === "string" ? otherMatters : "",
+    human: normalizeCertificateDetailHuman(human),
+    totalMonths: typeof totalMonths === "number" ? totalMonths : 0,
+    totalDays: typeof totalDays === "number" ? totalDays : 0,
+    items: Array.isArray(items)
+      ? items
+          .map(normalizeHumanCertificate)
+          .filter((item): item is HumanCertificate => item !== null)
+      : [],
+  };
+}
+
+/** 발급된 증명서 상세. 새로고침 뒤 완료 화면과 다운로드를 복구할 때 쓴다. */
+export async function fetchCertificateDetail(
+  certificateId: number,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<CertificateDetail> {
+  const response = await request<unknown>(
+    getCertificateDetailEndpoint(certificateId),
+    {
+      token,
+      signal,
+      errorMessages: {
+        401: CERTIFICATE_DETAIL_UNAUTHORIZED_MESSAGE,
+        403: CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE,
+        404: CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
+      },
+    },
+  );
+
+  return normalizeCertificateDetail(response);
 }
 
 function normalizeIssuedCertificate(value: unknown): IssuedCertificate | null {

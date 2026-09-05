@@ -43,3 +43,12 @@ export const FlowError = styled.p`
   font-size: 15px;
   line-height: 1.5;
 `;
+
+export const FlowLoading = styled.p`
+  width: min(792px, calc(100% - 48px));
+  margin: 88px auto 64px;
+  color: var(--career-color-text-subtle);
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: center;
+`;
