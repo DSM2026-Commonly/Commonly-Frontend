@@ -1,11 +1,14 @@
 import {
+  clearIssuedCertificateSession,
   downloadCertificate,
+  fetchCertificateDetail,
   fetchHumanCertificates,
   getAuthToken,
+  getIssuedCertificateSession,
   issueCertificate,
   saveBlobAsFile,
   searchHumans,
-  type IssuedCertificate,
+  setIssuedCertificateSession,
 } from "@commonly/utils";
 import { useRef } from "react";
 import { useNavigate } from "react-router";
@@ -14,16 +17,22 @@ import type {
   CareerCertificateApplicationData,
   CertificateApplicant,
   CertificateCareerRow,
+  IssuedCertificateSummary,
+  RestoredIssuedCertificate,
 } from "../career-certificate/CareerCertificateIssue.types";
+
+interface IssuedCertificateRef {
+  certificateId: number;
+  documentNo: string;
+  humanName: string;
+}
 
 /** admin-web/user-web 이 공유하는 직원용 경력증명서 발급 페이지. */
 function StaffCareerCertificateIssuePage() {
   const navigate = useNavigate();
   // 검색은 부분 일치라 입력한 이름과 실제 성명이 다를 수 있어 id→실명을 보존한다.
   const humanNamesRef = useRef(new Map<string, string>());
-  const issuedRef = useRef<(IssuedCertificate & { humanName: string }) | null>(
-    null,
-  );
+  const issuedRef = useRef<IssuedCertificateRef | null>(null);
 
   const handleSearchApplicants = async ({
     name,
@@ -74,7 +83,9 @@ function StaffCareerCertificateIssuePage() {
     }));
   };
 
-  const handleComplete = async (data: CareerCertificateApplicationData) => {
+  const handleComplete = async (
+    data: CareerCertificateApplicationData,
+  ): Promise<IssuedCertificateSummary> => {
     const humanId = Number(data.applicantId);
     const certificateIds = data.selectedCareerIds.map(Number);
 
@@ -100,9 +111,59 @@ function StaffCareerCertificateIssuePage() {
     );
 
     issuedRef.current = {
-      ...issued,
-      humanName: humanNamesRef.current.get(data.applicantId) ?? data.applicantName,
+      certificateId: issued.certificateId,
+      documentNo: issued.documentNo,
+      humanName:
+        humanNamesRef.current.get(data.applicantId) ?? data.applicantName,
     };
+    // 새로고침해도 방금 발급한 증명서를 다시 내려받을 수 있게 보관한다.
+    setIssuedCertificateSession({
+      certificateId: issued.certificateId,
+      issueType: data.issueType,
+    });
+
+    return {
+      documentNo: issued.documentNo,
+      issuedAt: await loadIssuedAt(issued.certificateId),
+    };
+  };
+
+  const handleRestoreIssued =
+    async (): Promise<RestoredIssuedCertificate | null> => {
+      const session = getIssuedCertificateSession();
+
+      if (!session) {
+        return null;
+      }
+
+      try {
+        const detail = await fetchCertificateDetail(session.certificateId, {
+          token: getAuthToken(),
+        });
+        const humanName = detail.human?.name ?? "";
+
+        issuedRef.current = {
+          certificateId: detail.certificateId,
+          documentNo: detail.documentNo,
+          humanName,
+        };
+
+        return {
+          applicantName: humanName,
+          issueType: session.issueType,
+          documentNo: detail.documentNo,
+          issuedAt: detail.issuedAt,
+        };
+      } catch {
+        // 삭제됐거나 조회할 수 없는 발급 건이면 보관값을 버리고 처음부터 시작한다.
+        clearIssuedCertificateSession();
+        return null;
+      }
+    };
+
+  const handleRestart = () => {
+    clearIssuedCertificateSession();
+    issuedRef.current = null;
   };
 
   const handleDownload = async () => {
@@ -115,10 +176,11 @@ function StaffCareerCertificateIssuePage() {
     const blob = await downloadCertificate(issued.certificateId, {
       token: getAuthToken(),
     });
+    const namePart = issued.humanName ? `_${issued.humanName}` : "";
 
     saveBlobAsFile(
       blob,
-      `유성구청_${issued.humanName}_경력증명서_${issued.documentNo}.pdf`,
+      `유성구청${namePart}_경력증명서_${issued.documentNo}.pdf`,
     );
   };
 
@@ -129,8 +191,23 @@ function StaffCareerCertificateIssuePage() {
       onLoadCareerRows={handleLoadCareerRows}
       onComplete={handleComplete}
       onDownload={handleDownload}
+      onRestoreIssued={handleRestoreIssued}
+      onRestart={handleRestart}
     />
   );
+}
+
+/** 발급일은 발급 응답에 없어 상세로 한 번 더 확인한다. 실패해도 발급 자체는 성공이다. */
+async function loadIssuedAt(certificateId: number): Promise<string> {
+  try {
+    const detail = await fetchCertificateDetail(certificateId, {
+      token: getAuthToken(),
+    });
+
+    return detail.issuedAt;
+  } catch {
+    return "";
+  }
 }
 
 export default StaffCareerCertificateIssuePage;

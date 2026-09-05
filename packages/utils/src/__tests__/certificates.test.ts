@@ -2,6 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { ApiError, NETWORK_ERROR_MESSAGE } from "../api";
 import {
   CERTIFICATES_ENDPOINT,
+  CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
+  fetchCertificateDetail,
+  getCertificateDetailEndpoint,
   CERTIFICATE_CREATE_ENDPOINT,
   CERTIFICATE_CREATE_CONFLICT_MESSAGE,
   createCertificate,
@@ -96,6 +100,74 @@ describe("fetchSelfCertificates", () => {
 
     await expect(fetchSelfCertificates()).rejects.toThrow(
       HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+});
+
+describe("fetchCertificateDetail", () => {
+  const detailResponse = {
+    certificateId: 5,
+    documentNo: "유성구-2026-000001",
+    issuedAt: "2026-09-05T14:03:11",
+    purpose: "은행 제출용",
+    otherMatters: "",
+    human: {
+      humanId: 3,
+      name: "홍길동",
+      birthDate: "1990-01-01",
+      gender: "M",
+      address: "대전 유성구",
+    },
+    totalMonths: 12,
+    totalDays: 0,
+    items: [humanCertificate],
+  };
+
+  test("GETs the issued certificate with the bearer token", async () => {
+    mockFetch(200, detailResponse, (url, init) => {
+      expect(url).toBe(getCertificateDetailEndpoint(5));
+      expect(url).toBe("/api/certificates/5");
+      expect(init?.method).toBe("GET");
+      expect(new Headers(init?.headers).get("Authorization")).toBe(
+        "Bearer token-1",
+      );
+    });
+
+    expect(await fetchCertificateDetail(5, { token: "token-1" })).toEqual({
+      ...detailResponse,
+      items: [humanCertificate],
+    });
+  });
+
+  test("keeps the response usable when optional fields are missing", async () => {
+    mockFetch(200, { certificateId: 5, documentNo: "유성구-2026-000001" });
+
+    expect(await fetchCertificateDetail(5)).toEqual({
+      certificateId: 5,
+      documentNo: "유성구-2026-000001",
+      issuedAt: "",
+      purpose: "",
+      otherMatters: "",
+      human: null,
+      totalMonths: 0,
+      totalDays: 0,
+      items: [],
+    });
+  });
+
+  test("rejects a response without the identifying fields", async () => {
+    mockFetch(200, { certificateId: 5 });
+
+    await expect(fetchCertificateDetail(5)).rejects.toThrow(
+      CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+
+  test("maps 404 to the not found message", async () => {
+    mockFetch(404, undefined);
+
+    await expect(fetchCertificateDetail(5)).rejects.toThrow(
+      CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
     );
   });
 });

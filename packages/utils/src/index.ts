@@ -125,6 +125,16 @@ export {
 } from "./registrationSession";
 export type { IntegratedRegistrationSession } from "./registrationSession";
 export {
+  ISSUED_CERTIFICATE_SESSION_STORAGE_KEY,
+  clearIssuedCertificateSession,
+  getIssuedCertificateSession,
+  setIssuedCertificateSession,
+} from "./issuedCertificateSession";
+export type {
+  IssuedCertificateIssueType,
+  IssuedCertificateSession,
+} from "./issuedCertificateSession";
+export {
   HUMAN_SEARCH_BAD_REQUEST_MESSAGE,
   HUMAN_SEARCH_ENDPOINT,
   HUMAN_CREATE_BAD_REQUEST_MESSAGE,
@@ -157,6 +167,10 @@ export {
   CERTIFICATE_CREATE_CONFLICT_MESSAGE,
   CERTIFICATE_CREATE_ENDPOINT,
   CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE,
+  CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
+  CERTIFICATE_DETAIL_UNAUTHORIZED_MESSAGE,
   CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
   CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
   CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
@@ -177,8 +191,10 @@ export {
   HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
   createCertificate,
   downloadCertificate,
+  fetchCertificateDetail,
   fetchHumanCertificates,
   fetchSelfCertificates,
+  getCertificateDetailEndpoint,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -188,6 +204,8 @@ export {
   updateCertificate,
 } from "./certificates";
 export type {
+  CertificateDetail,
+  CertificateDetailHuman,
   CertificateRequestOptions,
   CreateCertificateRequest,
   HumanCertificate,
