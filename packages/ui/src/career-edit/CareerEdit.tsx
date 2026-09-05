@@ -128,6 +128,11 @@ interface ApplicantStepProps {
   onBirthDayChange: (value: string) => void;
   onSearch: () => void;
   onSelectApplicant: (applicantId: string) => void;
+  /** 없으면 삭제 열 자체를 그리지 않는다. */
+  onDeleteApplicant?: (applicant: CareerEditApplicant) => void;
+  /** 삭제 중인 대상자 id. 해당 행의 버튼만 잠근다. */
+  deletingApplicantId: string;
+  deleteError: string;
 }
 
 interface EditTargetSelectionStepProps {
@@ -366,6 +371,9 @@ function ApplicantStep({
   onBirthDayChange,
   onSearch,
   onSelectApplicant,
+  onDeleteApplicant,
+  deletingApplicantId,
+  deleteError,
 }: ApplicantStepProps) {
   const isBirthMonthInvalid =
     birthMonth.length > 0 && !isValidBirthMonth(birthMonth);
@@ -459,6 +467,7 @@ function ApplicantStep({
                   <Table.Col width="110px" />
                   <Table.Col width="170px" />
                   <Table.Col />
+                  {onDeleteApplicant && <Table.Col width="110px" />}
                 </Table.Colgroup>
                 <Table.Thead>
                   <Table.Tr>
@@ -466,6 +475,9 @@ function ApplicantStep({
                     <Table.Th scope="col">이름</Table.Th>
                     <Table.Th scope="col">생년월일</Table.Th>
                     <Table.Th scope="col">주소</Table.Th>
+                    {onDeleteApplicant && (
+                      <Table.Th scope="col">관리</Table.Th>
+                    )}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -489,6 +501,20 @@ function ApplicantStep({
                         {getBirthDateLabel(applicant.birthDate)}
                       </Table.Td>
                       <Table.Td>{applicant.address}</Table.Td>
+                      {onDeleteApplicant && (
+                        <Table.Td>
+                          <Button
+                            variant="tertiary"
+                            size="small"
+                            disabled={deletingApplicantId === applicant.id}
+                            onClick={() => onDeleteApplicant(applicant)}
+                          >
+                            {deletingApplicantId === applicant.id
+                              ? "삭제 중..."
+                              : "삭제"}
+                          </Button>
+                        </Table.Td>
+                      )}
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -502,6 +528,7 @@ function ApplicantStep({
               </EmptyState>
             </TableFrame>
           )}
+          {deleteError && <FlowError role="alert">{deleteError}</FlowError>}
         </FormCard>
       )}
     </CardStack>
@@ -951,6 +978,7 @@ function CareerEdit({
   onSearchAddress,
   onSearch,
   onLoadCareerRecords,
+  onDeleteApplicant,
   onComplete,
   onAddAnother,
   onHome,
@@ -992,6 +1020,8 @@ function CareerEdit({
   >(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [deletingApplicantId, setDeletingApplicantId] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [fetchedRecords, setFetchedRecords] = useState<
     readonly CareerEditRecord[] | null
   >(null);
@@ -1068,6 +1098,7 @@ function CareerEdit({
     setPersonalInfo(createPersonalInfo(undefined));
     setFetchedApplicants(null);
     setSearchError("");
+    setDeleteError("");
     setFetchedRecords(null);
     setRecordsError("");
   };
@@ -1154,6 +1185,47 @@ function CareerEdit({
       );
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleDeleteApplicant = async (applicant: CareerEditApplicant) => {
+    if (!onDeleteApplicant || deletingApplicantId) {
+      return;
+    }
+
+    // 되돌릴 수 없는 삭제라 확인을 받는다. 경력 사항은 백엔드가 함께 지우지 않는다.
+    if (
+      !window.confirm(
+        `${applicant.name}(${getBirthDateLabel(applicant.birthDate)}) 대상자를 삭제하시겠습니까?\n등록된 경력 사항은 함께 삭제되지 않습니다.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeletingApplicantId(applicant.id);
+    setDeleteError("");
+
+    try {
+      await onDeleteApplicant(applicant.id);
+
+      setFetchedApplicants((currentApplicants) =>
+        (currentApplicants ?? []).filter(
+          (candidate) => candidate.id !== applicant.id,
+        ),
+      );
+
+      if (selectedApplicantId === applicant.id) {
+        setSelectedApplicantId("");
+      }
+    } catch (error) {
+      setDeleteError(
+        getErrorMessage(
+          error,
+          "대상자 삭제 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+      );
+    } finally {
+      setDeletingApplicantId("");
     }
   };
 
@@ -1347,6 +1419,7 @@ function CareerEdit({
     setFetchedApplicants(null);
     setIsSearching(false);
     setSearchError("");
+    setDeleteError("");
     setFetchedRecords(null);
     setIsLoadingRecords(false);
     setRecordsError("");
@@ -1436,6 +1509,13 @@ function CareerEdit({
                   onBirthDayChange={handleBirthDayChange}
                   onSearch={() => void handleSearch()}
                   onSelectApplicant={handleSelectApplicant}
+                  onDeleteApplicant={
+                    onDeleteApplicant
+                      ? (applicant) => void handleDeleteApplicant(applicant)
+                      : undefined
+                  }
+                  deletingApplicantId={deletingApplicantId}
+                  deleteError={deleteError}
                 />
               )}
               {currentStep === 3 && (

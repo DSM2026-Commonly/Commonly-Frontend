@@ -1,4 +1,5 @@
 import {
+  deleteHuman,
   fetchHumanCertificates,
   getAuthToken,
   searchHumans,
@@ -104,6 +105,17 @@ function StaffCareerEditPage() {
     }));
   };
 
+  const handleDeleteApplicant = async (applicantId: string) => {
+    const humanId = Number(applicantId);
+
+    if (!Number.isInteger(humanId) || humanId <= 0) {
+      throw new Error("대상자 정보가 올바르지 않습니다. 다시 조회해 주세요.");
+    }
+
+    await deleteHuman(humanId, { token: getAuthToken() });
+    humanDepartmentsRef.current.delete(applicantId);
+  };
+
   const handleComplete = async (submission: CareerEditSubmission) => {
     const token = getAuthToken();
 
@@ -174,6 +186,7 @@ function StaffCareerEditPage() {
       onSearchAddress={searchRoadAddresses}
       onSearch={handleSearch}
       onLoadCareerRecords={handleLoadCareerRecords}
+      onDeleteApplicant={handleDeleteApplicant}
       onComplete={handleComplete}
     />
   );
