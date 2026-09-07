@@ -506,7 +506,7 @@ function ApplicantStep({
                           <Button
                             variant="tertiary"
                             size="small"
-                            disabled={deletingApplicantId === applicant.id}
+                            disabled={deletingApplicantId !== ""}
                             onClick={() => onDeleteApplicant(applicant)}
                           >
                             {deletingApplicantId === applicant.id
