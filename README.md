@@ -1,5 +1,20 @@
 # React + TypeScript + Vite
 
+## 로컬 환경 변수
+
+저장소 루트의 `.env.local`에 값을 넣으면 세 앱 빌드에 함께 주입됩니다.
+`.env.local`은 커밋되지 않습니다.
+
+```sh
+VITE_API_BASE_URL=https://commonly-be.iswebj.kr
+VITE_JUSO_CONFM_KEY=도로명주소_검색_API_승인키
+```
+
+`VITE_*` 값은 빌드 시점에 번들에 인라인되므로, 값을 바꾸면 dev 서버 재시작
+또는 재빌드가 필요합니다. 도로명주소 승인키 발급 방법은
+[`deploy/PORTAINER.md`](deploy/PORTAINER.md#도로명주소-검색-api-승인키)에
+정리되어 있습니다.
+
 ## Deployment
 
 세 웹 앱을 Portainer Stack으로 배포하는 방법은
