@@ -163,6 +163,14 @@ describe("fetchCertificateDetail", () => {
     );
   });
 
+  test("rejects a blank document number", async () => {
+    mockFetch(200, { certificateId: 5, documentNo: "  " });
+
+    await expect(fetchCertificateDetail(5)).rejects.toThrow(
+      CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+
   test("maps 404 to the not found message", async () => {
     mockFetch(404, undefined);
 

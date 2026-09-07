@@ -340,7 +340,8 @@ function normalizeCertificateDetail(value: unknown): CertificateDetail {
   if (
     typeof certificateId !== "number" ||
     !Number.isFinite(certificateId) ||
-    typeof documentNo !== "string"
+    typeof documentNo !== "string" ||
+    documentNo.trim() === ""
   ) {
     throw new ApiError(200, CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE);
   }
