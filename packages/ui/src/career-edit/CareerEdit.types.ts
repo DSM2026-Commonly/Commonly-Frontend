@@ -70,6 +70,8 @@ export interface CareerEditProps {
   onLoadCareerRecords?: (
     applicantId: string,
   ) => Promise<readonly CareerEditRecord[]>;
+  /** 지정하면 대상자 조회 결과에 삭제 버튼이 붙는다. */
+  onDeleteApplicant?: (applicantId: string) => void | Promise<void>;
   onComplete?: (submission: CareerEditSubmission) => void | Promise<void>;
   onAddAnother?: () => void;
   onHome?: () => void;

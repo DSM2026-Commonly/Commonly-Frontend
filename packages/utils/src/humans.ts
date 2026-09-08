@@ -7,6 +7,11 @@ export function getHumanUpdateEndpoint(humanId: number): string {
   return `/api/human/${humanId}`;
 }
 
+// 삭제는 수정과 같은 경로를 DELETE 로 부른다.
+export function getHumanDeleteEndpoint(humanId: number): string {
+  return `/api/human/${humanId}`;
+}
+
 export const HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE =
   "대상자 조회 응답이 올바르지 않습니다.";
 export const HUMAN_SEARCH_BAD_REQUEST_MESSAGE =
@@ -29,6 +34,12 @@ export const HUMAN_UPDATE_NOT_FOUND_MESSAGE =
   "대상자의 인적사항을 찾을 수 없습니다. 다시 조회해 주세요.";
 export const HUMAN_UPDATE_CONFLICT_MESSAGE =
   "동일한 성명과 생년월일의 인적사항이 이미 존재합니다.";
+export const HUMAN_DELETE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const HUMAN_DELETE_FORBIDDEN_MESSAGE =
+  "대상자를 삭제할 권한이 없습니다.";
+export const HUMAN_DELETE_NOT_FOUND_MESSAGE =
+  "이미 삭제되었거나 찾을 수 없는 대상자입니다.";
 
 export interface HumanSummary {
   humanId: number;
@@ -203,6 +214,23 @@ export async function updateHuman(
       401: HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
       404: HUMAN_UPDATE_NOT_FOUND_MESSAGE,
       409: HUMAN_UPDATE_CONFLICT_MESSAGE,
+    },
+  });
+}
+
+export async function deleteHuman(
+  humanId: number,
+  { token, signal }: HumanRequestOptions = {},
+): Promise<void> {
+  // 204 No Content 응답이라 본문 검증 없이 성공으로 처리한다.
+  await request<unknown>(getHumanDeleteEndpoint(humanId), {
+    method: "DELETE",
+    token,
+    signal,
+    errorMessages: {
+      401: HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
+      403: HUMAN_DELETE_FORBIDDEN_MESSAGE,
+      404: HUMAN_DELETE_NOT_FOUND_MESSAGE,
     },
   });
 }
