@@ -15,6 +15,7 @@ import {
   downloadCertificate,
   fetchHumanCertificates,
   fetchSelfCertificates,
+  SELF_CERTIFICATES_UNAVAILABLE_MESSAGE,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -100,6 +101,15 @@ describe("fetchSelfCertificates", () => {
 
     await expect(fetchSelfCertificates()).rejects.toThrow(
       HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+
+  // 백엔드가 민원인 권한을 401 로 막으므로 세션 만료 안내를 쓰면 안 된다.
+  test("explains a 401 as a permission problem, not an expired session", async () => {
+    mockFetch(401, undefined);
+
+    await expect(fetchSelfCertificates({ token: "token-1" })).rejects.toThrow(
+      SELF_CERTIFICATES_UNAVAILABLE_MESSAGE,
     );
   });
 });
@@ -375,7 +385,8 @@ describe("issueSelfCertificate", () => {
 
   test("maps error statuses to Korean messages", async () => {
     const cases = [
-      [401, "로그인이 만료되었습니다"],
+      // 본인 발급은 권한 부족도 401 로 오므로 "다시 로그인" 안내를 쓰지 않는다.
+      [401, "본인 증명서 발급 권한이 없습니다"],
       [403, "본인 경력만 발급할 수 있습니다"],
       [404, "발급할 경력 사항이 없습니다"],
       [500, "일시적인 오류"],

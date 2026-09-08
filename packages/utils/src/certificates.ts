@@ -44,6 +44,14 @@ export const CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE =
   "발급할 경력 사항이 없습니다.";
 export const SELF_CERTIFICATES_FORBIDDEN_MESSAGE =
   "본인 경력만 조회할 수 있습니다.";
+/**
+ * 본인 조회/발급은 백엔드에서 아직 열려 있지 않아(민원인 권한 차단) 401 로 막힌다.
+ * 세션 만료가 아니므로 "다시 로그인" 안내를 쓰지 않는다.
+ */
+export const SELF_CERTIFICATES_UNAVAILABLE_MESSAGE =
+  "본인 경력 조회 권한이 없습니다. 042-611-2114로 문의해 주세요.";
+export const CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE =
+  "본인 증명서 발급 권한이 없습니다. 042-611-2114로 문의해 주세요.";
 export const SELF_CERTIFICATES_NOT_FOUND_MESSAGE =
   "조회된 경력 사항이 없습니다.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
@@ -277,7 +285,7 @@ export async function fetchSelfCertificates({
     token,
     signal,
     errorMessages: {
-      401: HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+      401: SELF_CERTIFICATES_UNAVAILABLE_MESSAGE,
       403: SELF_CERTIFICATES_FORBIDDEN_MESSAGE,
       404: SELF_CERTIFICATES_NOT_FOUND_MESSAGE,
     },
@@ -441,7 +449,7 @@ export async function issueSelfCertificate(
     token,
     signal,
     errorMessages: {
-      401: CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+      401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
       403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
       404: CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
     },

@@ -1,3 +1,5 @@
+import { hasValidAuthToken } from "./authSession";
+
 const DEFAULT_API_BASE_URL = "";
 
 export function getApiBaseUrl(): string {
@@ -61,7 +63,17 @@ function dispatchWindowEvent(name: string): void {
   window.dispatchEvent(new CustomEvent(name));
 }
 
+/**
+ * 백엔드는 권한이 없는 요청에도 403 이 아니라 401 을 준다(민원인 토큰으로 담당자용 API 호출 등).
+ * 저장된 토큰이 아직 유효하면 세션 만료가 아니므로 로그아웃시키지 않는다.
+ * 그렇지 않으면 권한 밖 API 한 번에 로그인 화면으로 튕기고, 로그인 → 같은 API 재호출 → 401 로
+ * 다시 튕기는 루프에 갇힌다.
+ */
 function notifyUnauthorized(): void {
+  if (hasValidAuthToken()) {
+    return;
+  }
+
   dispatchWindowEvent(UNAUTHORIZED_EVENT);
 }
 
