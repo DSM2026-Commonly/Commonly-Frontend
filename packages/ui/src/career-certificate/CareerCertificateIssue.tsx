@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { getStepIndex, STEP_VIEWS } from "./CareerCertificateIssue.constants";
-import { FlowError, FlowRoot } from "./CareerCertificateIssue.styles";
+import {
+  FlowError,
+  FlowLoading,
+  FlowRoot,
+} from "./CareerCertificateIssue.styles";
 import type {
   CareerCertificateApplicationData,
   CareerCertificateIssueProps,
@@ -8,6 +12,7 @@ import type {
   CertificateApplicant,
   CertificateCareerRow,
   CertificateIssueType,
+  IssuedCertificateSummary,
 } from "./CareerCertificateIssue.types";
 import {
   isValidBirthDate,
@@ -32,6 +37,8 @@ export type {
   CertificateApplicant,
   CertificateCareerRow,
   CertificateIssueType,
+  IssuedCertificateSummary,
+  RestoredIssuedCertificate,
 } from "./CareerCertificateIssue.types";
 
 const UNEXPECTED_ERROR_MESSAGE =
@@ -52,6 +59,8 @@ function CareerCertificateIssue({
   onLoadCareerRows,
   onComplete,
   onDownload,
+  onRestoreIssued,
+  onRestart,
 }: CareerCertificateIssueProps) {
   const [view, setView] = useState<CareerCertificateIssueView>(
     initialView ?? (variant === "civil" ? "details" : "notice"),
@@ -83,6 +92,12 @@ function CareerCertificateIssue({
   const [submissionError, setSubmissionError] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [issuedSummary, setIssuedSummary] =
+    useState<IssuedCertificateSummary | null>(null);
+  // 복구한 발급 건의 대상자명. 조회 결과가 없는 상태에서 완료 화면을 그릴 때 쓴다.
+  const [restoredApplicantName, setRestoredApplicantName] = useState("");
+  // 복구를 시도하는 동안에는 첫 단계가 잠깐 보였다 사라지지 않도록 안내만 띄운다.
+  const [isRestoring, setIsRestoring] = useState(Boolean(onRestoreIssued));
   // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
   const searchRequestIdRef = useRef(0);
   // 민원인 본인 경력 로딩 요청 id. 재시작으로 다시 불러올 때 이전 응답을 무시한다.
@@ -103,13 +118,51 @@ function CareerCertificateIssue({
         purpose.trim().length > 0));
   const selectedApplicantName =
     applicants.find((applicant) => applicant.id === selectedPerson)?.name ??
-    fixedApplicantName;
+    (restoredApplicantName || fixedApplicantName);
   const selectedCareerRows =
     issueType === "all"
       ? careerRows
       : careerRows.filter((row) => selectedCareerIds.includes(row.id));
 
   useCareerCertificateScroll(view);
+
+  // 완료 화면에서 새로고침하거나 뒤로 갔다 돌아온 경우 직전 발급 결과를 되살린다.
+  useEffect(() => {
+    if (!onRestoreIssued) {
+      return;
+    }
+
+    let isActive = true;
+
+    onRestoreIssued()
+      .then((restored) => {
+        if (!isActive || !restored) {
+          return;
+        }
+
+        setRestoredApplicantName(restored.applicantName);
+        setIssueType(restored.issueType);
+        setIssuedSummary({
+          documentNo: restored.documentNo,
+          issuedAt: restored.issuedAt,
+        });
+        setView("success");
+      })
+      .catch(() => {
+        // 복구는 부가 기능이라 실패하면 조용히 처음부터 시작한다.
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsRestoring(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+    // onRestoreIssued 는 페이지가 매 렌더마다 새로 만드는 콜백이라 의존성에서 제외한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 민원인은 대상자 조회 단계가 없으므로 진입 시 본인 경력을 바로 불러온다.
   useEffect(() => {
@@ -244,7 +297,12 @@ function CareerCertificateIssue({
     setSubmissionError("");
 
     try {
-      await onComplete(applicationData);
+      const summary = await onComplete(applicationData);
+
+      if (summary) {
+        setIssuedSummary(summary);
+      }
+
       moveToView("success");
     } catch (error) {
       setSubmissionError(getErrorMessage(error));
@@ -359,6 +417,9 @@ function CareerCertificateIssue({
     resetPersonSearchResult();
     setSubmissionError("");
     setDownloadError("");
+    setIssuedSummary(null);
+    setRestoredApplicantName("");
+    onRestart?.();
     moveToView(variant === "civil" ? "details" : "notice");
   };
 
@@ -443,6 +504,14 @@ function CareerCertificateIssue({
     }
   };
 
+  if (isRestoring) {
+    return (
+      <FlowRoot>
+        <FlowLoading role="status">발급 결과를 불러오는 중입니다.</FlowLoading>
+      </FlowRoot>
+    );
+  }
+
   if (view === "preview") {
     return (
       <FlowRoot key={view}>
@@ -473,6 +542,8 @@ function CareerCertificateIssue({
           variant={variant}
           issueType={issueType}
           applicantName={selectedApplicantName}
+          documentNo={issuedSummary?.documentNo ?? ""}
+          issuedAt={issuedSummary?.issuedAt ?? ""}
           isDownloading={isDownloading}
           downloadError={downloadError}
           onRestart={handleRestart}
