@@ -100,22 +100,22 @@ function CareerCertificateIssue({
   const [isRestoring, setIsRestoring] = useState(Boolean(onRestoreIssued));
   // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
   const searchRequestIdRef = useRef(0);
-  // 민원인 본인 경력 로딩 요청 id. 재시작으로 다시 불러올 때 이전 응답을 무시한다.
-  const careerLoadRequestIdRef = useRef(0);
-  const [civilLoadKey, setCivilLoadKey] = useState(0);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
     applicantName.trim().length > 0 &&
     isValidBirthDate(birthYear, birthMonth, birthDay);
+  // 발급 용도는 증명서에 기재되는 필수 항목이다.
   const canContinue =
-    (currentStep !== 0 || noticeAccepted) &&
-    (currentStep !== 2 || Boolean(selectedPerson)) &&
-    (currentStep !== 3 ||
-      (careerRows.length > 0 &&
-        (issueType === "all" || selectedCareerIds.length > 0) &&
-        // 발급 용도는 증명서에 기재되는 필수 항목이다.
-        purpose.trim().length > 0));
+    variant === "civil"
+      ? // 민원인 본인 발급은 대상 경력을 서버가 정하므로 용도만 채우면 신청할 수 있다.
+        purpose.trim().length > 0
+      : (currentStep !== 0 || noticeAccepted) &&
+        (currentStep !== 2 || Boolean(selectedPerson)) &&
+        (currentStep !== 3 ||
+          (careerRows.length > 0 &&
+            (issueType === "all" || selectedCareerIds.length > 0) &&
+            purpose.trim().length > 0));
   const selectedApplicantName =
     applicants.find((applicant) => applicant.id === selectedPerson)?.name ??
     (restoredApplicantName || fixedApplicantName);
@@ -163,47 +163,6 @@ function CareerCertificateIssue({
     // onRestoreIssued 는 페이지가 매 렌더마다 새로 만드는 콜백이라 의존성에서 제외한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // 민원인은 대상자 조회 단계가 없으므로 진입 시 본인 경력을 바로 불러온다.
-  useEffect(() => {
-    if (variant !== "civil" || !onLoadCareerRows) {
-      return;
-    }
-
-    const requestId = ++careerLoadRequestIdRef.current;
-    let isActive = true;
-
-    setIsLoadingCareerRows(true);
-    setStepError("");
-
-    onLoadCareerRows("")
-      .then((rows) => {
-        if (!isActive || requestId !== careerLoadRequestIdRef.current) {
-          return;
-        }
-
-        setCareerRows(rows);
-        setSelectedCareerIds(rows.map((row) => row.id));
-      })
-      .catch((error: unknown) => {
-        if (!isActive || requestId !== careerLoadRequestIdRef.current) {
-          return;
-        }
-
-        setStepError(getErrorMessage(error));
-      })
-      .finally(() => {
-        if (isActive && requestId === careerLoadRequestIdRef.current) {
-          setIsLoadingCareerRows(false);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-    // onLoadCareerRows 는 페이지가 매 렌더마다 새로 만드는 콜백이라 의존성에서 제외한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant, civilLoadKey]);
 
   const moveToView = (nextView: CareerCertificateIssueView) => {
     setStepError("");
@@ -409,9 +368,6 @@ function CareerCertificateIssue({
     setIssueType("all");
     setCareerRows([]);
     setSelectedCareerIds([]);
-    if (variant === "civil") {
-      setCivilLoadKey((currentKey) => currentKey + 1);
-    }
     setAdditionalNote("");
     setPurpose("");
     resetPersonSearchResult();

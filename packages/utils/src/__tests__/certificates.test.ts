@@ -14,8 +14,6 @@ import {
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
-  fetchSelfCertificates,
-  SELF_CERTIFICATES_UNAVAILABLE_MESSAGE,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -80,39 +78,6 @@ function mockFetch(
     });
   }) as typeof fetch;
 }
-
-describe("fetchSelfCertificates", () => {
-  test("requests the self endpoint with the bearer token", async () => {
-    mockFetch(200, [humanCertificate], (url, init) => {
-      expect(url).toBe(CERTIFICATE_SELF_ENDPOINT);
-      expect(init?.method ?? "GET").toBe("GET");
-      expect(new Headers(init?.headers).get("Authorization")).toBe(
-        "Bearer token-1",
-      );
-    });
-
-    expect(await fetchSelfCertificates({ token: "token-1" })).toEqual([
-      humanCertificate,
-    ]);
-  });
-
-  test("rejects a non-array response", async () => {
-    mockFetch(200, { certificates: [] });
-
-    await expect(fetchSelfCertificates()).rejects.toThrow(
-      HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
-    );
-  });
-
-  // 백엔드가 민원인 권한을 401 로 막으므로 세션 만료 안내를 쓰면 안 된다.
-  test("explains a 401 as a permission problem, not an expired session", async () => {
-    mockFetch(401, undefined);
-
-    await expect(fetchSelfCertificates({ token: "token-1" })).rejects.toThrow(
-      SELF_CERTIFICATES_UNAVAILABLE_MESSAGE,
-    );
-  });
-});
 
 describe("fetchCertificateDetail", () => {
   const detailResponse = {

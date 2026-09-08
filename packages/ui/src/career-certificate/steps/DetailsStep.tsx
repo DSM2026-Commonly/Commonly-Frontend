@@ -170,7 +170,9 @@ function DetailsStep({
                     <Table.Td colSpan={4} align="center">
                       {isLoadingCareerRows
                         ? "경력 사항을 불러오는 중입니다..."
-                        : "조회된 경력 사항이 없습니다."}
+                        : isCivil
+                          ? "본인 경력 목록 조회는 아직 제공되지 않습니다. 신청하시면 본인 전체 경력으로 발급됩니다."
+                          : "조회된 경력 사항이 없습니다."}
                     </Table.Td>
                   </Table.Tr>
                 )}
