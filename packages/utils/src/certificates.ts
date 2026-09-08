@@ -42,18 +42,12 @@ export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
   "본인 경력만 발급할 수 있습니다.";
 export const CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE =
   "발급할 경력 사항이 없습니다.";
-export const SELF_CERTIFICATES_FORBIDDEN_MESSAGE =
-  "본인 경력만 조회할 수 있습니다.";
 /**
- * 본인 조회/발급은 백엔드에서 아직 열려 있지 않아(민원인 권한 차단) 401 로 막힌다.
+ * 본인 발급은 백엔드에서 아직 열려 있지 않아(self-issue-enabled=false) 401 로 막힌다.
  * 세션 만료가 아니므로 "다시 로그인" 안내를 쓰지 않는다.
  */
-export const SELF_CERTIFICATES_UNAVAILABLE_MESSAGE =
-  "본인 경력 조회 권한이 없습니다. 042-611-2114로 문의해 주세요.";
 export const CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE =
   "본인 증명서 발급 권한이 없습니다. 042-611-2114로 문의해 주세요.";
-export const SELF_CERTIFICATES_NOT_FOUND_MESSAGE =
-  "조회된 경력 사항이 없습니다.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
@@ -97,10 +91,9 @@ export interface IssueCertificateRequest {
   otherMatters: string;
 }
 
-// 민원인 본인 발급 — 대상자는 로그인 토큰으로 정해지므로 humanId 를 받지 않는다.
-// certificateIds 를 생략하면 본인의 전체 경력을 발급한다.
+// 민원인 본인 발급 — 대상자도 발급 대상 경력도 로그인 토큰에서 정해진다.
+// 명세와 백엔드 모두 humanId/certificateIds 를 받지 않아 항상 본인 전체 경력이 발급된다.
 export interface IssueSelfCertificateRequest {
-  certificateIds?: number[];
   purpose: string;
   otherMatters: string;
 }
@@ -274,24 +267,6 @@ function normalizeHumanCertificates(response: unknown): HumanCertificate[] {
   }
 
   return certificates;
-}
-
-/** 민원인 본인의 경력증명 사항 목록. 대상자는 로그인 토큰으로 정해진다. */
-export async function fetchSelfCertificates({
-  token,
-  signal,
-}: CertificateRequestOptions = {}): Promise<HumanCertificate[]> {
-  const response = await request<unknown>(CERTIFICATE_SELF_ENDPOINT, {
-    token,
-    signal,
-    errorMessages: {
-      401: SELF_CERTIFICATES_UNAVAILABLE_MESSAGE,
-      403: SELF_CERTIFICATES_FORBIDDEN_MESSAGE,
-      404: SELF_CERTIFICATES_NOT_FOUND_MESSAGE,
-    },
-  });
-
-  return normalizeHumanCertificates(response);
 }
 
 function normalizeCertificateDetailHuman(

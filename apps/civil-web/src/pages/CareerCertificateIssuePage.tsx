@@ -2,7 +2,6 @@ import {
   CareerCertificateIssue,
   useAuthSession,
   type CareerCertificateApplicationData,
-  type CertificateCareerRow,
   type IssuedCertificateSummary,
   type RestoredIssuedCertificate,
 } from "@commonly/ui";
@@ -10,7 +9,6 @@ import {
   clearIssuedCertificateSession,
   downloadCertificate,
   fetchCertificateDetail,
-  fetchSelfCertificates,
   getAuthToken,
   getIssuedCertificateSession,
   issueSelfCertificate,
@@ -28,44 +26,12 @@ function CareerCertificateIssuePage() {
   const { session } = useAuthSession();
   const issuedRef = useRef<IssuedCertificateRef | null>(null);
 
-  // 민원인은 로그인 토큰으로 본인이 정해지므로 대상자 id 없이 본인 경력을 조회한다.
-  const handleLoadCareerRows = async (): Promise<
-    readonly CertificateCareerRow[]
-  > => {
-    const certificates = await fetchSelfCertificates({
-      token: getAuthToken(),
-    });
-
-    if (certificates.length === 0) {
-      throw new Error(
-        "조회된 경력 사항이 없습니다. 근로 내역이 없는 경우 042-611-2114로 문의해 주세요.",
-      );
-    }
-
-    return certificates.map((certificate) => ({
-      id: String(certificate.certificateId),
-      job: certificate.keyResponsibilities,
-      department: certificate.division,
-      period: `${certificate.hireDate} ~ ${certificate.retirementDate || certificate.expirationDate}`,
-    }));
-  };
-
   const handleComplete = async (
     data: CareerCertificateApplicationData,
   ): Promise<IssuedCertificateSummary> => {
-    const certificateIds = data.selectedCareerIds.map(Number);
-
-    if (
-      certificateIds.length === 0 ||
-      certificateIds.some((id) => !Number.isInteger(id) || id <= 0)
-    ) {
-      throw new Error("발급할 경력 사항을 선택해 주세요.");
-    }
-
+    // 발급 대상 경력은 서버가 로그인 토큰으로 정한다(명세상 본인 전체 경력).
     const issued = await issueSelfCertificate(
       {
-        // 전체 발급은 서버가 본인 전체 경력을 대상으로 하므로 선택 발급일 때만 id 를 보낸다.
-        ...(data.issueType === "selected" ? { certificateIds } : {}),
         purpose: data.purpose,
         otherMatters: data.additionalNote,
       },
@@ -147,7 +113,6 @@ function CareerCertificateIssuePage() {
     <CareerCertificateIssue
       variant="civil"
       applicantName={session?.name ?? ""}
-      onLoadCareerRows={handleLoadCareerRows}
       onComplete={handleComplete}
       onDownload={handleDownload}
       onRestoreIssued={handleRestoreIssued}
