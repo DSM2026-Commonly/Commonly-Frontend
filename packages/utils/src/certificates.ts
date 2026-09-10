@@ -132,22 +132,33 @@ export interface CertificateDetail {
 /**
  * 경력증명서 개별 등록(POST /api/certificates/create) 요청 본문.
  * 대상자는 먼저 POST /api/human 으로 만들거나 기존 대상자를 골라 humanId 로 넘긴다.
- * 나머지 필드 구성은 수정 요청과 같고, 날짜가 없으면 null 을 보낸다.
+ * 성명·생년월일·성별은 백엔드가 humanId 로 대상자 행에서 가져오므로 보내지 않는다.
+ * 구분/근무형태는 허용값이 정해져 있고 빈 문자열은 400 이라, 입력란이 없으면 null 을 보낸다.
+ * 날짜가 없으면 null 을 보낸다.
  */
 export interface CreateCertificateRequest {
   humanId: number;
-  name: string;
-  birthDate: string;
-  gender: "M" | "F";
   jobTitle: string;
   keyResponsibilities: string;
   hireDate: string;
   expirationDate: string | null;
   retirementDate: string | null;
-  division: string;
+  /** 구분(채용/전보/해지/퇴직). 모르면 null. */
+  division: string | null;
+  /** 근무부서 */
+  department: string;
   reason: string;
-  employmentType: string;
+  /** 근무형태(기간제/단시간근로자). 모르면 null. */
+  employmentType: string | null;
   note: string;
+}
+
+export interface CreatedCertificate {
+  /**
+   * 등록된 재직 이력 id. 발급 요청의 certificateIds 에 그대로 넣는 값이다.
+   * 201 본문에서 id 를 읽지 못하면 null (등록 자체는 된 것이다).
+   */
+  certificateId: number | null;
 }
 
 export interface UpdateCertificateRequest {
@@ -459,15 +470,15 @@ export const CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE =
   "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
 export const CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
-export const CERTIFICATE_CREATE_CONFLICT_MESSAGE =
-  "동일한 대상자의 경력사항이 이미 등록되어 있습니다.";
+export const CERTIFICATE_CREATE_HUMAN_NOT_FOUND_MESSAGE =
+  "대상자를 찾을 수 없습니다. 대상자 정보 입력 단계부터 다시 진행해 주세요.";
 
 export async function createCertificate(
   body: CreateCertificateRequest,
   { token, signal }: CertificateRequestOptions = {},
-): Promise<void> {
-  // 201 Created. 응답 본문 형식이 명세에 없어 검증하지 않는다.
-  await request<unknown>(CERTIFICATE_CREATE_ENDPOINT, {
+): Promise<CreatedCertificate> {
+  // 201 Created, 본문은 { certificateId }. 백엔드는 400/401/404 만 낸다(중복 검사 없음).
+  const response = await request<unknown>(CERTIFICATE_CREATE_ENDPOINT, {
     method: "POST",
     body,
     token,
@@ -475,9 +486,25 @@ export async function createCertificate(
     errorMessages: {
       400: CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
       401: CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
-      409: CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+      404: CERTIFICATE_CREATE_HUMAN_NOT_FOUND_MESSAGE,
     },
   });
+
+  // 201 이 왔으면 행은 이미 저장된 뒤다. 본문이 어긋난다고 오류로 돌리면 사용자가 다시 등록해
+  // 같은 경력이 두 번 쌓이므로(백엔드에 중복 검사 없음), id 만 못 읽은 것으로 처리한다.
+  const certificateId =
+    response && typeof response === "object"
+      ? (response as Record<string, unknown>).certificateId
+      : undefined;
+
+  return {
+    certificateId:
+      typeof certificateId === "number" &&
+      Number.isInteger(certificateId) &&
+      certificateId > 0
+        ? certificateId
+        : null,
+  };
 }
 
 export async function updateCertificate(
