@@ -59,8 +59,11 @@ export const UserListTableFrame = styled.div`
     width: 100%;
   }
 
+  /*
+   * 표 자체에 높이를 주면 행이 남는 높이만큼 늘어나, 한 행만 조회됐을 때
+   * 그 행이 표 한가운데로 밀린다. 높이는 바깥 프레임만 고정하고 행은 50px 을 유지한다.
+   */
   .krds-table-wrap .tbl {
-    height: 539px;
     min-width: 712px;
     table-layout: fixed;
     border-collapse: collapse;
