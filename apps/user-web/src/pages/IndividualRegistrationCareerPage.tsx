@@ -45,21 +45,14 @@ function toHumanRequest(
 }
 
 // 화면 입력값을 POST /api/certificates/create 요청 본문으로 바꾼다.
-// 화면에 입력란이 없는 값은 null/빈 문자열로 둔다.
+// 성명·생년월일·성별은 백엔드가 humanId 로 대상자 행에서 가져오므로 보내지 않는다.
+// 구분·근무형태는 이 화면에 입력란이 없어 null 로 보낸다(빈 문자열은 허용값 검증에 걸려 400).
 function toCreateRequest(
   humanId: number,
-  subject: IndividualRegistrationSubjectData,
   career: IndividualRegistrationCareerData,
 ): CreateCertificateRequest {
   return {
     humanId,
-    name: subject.name.trim(),
-    birthDate: toIsoDate(
-      subject.birthYear,
-      subject.birthMonth,
-      subject.birthDay,
-    ),
-    gender: subject.gender === "female" ? "F" : "M",
     jobTitle: career.jobTitle.trim(),
     keyResponsibilities: career.duties.trim(),
     hireDate: toIsoDate(career.startYear, career.startMonth, career.startDay),
@@ -67,9 +60,10 @@ function toCreateRequest(
     retirementDate: career.endYear
       ? toIsoDate(career.endYear, career.endMonth, career.endDay)
       : null,
-    division: career.department.trim(),
+    division: null,
+    department: career.department.trim(),
     reason: career.resignationReason.trim(),
-    employmentType: "",
+    employmentType: null,
     note: career.note.trim(),
   };
 }
@@ -183,7 +177,7 @@ function IndividualRegistrationCareerPage() {
       const humanId = await resolveHumanId(career, abortController.signal);
       isHumanRegistered = true;
 
-      await createCertificate(toCreateRequest(humanId, subject, career), {
+      await createCertificate(toCreateRequest(humanId, career), {
         token: getAuthToken(),
         signal: abortController.signal,
       });
@@ -196,13 +190,22 @@ function IndividualRegistrationCareerPage() {
         return;
       }
 
+      // 경력 등록이 404(대상자 없음)면 기억해 둔 humanId 는 더 이상 유효하지 않다.
+      // 지워 두어야 다시 등록하기를 눌렀을 때 대상자부터 다시 만든다.
+      const isHumanMissing =
+        isHumanRegistered && error instanceof ApiError && error.status === 404;
+
+      if (isHumanMissing) {
+        registeredHumanIdRef.current = null;
+      }
+
       const message =
         error instanceof ApiError
           ? error.message
           : "경력사항 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
 
       setErrorMessage(
-        isHumanRegistered
+        isHumanRegistered && !isHumanMissing
           ? `대상자 등록은 완료되었습니다. 경력사항 등록에 실패했습니다: ${message}`
           : message,
       );

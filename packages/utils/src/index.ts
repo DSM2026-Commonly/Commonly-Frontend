@@ -169,8 +169,8 @@ export type {
 export {
   CERTIFICATES_ENDPOINT,
   CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
-  CERTIFICATE_CREATE_CONFLICT_MESSAGE,
   CERTIFICATE_CREATE_ENDPOINT,
+  CERTIFICATE_CREATE_HUMAN_NOT_FOUND_MESSAGE,
   CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
   CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE,
   CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
@@ -211,6 +211,7 @@ export type {
   CertificateDetailHuman,
   CertificateRequestOptions,
   CreateCertificateRequest,
+  CreatedCertificate,
   HumanCertificate,
   IssueCertificateRequest,
   IssueSelfCertificateRequest,
