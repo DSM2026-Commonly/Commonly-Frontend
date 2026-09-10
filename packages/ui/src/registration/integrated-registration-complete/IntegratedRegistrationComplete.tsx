@@ -1,12 +1,17 @@
 import "krds-react/dist/index.css";
 
 import { useId } from "react";
+import { Table } from "krds-react";
 import {
   ActionButton,
   ActionGroup,
   CompleteRoot,
   CompleteTitle,
   DetailSection,
+  FailureNote,
+  FailureSection,
+  FailureTableFrame,
+  FailureTitle,
   ResultCard,
   ResultLabel,
   ResultRow,
@@ -19,30 +24,34 @@ export interface IntegratedRegistrationCompleteResult {
   value: string;
 }
 
+export interface IntegratedRegistrationCompleteFailure {
+  /** 엑셀 파일 기준 행 번호 */
+  rowIndex: number;
+  reason: string;
+}
+
 export interface IntegratedRegistrationCompleteProps {
   title?: string;
-  results?: readonly IntegratedRegistrationCompleteResult[];
+  results: readonly IntegratedRegistrationCompleteResult[];
+  /** 등록에 실패한 행 목록. 비어 있으면 실패 상세를 표시하지 않는다. */
+  failures?: readonly IntegratedRegistrationCompleteFailure[];
   addLabel?: string;
   homeLabel?: string;
   onAdd?: () => void;
   onHome?: () => void;
 }
 
-const defaultResults = [
-  { id: "total", label: "대상 건수", value: "00건" },
-  { id: "success", label: "성공 건수", value: "00건" },
-  { id: "failure", label: "실패 건수", value: "00건" },
-] as const satisfies readonly IntegratedRegistrationCompleteResult[];
-
 function IntegratedRegistrationComplete({
   title,
-  results = defaultResults,
+  results,
+  failures = [],
   addLabel = "추가 등록하기",
   homeLabel = "홈으로 돌아가기",
   onAdd,
   onHome,
 }: IntegratedRegistrationCompleteProps) {
   const titleId = useId();
+  const failureTitleId = `${titleId}-failures`;
 
   return (
     <CompleteRoot aria-labelledby={titleId}>
@@ -65,6 +74,41 @@ function IntegratedRegistrationComplete({
             </ResultRow>
           ))}
         </ResultCard>
+
+        {failures.length > 0 && (
+          <FailureSection aria-labelledby={failureTitleId}>
+            <FailureTitle id={failureTitleId}>실패 상세</FailureTitle>
+            <FailureNote>
+              아래 행은 등록되지 않았습니다. 파일에서 해당 행을 수정한 뒤 다시
+              업로드해 주세요.
+            </FailureNote>
+            <FailureTableFrame>
+              <Table>
+                <Table.Caption className="sr-only">
+                  등록에 실패한 행과 실패 사유
+                </Table.Caption>
+                <Table.Colgroup>
+                  <Table.Col width="120px" />
+                  <Table.Col />
+                </Table.Colgroup>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th scope="col">행 번호</Table.Th>
+                    <Table.Th scope="col">실패 사유</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {failures.map((failure, index) => (
+                    <Table.Tr key={`${failure.rowIndex}-${index}`}>
+                      <Table.Td>{`${failure.rowIndex}행`}</Table.Td>
+                      <Table.Td>{failure.reason}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </FailureTableFrame>
+          </FailureSection>
+        )}
 
         <ActionGroup>
           <ActionButton

@@ -45,15 +45,8 @@ export interface UserListProps {
   emptyMessage?: string;
 }
 
-const DEFAULT_ACCOUNTS: readonly UserAccountRecord[] = Array.from(
-  { length: 10 },
-  (_, index) => ({
-    id: `user-${index + 1}`,
-    name: "전재준",
-    accountId: "글로리1234",
-    department: "대전광역시 유성구 가정북로 76",
-  }),
-);
+// 실제 데이터는 페이지가 API 로 조회해 넘긴다. 기본값은 빈 목록.
+const DEFAULT_ACCOUNTS: readonly UserAccountRecord[] = [];
 
 const DEFAULT_EMPTY_MESSAGE = "조회된 사용자가 없습니다.";
 

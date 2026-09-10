@@ -154,7 +154,9 @@ export const FormError = styled.p`
   line-height: 1.5;
 `;
 
-export const LoginSubmitButton = styled(Button)<LoginVariantProps>`
+export const LoginSubmitButton = styled(Button, {
+  shouldForwardProp: (prop) => prop !== "$variant",
+})<LoginVariantProps>`
   &.krds-btn {
     width: 100%;
     min-width: 0;
@@ -260,7 +262,9 @@ export const HelpIcon = styled.span`
   line-height: 1;
 `;
 
-export const HelpList = styled(TextList)<LoginVariantProps>`
+export const HelpList = styled(TextList, {
+  shouldForwardProp: (prop) => prop !== "$variant",
+})<LoginVariantProps>`
   margin: 12px 0 0;
   --krds-info-list--gap-layout-depth1-li-li: ${({ $variant }) =>
     $variant === "civil" ? "8px" : "6px"};

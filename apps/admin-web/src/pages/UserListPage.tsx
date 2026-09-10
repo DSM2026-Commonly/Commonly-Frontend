@@ -37,7 +37,9 @@ function UserListPage() {
   const submittedKeyword = searchParams.get("keyword") ?? "";
   const [keyword, setKeyword] = useState(submittedKeyword);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
+  // 서버가 전체 페이지 수를 주지 않으면 null (다음 페이지 여부만 사용).
+  const [totalPages, setTotalPages] = useState<number | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   // 같은 조건으로 다시 검색해도(URL 불변) 재조회되도록 하는 카운터.
@@ -62,17 +64,18 @@ function UserListPage() {
           return;
         }
 
-        const lastPage = Math.max(result.totalPages, 1);
-
-        if (page > lastPage) {
-          setSearchParams(buildSearchParams(lastPage, submittedKeyword), {
-            replace: true,
-          });
+        // 전체 페이지 수를 아는 경우 범위 밖 페이지는 마지막 페이지로 보정한다.
+        if (result.totalPages !== null && page > result.totalPages) {
+          setSearchParams(
+            buildSearchParams(result.totalPages, submittedKeyword),
+            { replace: true },
+          );
           return;
         }
 
         setUsers(result.content);
         setTotalPages(result.totalPages);
+        setHasNextPage(result.hasNextPage);
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
@@ -80,7 +83,8 @@ function UserListPage() {
         }
 
         setUsers([]);
-        setTotalPages(1);
+        setTotalPages(null);
+        setHasNextPage(false);
         setErrorMessage(
           error instanceof Error && error.message
             ? error.message
@@ -114,7 +118,8 @@ function UserListPage() {
         department: user.department,
       }))}
       page={page}
-      totalPages={totalPages}
+      totalPages={totalPages ?? undefined}
+      hasNextPage={hasNextPage}
       onPageChange={(nextPage) => updateSearchParams(nextPage, submittedKeyword)}
       keyword={keyword}
       onKeywordChange={setKeyword}

@@ -65,7 +65,8 @@ function IntegratedRegistrationUpload({
   stepLabel = "2단계 / 3단계",
   stepTitle = "엑셀 파일 업로드",
   uploadText = "첨부할 파일을 여기에 끌어다 놓거나, 파일 선택 버튼을 직접 선택해주세요.",
-  acceptedFileTypes = ["xlsx", "xls", "csv"],
+  // 백엔드는 표준 서식(.xlsx)만 받는다(FILE_UPLOAD_UNSUPPORTED_TYPE_MESSAGE 참고).
+  acceptedFileTypes = ["xlsx"],
   maxFiles = 1,
   maxFileSize = 20 * 1024 * 1024,
   previousLabel = "이전으로",
@@ -111,7 +112,10 @@ function IntegratedRegistrationUpload({
       }
     }
 
-    setFiles(nextFiles);
+    // 업로드에 실패한 항목은 목록에서 바로 제거한다. 남겨 두면 krds FileUpload 가
+    // maxFiles(1) 을 이미 채운 것으로 보고 이후 파일 선택을 조용히 무시한다.
+    // 실패 원인은 errorMessage 로 별도 표시된다.
+    setFiles(nextFiles.filter((file) => file.status !== "error"));
   };
 
   // krds FileUpload 는 업로드가 끝나야 목록을 커밋하므로 업로드 중에는

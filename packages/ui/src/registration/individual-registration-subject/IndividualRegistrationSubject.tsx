@@ -1,6 +1,6 @@
 import "krds-react/dist/index.css";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useRef, useMemo, useState } from "react";
 import {
   Button,
   Radio,
@@ -46,6 +46,7 @@ import {
   sanitizeDatePart,
 } from "../../career-certificate/CareerCertificateIssue.validation";
 import { findDuplicateCandidates } from "./IndividualRegistrationSubject.utils";
+import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 import AddressSearchModal, {
   type AddressSearchItem,
   type AddressSearchQuery,
@@ -87,6 +88,16 @@ export interface IndividualRegistrationSubjectProps {
   /** 도로명주소 검색. 지정하지 않으면 검색 버튼을 눌렀을 때 안내 문구를 보여준다. */
   onSearchAddress?: (query: AddressSearchQuery) => Promise<AddressSearchResult>;
   duplicateCandidates?: readonly IndividualRegistrationDuplicateCandidate[];
+  /**
+   * 서버 중복 조회. 지정하면 중복 확인 버튼이 이 함수를 호출해 결과를 후보 목록으로 쓴다.
+   * 지정하지 않으면 duplicateCandidates 에서 입력값과 일치하는 항목을 찾는다.
+   */
+  onCheckDuplicate?: (
+    subject: Omit<
+      IndividualRegistrationSubjectData,
+      "duplicateResolution" | "existingSubjectId"
+    >,
+  ) => Promise<readonly IndividualRegistrationDuplicateCandidate[]>;
   previousLabel?: string;
   nextLabel?: string;
   onPrevious?: () => void;
@@ -110,6 +121,7 @@ function IndividualRegistrationSubject({
   stepTitle = "대상자 입력",
   onSearchAddress,
   duplicateCandidates = EMPTY_DUPLICATE_CANDIDATES,
+  onCheckDuplicate,
   previousLabel = "이전으로",
   nextLabel = "다음으로",
   onPrevious,
@@ -126,6 +138,12 @@ function IndividualRegistrationSubject({
     "idle" | "available" | "duplicate"
   >("idle");
   const [selectedDuplicateId, setSelectedDuplicateId] = useState("");
+  const [fetchedDuplicateCandidates, setFetchedDuplicateCandidates] = useState<
+    readonly IndividualRegistrationDuplicateCandidate[]
+  >(EMPTY_DUPLICATE_CANDIDATES);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+  const [duplicateCheckError, setDuplicateCheckError] = useState("");
+  const duplicateCheckRequestIdRef = useRef(0);
   const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false);
   const [addressSearchError, setAddressSearchError] = useState("");
 
@@ -151,10 +169,13 @@ function IndividualRegistrationSubject({
     IndividualRegistrationSubjectData,
     "duplicateResolution" | "existingSubjectId"
   >;
-  const matchingDuplicateCandidates = useMemo(
+  const localDuplicateCandidates = useMemo(
     () => findDuplicateCandidates(subjectData, duplicateCandidates),
     [duplicateCandidates, subjectData],
   );
+  const matchingDuplicateCandidates = onCheckDuplicate
+    ? fetchedDuplicateCandidates
+    : localDuplicateCandidates;
   const canProceed =
     hasRequiredInformation && duplicateStatus === "available" && Boolean(onNext);
   const isBirthMonthInvalid =
@@ -165,8 +186,24 @@ function IndividualRegistrationSubject({
     !isValidBirthDay(birthYear, birthMonth, birthDay);
 
   const resetDuplicateCheck = () => {
+    duplicateCheckRequestIdRef.current += 1;
     setDuplicateStatus("idle");
     setSelectedDuplicateId("");
+    setFetchedDuplicateCandidates(EMPTY_DUPLICATE_CANDIDATES);
+    setIsCheckingDuplicate(false);
+    setDuplicateCheckError("");
+  };
+
+  const applyDuplicateCandidates = (
+    candidates: readonly IndividualRegistrationDuplicateCandidate[],
+  ) => {
+    if (candidates.length > 0) {
+      setDuplicateStatus("duplicate");
+      setSelectedDuplicateId(candidates[0].id);
+      return;
+    }
+
+    setDuplicateStatus("available");
   };
 
   const handleNameChange = (value: string) => {
@@ -220,18 +257,45 @@ function IndividualRegistrationSubject({
     resetDuplicateCheck();
   };
 
-  const handleDuplicateCheck = () => {
-    if (!hasRequiredInformation) {
+  const handleDuplicateCheck = async () => {
+    if (!hasRequiredInformation || isCheckingDuplicate) {
       return;
     }
 
-    if (matchingDuplicateCandidates.length > 0) {
-      setDuplicateStatus("duplicate");
-      setSelectedDuplicateId(matchingDuplicateCandidates[0].id);
+    if (!onCheckDuplicate) {
+      applyDuplicateCandidates(localDuplicateCandidates);
       return;
     }
 
-    setDuplicateStatus("available");
+    const requestId = ++duplicateCheckRequestIdRef.current;
+    setIsCheckingDuplicate(true);
+    setDuplicateCheckError("");
+
+    try {
+      const candidates = await onCheckDuplicate(subjectData);
+
+      // 확인 중 입력이 바뀌면(resetDuplicateCheck) 이전 응답은 버린다.
+      if (duplicateCheckRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setFetchedDuplicateCandidates(candidates);
+      applyDuplicateCandidates(candidates);
+    } catch (error) {
+      if (duplicateCheckRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setDuplicateCheckError(
+        error instanceof Error && error.message
+          ? error.message
+          : "중복 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      if (duplicateCheckRequestIdRef.current === requestId) {
+        setIsCheckingDuplicate(false);
+      }
+    }
   };
 
   const handleSubmit = (
@@ -414,12 +478,21 @@ function IndividualRegistrationSubject({
                 size="large"
                 type="button"
                 disabled={
-                  !hasRequiredInformation || duplicateStatus === "available"
+                  !hasRequiredInformation ||
+                  duplicateStatus === "available" ||
+                  isCheckingDuplicate
                 }
-                onClick={handleDuplicateCheck}
+                onClick={() => void handleDuplicateCheck()}
               >
-                {duplicateStatus === "available" ? "확인 완료" : "중복 확인"}
+                {isCheckingDuplicate
+                  ? "확인 중..."
+                  : duplicateStatus === "available"
+                    ? "확인 완료"
+                    : "중복 확인"}
               </Button>
+              {duplicateCheckError && (
+                <FormError role="alert">{duplicateCheckError}</FormError>
+              )}
               {duplicateStatus === "available" && (
                 <span className="sr-only" aria-live="polite">
                   중복 확인이 완료되었습니다. 다음 단계로 이동할 수 있습니다.

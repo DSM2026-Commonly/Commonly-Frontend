@@ -15,6 +15,8 @@ export type {
   CertificateApplicant,
   CertificateCareerRow,
   CertificateIssueType,
+  IssuedCertificateSummary,
+  RestoredIssuedCertificate,
 } from "./career-certificate/CareerCertificateIssue";
 export { default as CareerEdit } from "./career-edit/CareerEdit";
 export type {
@@ -34,6 +36,7 @@ export type {
   WorkHistoryProps,
   WorkHistoryRecord,
 } from "./work-history/WorkHistory";
+export type { WorkHistoryFilters } from "./work-history/workHistoryFilters";
 export { default as RegistrationMethodSelector } from "./registration-method/RegistrationMethodSelector";
 export type {
   RegistrationMethodOption,
@@ -45,6 +48,7 @@ export type {
   IntegratedRegistrationNoticeStep,
 } from "./registration/integrated-registration/IntegratedRegistrationNotice";
 export { default as AddressSearchModal } from "./registration/address-search/AddressSearchModal";
+export { searchRoadAddresses } from "./registration/address-search/searchRoadAddresses";
 export type {
   AddressSearchItem,
   AddressSearchModalProps,
@@ -114,10 +118,16 @@ export type {
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";
 export { default as useAuthSession } from "./hooks/useAuthSession";
+export { default as useSessionGuard } from "./hooks/useSessionGuard";
+export { default as usePasswordChangeGuard } from "./hooks/usePasswordChangeGuard";
 export type { AuthSessionState } from "./hooks/useAuthSession";
 
 // 앱 간 공유 페이지 (API 연동 포함)
 export { default as LoginPage } from "./pages/LoginPage";
 export type { LoginPageProps } from "./pages/LoginPage";
+export {
+  default as InitialPasswordChangePage,
+  INITIAL_PASSWORD_CHANGE_PATH,
+} from "./pages/InitialPasswordChangePage";
 export { default as StaffCareerCertificateIssuePage } from "./pages/StaffCareerCertificateIssuePage";
 export { default as StaffCareerEditPage } from "./pages/StaffCareerEditPage";

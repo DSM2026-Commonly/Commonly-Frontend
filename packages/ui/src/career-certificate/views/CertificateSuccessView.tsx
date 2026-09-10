@@ -17,22 +17,38 @@ interface CertificateSuccessViewProps {
   variant?: CareerCertificateIssueVariant;
   issueType: CertificateIssueType;
   applicantName?: string;
+  /** 서버가 채번한 문서번호. 비어 있으면 표시하지 않는다. */
+  documentNo?: string;
+  /** 발급 시각(ISO LocalDateTime). 비어 있으면 표시하지 않는다. */
+  issuedAt?: string;
   isDownloading?: boolean;
   downloadError?: string;
   onRestart: () => void;
   onDownload: () => void;
 }
 
+/** "2026-09-05T14:03:11" 형태의 발급 시각을 "2026.09.05" 로 줄인다. */
+function formatIssuedDate(issuedAt: string): string {
+  const datePart = issuedAt.slice(0, 10);
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(datePart)
+    ? datePart.replace(/-/g, ".")
+    : "";
+}
+
 function CertificateSuccessView({
   variant = "staff",
   issueType,
   applicantName = "",
+  documentNo = "",
+  issuedAt = "",
   isDownloading = false,
   downloadError = "",
   onRestart,
   onDownload,
 }: CertificateSuccessViewProps) {
   const isCivil = variant === "civil";
+  const issuedDate = formatIssuedDate(issuedAt);
 
   return (
     <SuccessPage>
@@ -59,6 +75,18 @@ function CertificateSuccessView({
           <p>유성 구청 기간제 근로자 경력증명서 발급 신청</p>
           <p>{issueType === "all" ? "전체 발급" : "선택 발급"}</p>
         </SummaryValue>
+        {documentNo && (
+          <>
+            <SummaryLabel>문서번호</SummaryLabel>
+            <SummaryValue>{documentNo}</SummaryValue>
+          </>
+        )}
+        {issuedDate && (
+          <>
+            <SummaryLabel>발급일</SummaryLabel>
+            <SummaryValue>{issuedDate}</SummaryValue>
+          </>
+        )}
       </SummaryCard>
       {downloadError && <FlowError role="alert">{downloadError}</FlowError>}
       <SuccessActions>

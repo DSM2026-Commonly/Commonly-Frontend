@@ -1,29 +1,39 @@
 import {
   IndividualRegistrationSubject,
-  type AddressSearchQuery,
-  type AddressSearchResult,
+  searchRoadAddresses,
+  type IndividualRegistrationDuplicateCandidate,
   type IndividualRegistrationSubjectData,
 } from "@commonly/ui";
-import { searchAddresses } from "@commonly/utils";
+import { getAuthToken, searchHumans } from "@commonly/utils";
 import { useNavigate } from "react-router";
 
-// 도로명주소 API(business.juso.go.kr) 검색 결과를 UI 모달이 쓰는 형태로 맞춘다.
-async function searchRoadAddresses({
-  keyword,
-  page,
-  size,
-}: AddressSearchQuery): Promise<AddressSearchResult> {
-  const result = await searchAddresses({ keyword, page, size });
+// 이름 + 생년월일이 같은 기존 대상자를 서버에서 찾아 중복 후보로 보여준다.
+async function findDuplicateSubjects(
+  subject: Omit<
+    IndividualRegistrationSubjectData,
+    "duplicateResolution" | "existingSubjectId"
+  >,
+): Promise<IndividualRegistrationDuplicateCandidate[]> {
+  const birthDate = `${subject.birthYear}-${subject.birthMonth}-${subject.birthDay}`;
+  const humans = await searchHumans(
+    { name: subject.name, birthDateFrom: birthDate, birthDateTo: birthDate },
+    { token: getAuthToken() },
+  );
 
-  return {
-    totalCount: result.totalCount,
-    addresses: result.addresses.map((address, index) => ({
-      id: address.buildingCode || `${result.page}-${index}-${address.roadAddress}`,
-      roadAddress: address.roadAddress,
-      jibunAddress: address.jibunAddress,
-      zipCode: address.zipCode,
-    })),
-  };
+  return humans.map((human) => {
+    const [birthYear = "", birthMonth = "", birthDay = ""] =
+      human.birthDate.split("-");
+
+    return {
+      id: String(human.humanId),
+      name: human.name,
+      gender: human.gender === "F" ? "female" : "male",
+      birthYear,
+      birthMonth,
+      birthDay,
+      address: human.address,
+    };
+  });
 }
 
 function IndividualRegistrationSubjectPage() {
@@ -32,6 +42,7 @@ function IndividualRegistrationSubjectPage() {
   return (
     <IndividualRegistrationSubject
       onSearchAddress={searchRoadAddresses}
+      onCheckDuplicate={findDuplicateSubjects}
       onPrevious={() => void navigate("/career/register/individual")}
       onNext={(subject: IndividualRegistrationSubjectData) =>
         void navigate("/career/register/individual/career", {

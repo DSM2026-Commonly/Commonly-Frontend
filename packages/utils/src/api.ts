@@ -1,3 +1,5 @@
+import { hasValidAuthToken } from "./authSession";
+
 const DEFAULT_API_BASE_URL = "";
 
 export function getApiBaseUrl(): string {
@@ -42,6 +44,85 @@ export function normalizePositiveInteger(
   return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : fallback;
 }
 
+/** 인증 요청이 401 로 실패했을 때 window 에 발행되는 이벤트 이름. 레이아웃이 받아 로그인 화면으로 보낸다. */
+export const UNAUTHORIZED_EVENT = "commonly:unauthorized";
+/**
+ * 초기 비밀번호를 아직 바꾸지 않은 직원 계정이 다른 API 를 호출해 403 을 받았을 때 발행되는 이벤트 이름.
+ * 레이아웃이 받아 비밀번호 변경 화면으로 보낸다.
+ */
+export const PASSWORD_CHANGE_REQUIRED_EVENT = "commonly:password-change-required";
+/** 백엔드 InitialPasswordFilter 가 내려주는 메시지. 에러 코드가 없어 이 문구로 구분한다. */
+export const INITIAL_PASSWORD_NOT_CHANGED_MESSAGE =
+  "초기 비밀번호를 변경한 후 이용할 수 있습니다.";
+
+function dispatchWindowEvent(name: string): void {
+  if (typeof window === "undefined" || typeof CustomEvent === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(name));
+}
+
+/**
+ * 백엔드는 권한이 없는 요청에도 403 이 아니라 401 을 준다(민원인 토큰으로 담당자용 API 호출 등).
+ * 저장된 토큰이 아직 유효하면 세션 만료가 아니므로 로그아웃시키지 않는다.
+ * 그렇지 않으면 권한 밖 API 한 번에 로그인 화면으로 튕기고, 로그인 → 같은 API 재호출 → 401 로
+ * 다시 튕기는 루프에 갇힌다.
+ */
+function notifyUnauthorized(): void {
+  if (hasValidAuthToken()) {
+    return;
+  }
+
+  dispatchWindowEvent(UNAUTHORIZED_EVENT);
+}
+
+export function isInitialPasswordNotChangedError(
+  status: number,
+  body: ApiErrorBody,
+): boolean {
+  return (
+    status === 403 &&
+    (body.message?.trim() ?? "") === INITIAL_PASSWORD_NOT_CHANGED_MESSAGE
+  );
+}
+
+/**
+ * 목록 응답을 `{content, totalCount, <totalPagesKey>}` 로 정규화한다.
+ * 백엔드가 배열만 내려주는 경우(현재 /api/admins, /api/issuance-histories)도 받는다.
+ */
+export function normalizePageEnvelope(
+  response: unknown,
+  invalidMessage: string,
+  totalPagesKey: "totalPages" | "totalPage" = "totalPages",
+): { content: unknown[]; totalCount: unknown; totalPages: unknown; totalPage: unknown } {
+  if (Array.isArray(response)) {
+    return {
+      content: response,
+      totalCount: undefined,
+      totalPages: undefined,
+      totalPage: undefined,
+    };
+  }
+
+  if (!response || typeof response !== "object") {
+    throw new ApiError(200, invalidMessage);
+  }
+
+  const record = response as Record<string, unknown>;
+
+  if (!Array.isArray(record.content)) {
+    throw new ApiError(200, invalidMessage);
+  }
+
+  return {
+    content: record.content,
+    totalCount: record.totalCount,
+    totalPages: record[totalPagesKey],
+    totalPage: record[totalPagesKey],
+  };
+}
+
 export type ErrorMessageMap = Partial<Record<number | string, string>>;
 
 export interface RequestOptions {
@@ -57,12 +138,28 @@ async function throwErrorResponse(
   errorMessages: ErrorMessageMap,
 ): Promise<never> {
   const errorBody = await parseErrorBody(response);
+  // 백엔드 에러 본문은 {status, timestamp, message} 형식이라 code 는 오지 않는다.
+  // 매핑된 문구가 없으면 백엔드가 내려준 message 를 그대로 보여준다.
   const message =
     (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
     errorMessages[response.status] ??
+    (errorBody.message?.trim() || undefined) ??
     SERVER_ERROR_MESSAGE;
 
-  throw new ApiError(response.status, message, errorBody);
+  if (response.status === 401) {
+    notifyUnauthorized();
+  } else if (isInitialPasswordNotChangedError(response.status, errorBody)) {
+    dispatchWindowEvent(PASSWORD_CHANGE_REQUIRED_EVENT);
+  }
+
+  throw new ApiError(
+    response.status,
+    // 초기 비밀번호 미변경 403 은 화면별 문구 매핑보다 백엔드 안내가 정확하다.
+    isInitialPasswordNotChangedError(response.status, errorBody)
+      ? INITIAL_PASSWORD_NOT_CHANGED_MESSAGE
+      : message,
+    errorBody,
+  );
 }
 
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {

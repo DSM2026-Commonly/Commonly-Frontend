@@ -2,6 +2,7 @@ import { ApiError, request, requestBlob } from "./api";
 
 export const CERTIFICATES_ENDPOINT = "/api/certificates";
 export const CERTIFICATE_SELF_ENDPOINT = "/api/certificates/self";
+export const CERTIFICATE_CREATE_ENDPOINT = "/api/certificates/create";
 
 // 경력 증명 사항 찾기 — 해당 인적사항(humanId)의 경력증명서 행 목록을 반환한다.
 export function getHumanCertificatesEndpoint(humanId: number): string {
@@ -14,6 +15,11 @@ export function getCertificateUpdateEndpoint(certificateId: number): string {
 
 export function getCertificateDownloadEndpoint(certificateId: number): string {
   return `/api/certificates/${certificateId}/download`;
+}
+
+// 발급 상세 조회. 수정(PUT)과 같은 경로를 GET 으로 부른다.
+export function getCertificateDetailEndpoint(certificateId: number): string {
+  return `/api/certificates/${certificateId}`;
 }
 
 export const HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE =
@@ -36,10 +42,12 @@ export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
   "본인 경력만 발급할 수 있습니다.";
 export const CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE =
   "발급할 경력 사항이 없습니다.";
-export const SELF_CERTIFICATES_FORBIDDEN_MESSAGE =
-  "본인 경력만 조회할 수 있습니다.";
-export const SELF_CERTIFICATES_NOT_FOUND_MESSAGE =
-  "조회된 경력 사항이 없습니다.";
+/**
+ * 본인 발급은 백엔드에서 아직 열려 있지 않아(self-issue-enabled=false) 401 로 막힌다.
+ * 세션 만료가 아니므로 "다시 로그인" 안내를 쓰지 않는다.
+ */
+export const CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE =
+  "본인 증명서 발급 권한이 없습니다. 042-611-2114로 문의해 주세요.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
@@ -50,11 +58,24 @@ export const CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE =
   "해당 경력증명서를 찾을 수 없습니다. 다시 조회해 주세요.";
+export const CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE =
+  "발급 증명서 응답이 올바르지 않습니다.";
+export const CERTIFICATE_DETAIL_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE =
+  "증명서를 조회할 권한이 없습니다.";
+export const CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE =
+  "발급된 증명서를 찾을 수 없습니다.";
 
 export interface HumanCertificate {
   certificateId: number;
+  /** 구분(채용/전보/해지/퇴직). 근무부서가 아니다. */
   division: string;
+  /** 근무부서 */
+  department: string;
   employmentType: string;
+  /** 직종명 */
+  jobTitle: string;
   keyResponsibilities: string;
   hireDate: string;
   retirementDate: string;
@@ -70,10 +91,9 @@ export interface IssueCertificateRequest {
   otherMatters: string;
 }
 
-// 민원인 본인 발급 — 대상자는 로그인 토큰으로 정해지므로 humanId 를 받지 않는다.
-// certificateIds 를 생략하면 본인의 전체 경력을 발급한다.
+// 민원인 본인 발급 — 대상자도 발급 대상 경력도 로그인 토큰에서 정해진다.
+// 명세와 백엔드 모두 humanId/certificateIds 를 받지 않아 항상 본인 전체 경력이 발급된다.
 export interface IssueSelfCertificateRequest {
-  certificateIds?: number[];
   purpose: string;
   otherMatters: string;
 }
@@ -82,6 +102,52 @@ export interface IssuedCertificate {
   certificateId: number;
   documentNo: string;
   downloadUrl: string;
+}
+
+/** 발급 상세의 대상자 인적사항. */
+export interface CertificateDetailHuman {
+  humanId: number;
+  name: string;
+  birthDate: string;
+  gender: string;
+  address: string;
+}
+
+/** 발급된 증명서 상세(GET /api/certificates/{certificateId}). */
+export interface CertificateDetail {
+  certificateId: number;
+  documentNo: string;
+  /** 발급 시각(ISO LocalDateTime). 응답에 없으면 빈 문자열. */
+  issuedAt: string;
+  purpose: string;
+  otherMatters: string;
+  /** 대상자 정보가 없으면 null. */
+  human: CertificateDetailHuman | null;
+  totalMonths: number;
+  totalDays: number;
+  /** 증명서에 찍힌 재직 이력. */
+  items: HumanCertificate[];
+}
+
+/**
+ * 경력증명서 개별 등록(POST /api/certificates/create) 요청 본문.
+ * 대상자는 먼저 POST /api/human 으로 만들거나 기존 대상자를 골라 humanId 로 넘긴다.
+ * 나머지 필드 구성은 수정 요청과 같고, 날짜가 없으면 null 을 보낸다.
+ */
+export interface CreateCertificateRequest {
+  humanId: number;
+  name: string;
+  birthDate: string;
+  gender: "M" | "F";
+  jobTitle: string;
+  keyResponsibilities: string;
+  hireDate: string;
+  expirationDate: string | null;
+  retirementDate: string | null;
+  division: string;
+  reason: string;
+  employmentType: string;
+  note: string;
 }
 
 export interface UpdateCertificateRequest {
@@ -93,7 +159,10 @@ export interface UpdateCertificateRequest {
   hireDate: string;
   expirationDate: string;
   retirementDate: string;
+  /** 구분(채용/전보/해지/퇴직). 백엔드가 이 네 값만 허용한다. */
   division: string;
+  /** 근무부서 */
+  department: string;
   reason: string;
   employmentType: string;
   note: string;
@@ -121,7 +190,9 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
   const {
     certificateId,
     division,
+    department,
     employmentType,
+    jobTitle,
     keyResponsibilities,
     hireDate,
     retirementDate,
@@ -142,7 +213,9 @@ function normalizeHumanCertificate(value: unknown): HumanCertificate | null {
 
   const optionalFields = {
     division: normalizeOptionalString(division),
+    department: normalizeOptionalString(department),
     employmentType: normalizeOptionalString(employmentType),
+    jobTitle: normalizeOptionalString(jobTitle),
     keyResponsibilities: normalizeOptionalString(keyResponsibilities),
     retirementDate: normalizeOptionalString(retirementDate),
     expirationDate: normalizeOptionalString(expirationDate),
@@ -196,22 +269,102 @@ function normalizeHumanCertificates(response: unknown): HumanCertificate[] {
   return certificates;
 }
 
-/** 민원인 본인의 경력증명 사항 목록. 대상자는 로그인 토큰으로 정해진다. */
-export async function fetchSelfCertificates({
-  token,
-  signal,
-}: CertificateRequestOptions = {}): Promise<HumanCertificate[]> {
-  const response = await request<unknown>(CERTIFICATE_SELF_ENDPOINT, {
-    token,
-    signal,
-    errorMessages: {
-      401: HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
-      403: SELF_CERTIFICATES_FORBIDDEN_MESSAGE,
-      404: SELF_CERTIFICATES_NOT_FOUND_MESSAGE,
-    },
-  });
+function normalizeCertificateDetailHuman(
+  value: unknown,
+): CertificateDetailHuman | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
 
-  return normalizeHumanCertificates(response);
+  const { humanId, name, birthDate, gender, address } = value as Record<
+    string,
+    unknown
+  >;
+
+  if (typeof humanId !== "number" || !Number.isFinite(humanId)) {
+    return null;
+  }
+
+  const optionalFields = {
+    name: normalizeOptionalString(name),
+    birthDate: normalizeOptionalString(birthDate),
+    gender: normalizeOptionalString(gender),
+    address: normalizeOptionalString(address),
+  };
+
+  if (Object.values(optionalFields).some((field) => field === null)) {
+    return null;
+  }
+
+  return {
+    humanId,
+    ...(optionalFields as Record<keyof typeof optionalFields, string>),
+  };
+}
+
+function normalizeCertificateDetail(value: unknown): CertificateDetail {
+  if (!value || typeof value !== "object") {
+    throw new ApiError(200, CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE);
+  }
+
+  const {
+    certificateId,
+    documentNo,
+    issuedAt,
+    purpose,
+    otherMatters,
+    human,
+    totalMonths,
+    totalDays,
+    items,
+  } = value as Record<string, unknown>;
+
+  // 완료 화면 복구에 반드시 필요한 두 값만 필수로 본다.
+  if (
+    typeof certificateId !== "number" ||
+    !Number.isFinite(certificateId) ||
+    typeof documentNo !== "string" ||
+    documentNo.trim() === ""
+  ) {
+    throw new ApiError(200, CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE);
+  }
+
+  return {
+    certificateId,
+    documentNo,
+    issuedAt: typeof issuedAt === "string" ? issuedAt : "",
+    purpose: typeof purpose === "string" ? purpose : "",
+    otherMatters: typeof otherMatters === "string" ? otherMatters : "",
+    human: normalizeCertificateDetailHuman(human),
+    totalMonths: typeof totalMonths === "number" ? totalMonths : 0,
+    totalDays: typeof totalDays === "number" ? totalDays : 0,
+    items: Array.isArray(items)
+      ? items
+          .map(normalizeHumanCertificate)
+          .filter((item): item is HumanCertificate => item !== null)
+      : [],
+  };
+}
+
+/** 발급된 증명서 상세. 새로고침 뒤 완료 화면과 다운로드를 복구할 때 쓴다. */
+export async function fetchCertificateDetail(
+  certificateId: number,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<CertificateDetail> {
+  const response = await request<unknown>(
+    getCertificateDetailEndpoint(certificateId),
+    {
+      token,
+      signal,
+      errorMessages: {
+        401: CERTIFICATE_DETAIL_UNAUTHORIZED_MESSAGE,
+        403: CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE,
+        404: CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
+      },
+    },
+  );
+
+  return normalizeCertificateDetail(response);
 }
 
 function normalizeIssuedCertificate(value: unknown): IssuedCertificate | null {
@@ -271,7 +424,7 @@ export async function issueSelfCertificate(
     token,
     signal,
     errorMessages: {
-      401: CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+      401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
       403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
       404: CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
     },
@@ -298,6 +451,31 @@ export async function downloadCertificate(
       401: CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
       403: CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
       404: CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
+    },
+  });
+}
+
+export const CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE =
+  "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
+export const CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+export const CERTIFICATE_CREATE_CONFLICT_MESSAGE =
+  "동일한 대상자의 경력사항이 이미 등록되어 있습니다.";
+
+export async function createCertificate(
+  body: CreateCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<void> {
+  // 201 Created. 응답 본문 형식이 명세에 없어 검증하지 않는다.
+  await request<unknown>(CERTIFICATE_CREATE_ENDPOINT, {
+    method: "POST",
+    body,
+    token,
+    signal,
+    errorMessages: {
+      400: CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+      401: CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
+      409: CERTIFICATE_CREATE_CONFLICT_MESSAGE,
     },
   });
 }

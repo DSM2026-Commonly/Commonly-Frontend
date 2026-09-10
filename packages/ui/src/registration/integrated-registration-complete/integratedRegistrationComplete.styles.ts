@@ -93,6 +93,87 @@ export const ResultValue = styled.dd`
   line-height: 1.5;
 `;
 
+export const FailureSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+export const FailureTitle = styled.h2`
+  margin: 0;
+  color: var(--krds-light-color-text-strong, #131416);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.5;
+
+  @media (max-width: 767px) {
+    font-size: 20px;
+  }
+`;
+
+export const FailureNote = styled.p`
+  margin: 0;
+  color: var(--krds-light-color-text-subtle, #464c53);
+  font-size: 17px;
+  line-height: 1.5;
+
+  @media (max-width: 767px) {
+    font-size: 15px;
+  }
+`;
+
+// WorkHistory 의 TableFrame 과 같은 표 골격을 이 컴포넌트 범위로 복사했다.
+// 실패 행 수가 가변이라 높이는 고정하지 않고 가로만 스크롤한다.
+export const FailureTableFrame = styled.div`
+  width: 100%;
+  overflow-x: auto;
+
+  .krds-table-wrap,
+  .krds-table-wrap .tbl {
+    width: 100%;
+  }
+
+  .krds-table-wrap .tbl {
+    min-width: 480px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    color: var(--krds-light-color-text-subtle, #464c53);
+    font-size: 17px;
+    line-height: 1.5;
+  }
+
+  .krds-table-wrap .tbl th {
+    height: 39px;
+    padding: 7.75px 16px;
+    box-sizing: border-box;
+    border: 0;
+    background: var(--krds-light-color-surface-secondary-subtler, #eef2f7);
+    color: var(--krds-light-color-text-basic, #1e2124);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.5;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .krds-table-wrap .tbl td {
+    min-height: 50px;
+    padding: 11.75px 16px;
+    box-sizing: border-box;
+    border-right: 0;
+    border-bottom: 1px solid var(--krds-light-color-border-gray-light, #cdd1d5);
+    background: var(--krds-light-color-surface-white, #fff);
+    text-align: left;
+    vertical-align: middle;
+    word-break: keep-all;
+  }
+
+  .krds-table-wrap .tbl th:first-of-type,
+  .krds-table-wrap .tbl td:first-of-type {
+    white-space: nowrap;
+  }
+`;
+
 export const ActionGroup = styled.div`
   display: flex;
   min-height: 64px;

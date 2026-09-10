@@ -3,11 +3,13 @@ import {
   getRememberedLoginId,
   getSafeRedirectPath,
   login,
+  requiresInitialPasswordChange,
   setAuthToken,
   setRememberedLoginId,
 } from "@commonly/utils";
 import { useLocation, useNavigate } from "react-router";
 import Login, { type LoginFormData, type LoginVariant } from "../login/Login";
+import { INITIAL_PASSWORD_CHANGE_PATH } from "./InitialPasswordChangePage";
 
 export interface LoginPageProps {
   variant?: LoginVariant;
@@ -43,7 +45,18 @@ function LoginPage({ variant, signupHref }: LoginPageProps) {
       clearRememberedLoginId();
     }
 
-    void navigate(redirectPath, { replace: true });
+    // 직원 계정(admin/user)은 초기 비밀번호를 바꾸기 전까지 다른 기능을 쓸 수 없다.
+    // 민원인 계정은 직접 가입하므로 해당하지 않는다.
+    const needsPasswordChange =
+      variant !== "civil" &&
+      (await requiresInitialPasswordChange({ token: accessToken }));
+
+    void navigate(
+      needsPasswordChange
+        ? `${INITIAL_PASSWORD_CHANGE_PATH}?redirectTo=${encodeURIComponent(redirectPath)}`
+        : redirectPath,
+      { replace: true },
+    );
   };
 
   return (

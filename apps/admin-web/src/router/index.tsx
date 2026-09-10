@@ -1,4 +1,4 @@
-import { hasAuthToken } from "@commonly/utils";
+import { hasValidAuthToken } from "@commonly/utils";
 import {
   createBrowserRouter,
   redirect,
@@ -12,6 +12,7 @@ import IndividualRegistrationCareerPage from "../pages/IndividualRegistrationCar
 import IndividualRegistrationCompletePage from "../pages/IndividualRegistrationCompletePage";
 import IndividualRegistrationNoticePage from "../pages/IndividualRegistrationNoticePage";
 import IndividualRegistrationSubjectPage from "../pages/IndividualRegistrationSubjectPage";
+import InitialPasswordChangePage from "../pages/InitialPasswordChangePage";
 import IntegratedRegistrationCompletePage from "../pages/IntegratedRegistrationCompletePage";
 import IntegratedRegistrationConfirmPage from "../pages/IntegratedRegistrationConfirmPage";
 import IntegratedRegistrationNoticePage from "../pages/IntegratedRegistrationNoticePage";
@@ -29,7 +30,7 @@ import UserRegistrationPage from "../pages/UserRegistrationPage";
 import WorkHistoryPage from "../pages/WorkHistoryPage";
 
 function requireAuth({ request }: LoaderFunctionArgs) {
-  if (hasAuthToken()) {
+  if (hasValidAuthToken()) {
     return null;
   }
 
@@ -40,7 +41,7 @@ function requireAuth({ request }: LoaderFunctionArgs) {
 }
 
 function redirectAuthenticatedUser() {
-  return hasAuthToken() ? redirect("/") : null;
+  return hasValidAuthToken() ? redirect("/") : null;
 }
 
 export const router = createBrowserRouter([
@@ -57,6 +58,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         Component: HomePage,
+      },
+      {
+        path: "password/initial",
+        Component: InitialPasswordChangePage,
       },
       {
         path: "career/issue",

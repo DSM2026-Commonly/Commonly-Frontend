@@ -46,6 +46,7 @@ function IntegratedRegistrationCompletePage() {
         { id: "success", label: "성공 건수", value: `${result.insertedCount}건` },
         { id: "failure", label: "실패 건수", value: `${failureCount}건` },
       ]}
+      failures={result.failedRows}
       onAdd={() => leaveFlow("/career/register")}
       onHome={() => leaveFlow("/")}
     />

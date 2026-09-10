@@ -62,9 +62,9 @@ export const UtilityText = styled.span<UtilityTextProps>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: ${({ $width }) => `${$width ?? 57}px`};
+  min-width: ${({ $width }) => `${$width ?? 57}px`};
   height: 23px;
-  flex: 0 0 ${({ $width }) => `${$width ?? 57}px`};
+  flex: 0 0 auto;
   color: #1e2124;
   font-size: 15px;
   font-weight: 400;

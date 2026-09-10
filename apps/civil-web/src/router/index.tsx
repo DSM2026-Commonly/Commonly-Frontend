@@ -1,4 +1,4 @@
-import { hasAuthToken } from "@commonly/utils";
+import { hasValidAuthToken } from "@commonly/utils";
 import {
   createBrowserRouter,
   redirect,
@@ -12,7 +12,7 @@ import SignupFormPage from "../pages/SignupFormPage";
 import SignupPage from "../pages/SignupPage";
 
 function requireAuth({ request }: LoaderFunctionArgs) {
-  if (hasAuthToken()) {
+  if (hasValidAuthToken()) {
     return null;
   }
 
@@ -23,7 +23,7 @@ function requireAuth({ request }: LoaderFunctionArgs) {
 }
 
 function redirectAuthenticatedUser() {
-  return hasAuthToken() ? redirect("/") : null;
+  return hasValidAuthToken() ? redirect("/") : null;
 }
 
 export const router = createBrowserRouter([

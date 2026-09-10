@@ -34,13 +34,6 @@ export interface UserDeletionProps {
   onDelete: (account: UserAccountRecord) => void | Promise<void>;
 }
 
-const defaultAccount: UserAccountRecord = {
-  id: "jeon-jaejun",
-  name: "전재준",
-  accountId: "클로리1234",
-  department: "대전광역시 유성구 가정북로 76",
-};
-
 function UserDeletion({
   initialName = "",
   onSearch,
@@ -89,9 +82,8 @@ function UserDeletion({
     setDeletionError("");
 
     try {
-      const results = onSearch
-        ? await onSearch(normalizedName)
-        : [{ ...defaultAccount, name: normalizedName }];
+      // onSearch 가 없으면 조회할 수단이 없으므로 빈 결과로 둔다.
+      const results = onSearch ? await onSearch(normalizedName) : [];
 
       setSearchResults(results);
       setSelectedAccountId(results.length === 1 ? results[0].id : "");

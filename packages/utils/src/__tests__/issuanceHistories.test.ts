@@ -24,6 +24,7 @@ function mockFetch(
 const history = {
   issuanceHistoryId: 1,
   certificate: { certificateId: 10, type: "CAREER", purpose: "은행 제출" },
+  documentNo: "유성구-2026-000001",
   targetName: "홍길동",
   type: "ISSUANCE",
   issuanceDate: "2026-08-26T14:30:00",
@@ -99,8 +100,9 @@ describe("fetchIssuanceHistories", () => {
         {
           issuanceHistoryId: 2,
           certificate: { certificateId: 0, type: "", purpose: "" },
+          documentNo: "",
           targetName: "",
-          type: "",
+          type: "ISSUANCE",
           issuanceDate: "",
           issuerName: "",
           issuerDepartment: "",
@@ -109,6 +111,7 @@ describe("fetchIssuanceHistories", () => {
       ],
       totalCount: 25,
       totalPage: 3,
+      hasNextPage: false,
     });
     expect(requestedUrl).toBe(`${ISSUANCE_HISTORIES_ENDPOINT}?page=3&size=10`);
     expect(method).toBe("GET");
@@ -121,6 +124,7 @@ describe("fetchIssuanceHistories", () => {
       content: [],
       totalCount: 0,
       totalPage: 1,
+      hasNextPage: false,
     });
   });
 
@@ -129,12 +133,45 @@ describe("fetchIssuanceHistories", () => {
     expect(await fetchIssuanceHistories()).toEqual({
       content: [history],
       totalCount: 1,
-      totalPage: 1,
+      totalPage: null,
+      hasNextPage: false,
     });
   });
 
+  test("bare array body with backend field names is accepted", async () => {
+    // 현재 백엔드(GET /api/issuance-histories) 응답 형태
+    const backendRow = {
+      issuanceHistoryId: 7,
+      documentNo: "유성구-2026-000007",
+      humanId: 3,
+      targetName: "김민원",
+      purpose: "은행 제출",
+      totalMonths: 12,
+      totalDays: 3,
+      issuedAt: "2026-08-27T10:00:00",
+    };
+    mockFetch(200, [backendRow, backendRow]);
+    const page = await fetchIssuanceHistories({ page: 1, size: 2 });
+    expect(page.content).toEqual([
+      {
+        issuanceHistoryId: 7,
+        certificate: { certificateId: 0, type: "", purpose: "은행 제출" },
+        documentNo: "유성구-2026-000007",
+        targetName: "김민원",
+        type: "ISSUANCE",
+        issuanceDate: "2026-08-27T10:00:00",
+        issuerName: "",
+        issuerDepartment: "",
+        reason: "",
+      },
+      expect.objectContaining({ issuanceHistoryId: 7 }),
+    ]);
+    expect(page.totalPage).toBeNull();
+    expect(page.hasNextPage).toBe(true);
+  });
+
   test("malformed response throws invalid response", async () => {
-    for (const body of [[], {}, { content: [{ certificateId: 1 }] }]) {
+    for (const body of ["x", {}, { content: [{ certificateId: 1 }] }]) {
       mockFetch(200, body);
       const error = await fetchIssuanceHistories().catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ApiError);
@@ -150,6 +187,7 @@ describe("fetchIssuanceHistories", () => {
       content: [],
       totalCount: 0,
       totalPage: 1,
+      hasNextPage: false,
     });
   });
 

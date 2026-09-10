@@ -25,8 +25,8 @@ export interface IndividualRegistrationCompleteProps {
 
 function IndividualRegistrationComplete({
   title,
-  subjectName = "전재준",
-  duties = "~~ 업무",
+  subjectName = "",
+  duties = "",
   addLabel = "추가 등록하기",
   homeLabel = "홈으로 돌아가기",
   onAdd,

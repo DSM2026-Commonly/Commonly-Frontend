@@ -2,12 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { ApiError, NETWORK_ERROR_MESSAGE } from "../api";
 import {
   CERTIFICATES_ENDPOINT,
+  CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
+  fetchCertificateDetail,
+  getCertificateDetailEndpoint,
+  CERTIFICATE_CREATE_ENDPOINT,
+  CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+  createCertificate,
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
   CERTIFICATE_SELF_ENDPOINT,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
-  fetchSelfCertificates,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -19,7 +25,9 @@ import {
 const humanCertificate = {
   certificateId: 10,
   division: "채용",
+  department: "민원과",
   employmentType: "기간제",
+  jobTitle: "사무원",
   keyResponsibilities: "행정지원",
   hireDate: "2024-03-01",
   retirementDate: "2025-02-28",
@@ -51,6 +59,7 @@ const updateRequest = {
   expirationDate: "2025-02-28",
   retirementDate: "2025-02-28",
   division: "채용",
+  department: "민원과",
   reason: "신규채용",
   employmentType: "기간제",
   note: "",
@@ -70,26 +79,78 @@ function mockFetch(
   }) as typeof fetch;
 }
 
-describe("fetchSelfCertificates", () => {
-  test("requests the self endpoint with the bearer token", async () => {
-    mockFetch(200, [humanCertificate], (url, init) => {
-      expect(url).toBe(CERTIFICATE_SELF_ENDPOINT);
-      expect(init?.method ?? "GET").toBe("GET");
+describe("fetchCertificateDetail", () => {
+  const detailResponse = {
+    certificateId: 5,
+    documentNo: "유성구-2026-000001",
+    issuedAt: "2026-09-05T14:03:11",
+    purpose: "은행 제출용",
+    otherMatters: "",
+    human: {
+      humanId: 3,
+      name: "홍길동",
+      birthDate: "1990-01-01",
+      gender: "M",
+      address: "대전 유성구",
+    },
+    totalMonths: 12,
+    totalDays: 0,
+    items: [humanCertificate],
+  };
+
+  test("GETs the issued certificate with the bearer token", async () => {
+    mockFetch(200, detailResponse, (url, init) => {
+      expect(url).toBe(getCertificateDetailEndpoint(5));
+      expect(url).toBe("/api/certificates/5");
+      expect(init?.method).toBe("GET");
       expect(new Headers(init?.headers).get("Authorization")).toBe(
         "Bearer token-1",
       );
     });
 
-    expect(await fetchSelfCertificates({ token: "token-1" })).toEqual([
-      humanCertificate,
-    ]);
+    expect(await fetchCertificateDetail(5, { token: "token-1" })).toEqual({
+      ...detailResponse,
+      items: [humanCertificate],
+    });
   });
 
-  test("rejects a non-array response", async () => {
-    mockFetch(200, { certificates: [] });
+  test("keeps the response usable when optional fields are missing", async () => {
+    mockFetch(200, { certificateId: 5, documentNo: "유성구-2026-000001" });
 
-    await expect(fetchSelfCertificates()).rejects.toThrow(
-      HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    expect(await fetchCertificateDetail(5)).toEqual({
+      certificateId: 5,
+      documentNo: "유성구-2026-000001",
+      issuedAt: "",
+      purpose: "",
+      otherMatters: "",
+      human: null,
+      totalMonths: 0,
+      totalDays: 0,
+      items: [],
+    });
+  });
+
+  test("rejects a response without the identifying fields", async () => {
+    mockFetch(200, { certificateId: 5 });
+
+    await expect(fetchCertificateDetail(5)).rejects.toThrow(
+      CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+
+  test("rejects a blank document number", async () => {
+    mockFetch(200, { certificateId: 5, documentNo: "  " });
+
+    await expect(fetchCertificateDetail(5)).rejects.toThrow(
+      CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+    );
+  });
+
+  test("maps 404 to the not found message", async () => {
+    mockFetch(404, undefined);
+
+    await expect(fetchCertificateDetail(5)).rejects.toThrow(
+      CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
     );
   });
 });
@@ -145,7 +206,9 @@ describe("fetchHumanCertificates", () => {
       {
         certificateId: 12,
         division: "",
+        department: "",
         employmentType: "기간제",
+        jobTitle: "",
         keyResponsibilities: "행정지원",
         hireDate: "2024-03-01",
         retirementDate: "",
@@ -287,7 +350,8 @@ describe("issueSelfCertificate", () => {
 
   test("maps error statuses to Korean messages", async () => {
     const cases = [
-      [401, "로그인이 만료되었습니다"],
+      // 본인 발급은 권한 부족도 401 로 오므로 "다시 로그인" 안내를 쓰지 않는다.
+      [401, "본인 증명서 발급 권한이 없습니다"],
       [403, "본인 경력만 발급할 수 있습니다"],
       [404, "발급할 경력 사항이 없습니다"],
       [500, "일시적인 오류"],
@@ -318,6 +382,7 @@ describe("updateCertificate", () => {
       expect(body).toEqual(updateRequest);
       expect(Object.keys(body).sort()).toEqual([
         "birthDate",
+        "department",
         "division",
         "employmentType",
         "expirationDate",
@@ -416,5 +481,47 @@ describe("downloadCertificate", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(0);
     expect((error as ApiError).message).toBe(NETWORK_ERROR_MESSAGE);
+  });
+});
+
+describe("createCertificate", () => {
+  const createRequest = {
+    humanId: 3,
+    name: "홍길동",
+    birthDate: "1990-01-02",
+    gender: "M" as const,
+    jobTitle: "주무관",
+    keyResponsibilities: "민원 응대",
+    hireDate: "2020-03-01",
+    expirationDate: null,
+    retirementDate: "2021-02-28",
+    division: "총무과",
+    reason: "계약 만료",
+    employmentType: "",
+    note: "",
+  };
+
+  test("POSTs the body to /api/certificates/create with the token", async () => {
+    mockFetch(201, undefined, (url, init) => {
+      expect(url).toBe(CERTIFICATE_CREATE_ENDPOINT);
+      expect(url).toBe("/api/certificates/create");
+      expect(init?.method).toBe("POST");
+      const headers = init?.headers as Record<string, string>;
+      expect(headers.Authorization).toBe("Bearer token-1");
+      expect(JSON.parse(String(init?.body))).toEqual(createRequest);
+    });
+
+    await expect(
+      createCertificate(createRequest, { token: "token-1" }),
+    ).resolves.toBeUndefined();
+  });
+
+  test("maps 409 to the conflict message", async () => {
+    mockFetch(409, { status: 409, message: "dup" });
+
+    await expect(createCertificate(createRequest)).rejects.toMatchObject({
+      status: 409,
+      message: CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+    });
   });
 });

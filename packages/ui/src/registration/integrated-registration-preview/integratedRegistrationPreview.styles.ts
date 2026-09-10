@@ -80,3 +80,48 @@ export const FormError = styled.p`
   line-height: 1.5;
   white-space: pre-line;
 `;
+
+// ConfirmCard 는 가로 방향 flex 중앙 정렬이라, 행 이동 UI와 필드 그리드를
+// 세로로 쌓기 위한 컬럼 컨테이너를 둔다.
+export const PreviewBody = styled.div`
+  display: flex;
+  width: min(548px, 100%);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 24px;
+
+  @media (max-width: 767px) {
+    gap: 16px;
+  }
+`;
+
+export const RowNavigator = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+export const RowNavigatorCounter = styled.p`
+  margin: 0;
+  color: var(--krds-light-color-text-basic, #1e2124);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+`;
+
+export const RowNavigatorButtons = styled.div`
+  display: flex;
+  gap: 8px;
+
+  @media (max-width: 767px) {
+    .krds-btn {
+      flex: 1 1 0;
+    }
+  }
+`;

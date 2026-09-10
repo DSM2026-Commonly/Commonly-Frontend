@@ -199,3 +199,49 @@ export const TableStatus = styled.p<{ $tone?: "error" | "muted" }>`
   text-align: center;
   white-space: normal;
 `;
+
+export const FilterForm = styled.form`
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+export const FilterField = styled.div<{ $grow?: boolean }>`
+  min-width: 0;
+  flex: ${({ $grow }) => ($grow ? "1 1 200px" : "0 1 190px")};
+
+  /* krds TextInput 과 동일한 마크업(.form-group)을 사용하므로 날짜 입력도 같은 높이를 가진다. */
+  input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 767px) {
+    flex: none;
+  }
+`;
+
+export const FilterActions = styled.div`
+  display: flex;
+  gap: 8px;
+
+  @media (max-width: 767px) {
+    > * {
+      flex: 1;
+    }
+  }
+`;
+
+export const FilterError = styled.p`
+  width: 100%;
+  margin: 0;
+  color: var(--krds-light-color-text-danger, #de3412);
+  font-size: 15px;
+  line-height: 1.5;
+`;

@@ -14,12 +14,31 @@ export {
 export type { AuthStorage } from "./auth";
 export {
   ApiError,
+  INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
   NETWORK_ERROR_MESSAGE,
+  PASSWORD_CHANGE_REQUIRED_EVENT,
   SERVER_ERROR_MESSAGE,
+  UNAUTHORIZED_EVENT,
   getApiBaseUrl,
+  isInitialPasswordNotChangedError,
+  normalizePageEnvelope,
   request,
   requestBlob,
 } from "./api";
+export {
+  INITIAL_PASSWORD_CHANGE_BAD_REQUEST_MESSAGE,
+  INITIAL_PASSWORD_CHANGE_ENDPOINT,
+  INITIAL_PASSWORD_CHANGE_FORBIDDEN_MESSAGE,
+  INITIAL_PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
+  INITIAL_PASSWORD_MAX_LENGTH,
+  INITIAL_PASSWORD_MIN_LENGTH,
+  changeInitialPassword,
+  requiresInitialPasswordChange,
+} from "./password";
+export type {
+  ChangeInitialPasswordOptions,
+  ChangeInitialPasswordRequest,
+} from "./password";
 export type {
   ApiErrorBody,
   BlobRequestOptions,
@@ -106,19 +125,42 @@ export {
 } from "./registrationSession";
 export type { IntegratedRegistrationSession } from "./registrationSession";
 export {
+  ISSUED_CERTIFICATE_SESSION_STORAGE_KEY,
+  clearIssuedCertificateSession,
+  getIssuedCertificateSession,
+  setIssuedCertificateSession,
+} from "./issuedCertificateSession";
+export type {
+  IssuedCertificateIssueType,
+  IssuedCertificateSession,
+} from "./issuedCertificateSession";
+export {
   HUMAN_SEARCH_BAD_REQUEST_MESSAGE,
   HUMAN_SEARCH_ENDPOINT,
+  HUMAN_CREATE_BAD_REQUEST_MESSAGE,
+  HUMAN_CREATE_CONFLICT_MESSAGE,
+  HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
+  HUMAN_CREATE_UNAUTHORIZED_MESSAGE,
+  HUMAN_ENDPOINT,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
   HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
   HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
   HUMAN_UPDATE_CONFLICT_MESSAGE,
   HUMAN_UPDATE_NOT_FOUND_MESSAGE,
   HUMAN_UPDATE_UNAUTHORIZED_MESSAGE,
+  HUMAN_DELETE_FORBIDDEN_MESSAGE,
+  HUMAN_DELETE_NOT_FOUND_MESSAGE,
+  HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
+  createHuman,
+  deleteHuman,
+  getHumanDeleteEndpoint,
   getHumanUpdateEndpoint,
   searchHumans,
   updateHuman,
 } from "./humans";
 export type {
+  CreateHumanRequest,
+  CreatedHuman,
   HumanRequestOptions,
   HumanSummary,
   SearchHumansQuery,
@@ -126,6 +168,14 @@ export type {
 } from "./humans";
 export {
   CERTIFICATES_ENDPOINT,
+  CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+  CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+  CERTIFICATE_CREATE_ENDPOINT,
+  CERTIFICATE_CREATE_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_DETAIL_FORBIDDEN_MESSAGE,
+  CERTIFICATE_DETAIL_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
+  CERTIFICATE_DETAIL_UNAUTHORIZED_MESSAGE,
   CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE,
   CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
   CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE,
@@ -136,17 +186,18 @@ export {
   CERTIFICATE_SELF_ENDPOINT,
   CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
   CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
-  SELF_CERTIFICATES_FORBIDDEN_MESSAGE,
-  SELF_CERTIFICATES_NOT_FOUND_MESSAGE,
+  CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
   CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
   CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
   HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
   HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
   HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+  createCertificate,
   downloadCertificate,
+  fetchCertificateDetail,
   fetchHumanCertificates,
-  fetchSelfCertificates,
+  getCertificateDetailEndpoint,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
@@ -156,7 +207,10 @@ export {
   updateCertificate,
 } from "./certificates";
 export type {
+  CertificateDetail,
+  CertificateDetailHuman,
   CertificateRequestOptions,
+  CreateCertificateRequest,
   HumanCertificate,
   IssueCertificateRequest,
   IssueSelfCertificateRequest,
@@ -219,5 +273,6 @@ export {
   decodeJwtPayload,
   formatRemainingSessionTime,
   getAuthSession,
+  hasValidAuthToken,
 } from "./authSession";
 export type { AuthSession } from "./authSession";

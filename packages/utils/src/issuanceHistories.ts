@@ -1,4 +1,9 @@
-import { ApiError, normalizePositiveInteger, request } from "./api";
+import {
+  ApiError,
+  normalizePageEnvelope,
+  normalizePositiveInteger,
+  request,
+} from "./api";
 
 export const ISSUANCE_HISTORIES_ENDPOINT = "/api/issuance-histories";
 
@@ -32,10 +37,15 @@ export interface IssuanceHistoryCertificate {
 export interface IssuanceHistory {
   issuanceHistoryId: number;
   certificate: IssuanceHistoryCertificate;
+  /** 발급 문서번호 (예: 유성구-2026-000001). 서버가 주지 않으면 빈 문자열. */
+  documentNo: string;
   targetName: string;
-  /** 서버가 알 수 없는 종류를 보내면 원문 그대로 유지한다. */
+  /**
+   * 서버가 알 수 없는 종류를 보내면 원문 그대로 유지한다.
+   * 종류를 아예 주지 않으면(현재 백엔드) 발급 이력 API 이므로 ISSUANCE 로 본다.
+   */
   type: IssuanceHistoryType | string;
-  /** ISO LocalDateTime 문자열 (예: 2026-08-26T14:30:00) */
+  /** ISO LocalDateTime 문자열 (예: 2026-08-26T14:30:00). 서버 필드명 issuanceDate 또는 issuedAt. */
   issuanceDate: string;
   issuerName: string;
   issuerDepartment: string;
@@ -57,8 +67,15 @@ export interface FetchIssuanceHistoriesParams {
 
 export interface IssuanceHistoryPage {
   content: IssuanceHistory[];
+  /** 서버가 전체 건수를 주지 않으면 현재 페이지 건수 */
   totalCount: number;
-  totalPage: number;
+  /** 서버가 전체 페이지 수를 주지 않으면 null */
+  totalPage: number | null;
+  /**
+   * 다음 페이지가 있을 가능성. 전체 페이지 수를 알면 그것으로,
+   * 모르면 "요청한 size 만큼 꽉 찼는지"로 판단한다.
+   */
+  hasNextPage: boolean;
 }
 
 export interface FetchIssuanceHistoryOptions {
@@ -116,9 +133,12 @@ function normalizeIssuanceHistory(value: unknown): IssuanceHistory | null {
   const {
     issuanceHistoryId,
     certificate,
+    documentNo,
+    purpose,
     targetName,
     type,
     issuanceDate,
+    issuedAt,
     issuerName,
     issuerDepartment,
     reason,
@@ -146,14 +166,23 @@ function normalizeIssuanceHistory(value: unknown): IssuanceHistory | null {
           : 0,
       type:
         typeof certificateRecord.type === "string" ? certificateRecord.type : "",
+      // 백엔드는 purpose 를 최상위에 준다. 명세의 certificate.purpose 도 함께 받는다.
       purpose:
         typeof certificateRecord.purpose === "string"
           ? certificateRecord.purpose
-          : "",
+          : typeof purpose === "string"
+            ? purpose
+            : "",
     },
+    documentNo: typeof documentNo === "string" ? documentNo : "",
     targetName: typeof targetName === "string" ? targetName : "",
-    type: typeof type === "string" ? type : "",
-    issuanceDate: typeof issuanceDate === "string" ? issuanceDate : "",
+    type: typeof type === "string" ? type : "ISSUANCE",
+    issuanceDate:
+      typeof issuanceDate === "string"
+        ? issuanceDate
+        : typeof issuedAt === "string"
+          ? issuedAt
+          : "",
     issuerName: typeof issuerName === "string" ? issuerName : "",
     issuerDepartment:
       typeof issuerDepartment === "string" ? issuerDepartment : "",
@@ -165,6 +194,7 @@ const EMPTY_ISSUANCE_HISTORY_PAGE: IssuanceHistoryPage = {
   content: [],
   totalCount: 0,
   totalPage: 1,
+  hasNextPage: false,
 };
 
 /**
@@ -195,18 +225,13 @@ export async function fetchIssuanceHistories(
     throw error;
   }
 
-  if (!response || typeof response !== "object") {
-    throw new ApiError(200, ISSUANCE_HISTORY_INVALID_RESPONSE_MESSAGE);
-  }
-
-  const { content, totalCount, totalPage } = response as Record<
-    string,
-    unknown
-  >;
-
-  if (!Array.isArray(content)) {
-    throw new ApiError(200, ISSUANCE_HISTORY_INVALID_RESPONSE_MESSAGE);
-  }
+  // 백엔드(GET /api/issuance-histories)는 페이지 메타 없이 배열만 내려준다.
+  // 명세의 {content, totalCount, totalPage} 형태도 함께 받는다.
+  const { content, totalCount, totalPage } = normalizePageEnvelope(
+    response,
+    ISSUANCE_HISTORY_INVALID_RESPONSE_MESSAGE,
+    "totalPage",
+  );
 
   const histories: IssuanceHistory[] = [];
 
@@ -227,11 +252,20 @@ export async function fetchIssuanceHistories(
   const normalizedTotalPage =
     typeof totalPage === "number" && Number.isFinite(totalPage)
       ? Math.max(1, Math.floor(totalPage))
-      : 1;
+      : null;
+  const requestedPage = normalizePositiveInteger(params.page ?? 1, 1);
+  const requestedSize = normalizePositiveInteger(
+    params.size ?? ISSUANCE_HISTORIES_DEFAULT_PAGE_SIZE,
+    ISSUANCE_HISTORIES_DEFAULT_PAGE_SIZE,
+  );
 
   return {
     content: histories,
     totalCount: normalizedTotalCount,
     totalPage: normalizedTotalPage,
+    hasNextPage:
+      normalizedTotalPage === null
+        ? histories.length >= requestedSize
+        : requestedPage < normalizedTotalPage,
   };
 }
