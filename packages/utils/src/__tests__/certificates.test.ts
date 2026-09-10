@@ -7,7 +7,8 @@ import {
   fetchCertificateDetail,
   getCertificateDetailEndpoint,
   CERTIFICATE_CREATE_ENDPOINT,
-  CERTIFICATE_CREATE_CONFLICT_MESSAGE,
+  CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+  CERTIFICATE_CREATE_HUMAN_NOT_FOUND_MESSAGE,
   createCertificate,
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
   CERTIFICATE_SELF_ENDPOINT,
@@ -485,43 +486,76 @@ describe("downloadCertificate", () => {
 });
 
 describe("createCertificate", () => {
+  // 백엔드 CertificateCreateRequest 와 같은 모양. 성명/생년월일/성별은 humanId 로 대신한다.
   const createRequest = {
     humanId: 3,
-    name: "홍길동",
-    birthDate: "1990-01-02",
-    gender: "M" as const,
     jobTitle: "주무관",
     keyResponsibilities: "민원 응대",
     hireDate: "2020-03-01",
     expirationDate: null,
     retirementDate: "2021-02-28",
-    division: "총무과",
+    division: null,
+    department: "총무과",
     reason: "계약 만료",
-    employmentType: "",
+    employmentType: null,
     note: "",
   };
 
-  test("POSTs the body to /api/certificates/create with the token", async () => {
-    mockFetch(201, undefined, (url, init) => {
+  test("POSTs the body to /api/certificates/create and returns certificateId", async () => {
+    mockFetch(201, { certificateId: 42 }, (url, init) => {
       expect(url).toBe(CERTIFICATE_CREATE_ENDPOINT);
       expect(url).toBe("/api/certificates/create");
       expect(init?.method).toBe("POST");
       const headers = init?.headers as Record<string, string>;
       expect(headers.Authorization).toBe("Bearer token-1");
-      expect(JSON.parse(String(init?.body))).toEqual(createRequest);
+
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body).toEqual(createRequest);
+      // 구분/근무형태는 빈 문자열이면 백엔드 허용값 검증에 걸린다. null 로 가야 한다.
+      expect(body.division).toBeNull();
+      expect(body.employmentType).toBeNull();
+      // 근무부서는 division 이 아니라 department 다.
+      expect(body.department).toBe("총무과");
+      expect(body).not.toHaveProperty("name");
+      expect(body).not.toHaveProperty("birthDate");
+      expect(body).not.toHaveProperty("gender");
     });
 
     await expect(
       createCertificate(createRequest, { token: "token-1" }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ certificateId: 42 });
   });
 
-  test("maps 409 to the conflict message", async () => {
-    mockFetch(409, { status: 409, message: "dup" });
+  test("resolves with null certificateId when the 201 body has none", async () => {
+    // 201 은 이미 저장된 뒤라 본문이 어긋나도 오류로 돌리지 않는다(재시도하면 중복 등록).
+    for (const body of [undefined, {}, { certificateId: "42" }, { certificateId: 0 }]) {
+      mockFetch(201, body);
+      await expect(createCertificate(createRequest)).resolves.toEqual({
+        certificateId: null,
+      });
+    }
+  });
 
-    await expect(createCertificate(createRequest)).rejects.toMatchObject({
-      status: 409,
-      message: CERTIFICATE_CREATE_CONFLICT_MESSAGE,
-    });
+  test("maps 400 / 404 to messages", async () => {
+    for (const [status, body, message] of [
+      // 검증 실패 400 은 {error: {field: message}} 형식이라 최상위 message 가 없다.
+      [
+        400,
+        { status: 400, error: { divisionValid: "구분 값은 채용/전보/해지/퇴직 중 하나여야 합니다." } },
+        CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+      ],
+      [
+        404,
+        { status: 404, message: "해당 인적사항을 찾을 수 없습니다." },
+        CERTIFICATE_CREATE_HUMAN_NOT_FOUND_MESSAGE,
+      ],
+    ] as const) {
+      mockFetch(status, body);
+
+      await expect(createCertificate(createRequest)).rejects.toMatchObject({
+        status,
+        message,
+      });
+    }
   });
 });
