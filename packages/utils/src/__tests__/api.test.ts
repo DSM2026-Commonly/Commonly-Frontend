@@ -54,6 +54,63 @@ describe("request error messages", () => {
     expect((error as ApiError).message).toBe(SERVER_ERROR_MESSAGE);
   });
 
+  test("prefers the validation error map over the mapped status message", async () => {
+    // 검증 실패 응답은 {status, timestamp, error: {필드: 문구}} 로 최상위 message 가 없다.
+    mockFetch(400, {
+      status: 400,
+      timestamp: "t",
+      error: { divisionValid: "구분 값은 채용/전보/해지/퇴직 중 하나여야 합니다." },
+    });
+
+    const error = await request("/x", {
+      errorMessages: { 400: "입력값이 올바르지 않습니다." },
+    }).catch((e: unknown) => e);
+
+    expect((error as ApiError).message).toBe(
+      "구분 값은 채용/전보/해지/퇴직 중 하나여야 합니다.",
+    );
+    expect((error as ApiError).fieldErrors).toEqual({
+      divisionValid: "구분 값은 채용/전보/해지/퇴직 중 하나여야 합니다.",
+    });
+  });
+
+  test("joins several field messages in a stable order", async () => {
+    mockFetch(400, {
+      status: 400,
+      error: { gender: "널이어서는 안됩니다", divisionValid: "구분 값이 틀립니다" },
+    });
+
+    await expect(request("/x")).rejects.toMatchObject({
+      message: "구분 값이 틀립니다 널이어서는 안됩니다",
+    });
+  });
+
+  test("ignores an error field that is not a message map", async () => {
+    for (const body of [
+      { status: 400, error: "Bad Request" },
+      { status: 400, error: [] },
+      { status: 400, error: {} },
+      { status: 400, error: { field: "  " } },
+    ]) {
+      mockFetch(400, body);
+
+      const error = await request("/x").catch((e: unknown) => e);
+      expect((error as ApiError).message).toBe(SERVER_ERROR_MESSAGE);
+      expect((error as ApiError).fieldErrors).toBeUndefined();
+    }
+  });
+
+  test("keeps the body code mapping ahead of the validation error map", async () => {
+    mockFetch(400, {
+      code: "DIVISION_INVALID",
+      error: { divisionValid: "백엔드 문구" },
+    });
+
+    await expect(
+      request("/x", { errorMessages: { DIVISION_INVALID: "화면 문구" } }),
+    ).rejects.toMatchObject({ message: "화면 문구" });
+  });
+
   test("dispatches the unauthorized event on 401", async () => {
     mockFetch(401, { status: 401, message: "인증 실패" });
 
