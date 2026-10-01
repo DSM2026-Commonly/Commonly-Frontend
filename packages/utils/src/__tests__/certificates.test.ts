@@ -539,11 +539,14 @@ describe("createCertificate", () => {
   test("maps 400 / 404 to messages", async () => {
     for (const [status, body, message] of [
       // 검증 실패 400 은 {error: {field: message}} 형식이라 최상위 message 가 없다.
+      // 어느 칸이 왜 틀렸는지 알려주므로 뭉뚱그린 400 문구보다 이 문구를 먼저 쓴다.
       [
         400,
         { status: 400, error: { divisionValid: "구분 값은 채용/전보/해지/퇴직 중 하나여야 합니다." } },
-        CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE,
+        "구분 값은 채용/전보/해지/퇴직 중 하나여야 합니다.",
       ],
+      // 검증이 아닌 400 은 매핑해 둔 문구로 떨어진다.
+      [400, { status: 400 }, CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE],
       [
         404,
         { status: 404, message: "해당 인적사항을 찾을 수 없습니다." },
