@@ -1,4 +1,5 @@
 import { Button } from "krds-react";
+import { useEffect, useRef } from "react";
 import { FlowError } from "../CareerCertificateIssue.styles";
 import type {
   CareerCertificateIssueVariant,
@@ -62,6 +63,17 @@ function CertificatePreviewView({
   const isCivil = variant === "civil";
   const nextLabel = isSubmitting ? "발급 중..." : "다음으로";
   const issueDate = formatIssueDate(new Date());
+  const errorRef = useRef<HTMLParagraphElement>(null);
+
+  // 문서 미리보기가 화면 몇 배 높이라, 어느 '다음으로'를 눌렀든 에러가 화면 밖에 있을 수 있다.
+  // 발급이 실패하면 아무 반응이 없는 것처럼 보이므로 에러를 화면 안으로 끌어온다.
+  useEffect(() => {
+    if (!submissionError) {
+      return;
+    }
+
+    errorRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  }, [submissionError]);
 
   return (
     <PreviewPage $civil={isCivil}>
@@ -74,6 +86,11 @@ function CertificatePreviewView({
       <FilenameBar>
         <span>{buildPreviewFilename(applicantName)}</span>
       </FilenameBar>
+      {submissionError && (
+        <FlowError ref={errorRef} role="alert">
+          {submissionError}
+        </FlowError>
+      )}
       <DocumentViewer $civil={isCivil}>
         <DocumentSheet
           $civil={isCivil}
@@ -141,9 +158,6 @@ function CertificatePreviewView({
           </DocumentBody>
         </DocumentSheet>
       </DocumentViewer>
-      {submissionError && (
-        <FlowError role="alert">{submissionError}</FlowError>
-      )}
       <PreviewActions>
         <Button
           variant="tertiary"

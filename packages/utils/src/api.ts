@@ -11,12 +11,15 @@ export interface ApiErrorBody {
   code?: string;
   message?: string;
   detail?: unknown;
+  /** 검증 실패 응답의 `error` 맵(필드명 → 안내 문구). 검증 실패가 아니면 없다. */
+  fieldErrors?: Record<string, string>;
 }
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly detail?: unknown;
+  readonly fieldErrors?: Record<string, string>;
 
   constructor(status: number, message: string, body?: ApiErrorBody) {
     super(message);
@@ -24,6 +27,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = body?.code;
     this.detail = body?.detail;
+    this.fieldErrors = body?.fieldErrors;
   }
 }
 
@@ -139,9 +143,12 @@ async function throwErrorResponse(
 ): Promise<never> {
   const errorBody = await parseErrorBody(response);
   // 백엔드 에러 본문은 {status, timestamp, message} 형식이라 code 는 오지 않는다.
-  // 매핑된 문구가 없으면 백엔드가 내려준 message 를 그대로 보여준다.
+  // 검증 실패만 {status, timestamp, error: {필드: 문구}} 로 message 없이 온다. 이때는
+  // 상태코드 매핑("입력값이 올바르지 않습니다")보다 어느 칸이 왜 틀렸는지 짚어주는
+  // 백엔드 문구가 정확하므로 먼저 쓴다.
   const message =
     (errorBody.code ? errorMessages[errorBody.code] : undefined) ??
+    formatFieldErrors(errorBody.fieldErrors) ??
     errorMessages[response.status] ??
     (errorBody.message?.trim() || undefined) ??
     SERVER_ERROR_MESSAGE;
@@ -170,16 +177,55 @@ async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
       return {};
     }
 
-    const { code, message, detail } = body as Record<string, unknown>;
+    const { code, message, detail, error } = body as Record<string, unknown>;
 
     return {
       code: typeof code === "string" ? code : undefined,
       message: typeof message === "string" ? message : undefined,
       detail,
+      fieldErrors: parseFieldErrors(error),
     };
   } catch {
     return {};
   }
+}
+
+/**
+ * 검증 실패 응답(ValidationErrorResponse)의 `error` 맵을 읽는다.
+ * 이 맵을 버리면 백엔드가 짚어준 필드별 사유가 전부 사라져 400 이 서버 장애처럼 보인다.
+ */
+function parseFieldErrors(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const fieldErrors: Record<string, string> = {};
+
+  for (const [field, fieldMessage] of Object.entries(value)) {
+    if (typeof fieldMessage === "string" && fieldMessage.trim()) {
+      fieldErrors[field] = fieldMessage.trim();
+    }
+  }
+
+  return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
+}
+
+/**
+ * 필드별 검증 문구를 한 줄로 합친다.
+ * 필드명은 백엔드 식별자(`divisionValid` 등)라 사용자에게 보여주지 않고 문구만 쓴다.
+ * 백엔드가 HashMap 으로 담아 순서가 들쭉날쭉하므로 필드명으로 정렬해 같은 순서로 보여준다.
+ */
+function formatFieldErrors(
+  fieldErrors: Record<string, string> | undefined,
+): string | undefined {
+  if (!fieldErrors) {
+    return undefined;
+  }
+
+  return Object.keys(fieldErrors)
+    .sort()
+    .map((field) => fieldErrors[field])
+    .join(" ");
 }
 
 export async function request<TResponse>(
