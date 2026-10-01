@@ -53,7 +53,8 @@ const issuedResponse = {
 const updateRequest = {
   name: "홍길동",
   birthDate: "1990-01-01",
-  gender: "M" as const,
+  // 경력 수정 API 의 성별은 enum 이름이다. M/F 를 보내면 400 이다.
+  gender: "MALE" as const,
   jobTitle: "사무원",
   keyResponsibilities: "행정지원",
   hireDate: "2024-03-01",
@@ -411,8 +412,30 @@ describe("updateCertificate", () => {
     await updateCertificate(7, updateRequest);
   });
 
+  test("sends null for unknown codes and missing dates", async () => {
+    // 구분/근무형태는 허용값 검증, 날짜는 LocalDate 역직렬화에 걸려 빈 문자열이면 400 이다.
+    mockFetch(204, undefined, (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body.division).toBeNull();
+      expect(body.employmentType).toBeNull();
+      expect(body.expirationDate).toBeNull();
+      expect(body.retirementDate).toBeNull();
+      expect(body.gender).toBe("FEMALE");
+    });
+
+    await updateCertificate(7, {
+      ...updateRequest,
+      gender: "FEMALE",
+      division: null,
+      employmentType: null,
+      expirationDate: null,
+      retirementDate: null,
+    });
+  });
+
   test("maps error statuses to Korean messages", async () => {
     const cases = [
+      [400, "입력값이 올바르지 않습니다"],
       [401, "로그인이 만료되었습니다"],
       [404, "찾을 수 없습니다"],
       [500, "일시적인 오류"],
@@ -427,6 +450,22 @@ describe("updateCertificate", () => {
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
     }
+  });
+
+  test("surfaces the backend field message on a validation 400", async () => {
+    mockFetch(400, {
+      status: 400,
+      error: { gender: "널이어서는 안됩니다" },
+    });
+
+    const error = await updateCertificate(7, updateRequest).catch(
+      (e: unknown) => e,
+    );
+
+    expect((error as ApiError).message).toBe("널이어서는 안됩니다");
+    expect((error as ApiError).fieldErrors).toEqual({
+      gender: "널이어서는 안됩니다",
+    });
   });
 });
 
