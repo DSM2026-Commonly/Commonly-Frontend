@@ -17,18 +17,37 @@ import type {
   CareerEditSubmission,
 } from "../career-edit/CareerEdit.types";
 
-function toIsoDate(value: string): string {
-  const [year = "", month = "", day = ""] = value.match(/\d+/g) ?? [];
+/**
+ * "2020.03.01" 같은 화면 표기를 ISO 날짜로 바꾼다.
+ * 비어 있거나 일부만 채워졌으면 null 을 돌려준다 — 백엔드 LocalDate 는 빈 문자열을 읽지 못해 400 이다.
+ */
+function toIsoDate(value: string): string | null {
+  const [year, month, day] = value.match(/\d+/g) ?? [];
 
-  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-}
-
-function toApiGender(gender: CareerEditApplicant["gender"]): "M" | "F" | "" {
-  if (gender === "male") {
-    return "M";
+  if (!year || !month || !day) {
+    return null;
   }
 
-  return gender === "female" ? "F" : "";
+  return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+/**
+ * 경력 수정 API 의 성별은 enum 이름(MALE/FEMALE)이다. 대상자 조회 API 의 M/F 와 표기가 다르다.
+ * 알 수 없으면 null — 백엔드가 @NotNull 로 막으므로 요청 전에 걸러낸다.
+ */
+function toApiGender(
+  gender: CareerEditApplicant["gender"],
+): "MALE" | "FEMALE" | null {
+  if (gender === "male") {
+    return "MALE";
+  }
+
+  return gender === "female" ? "FEMALE" : null;
+}
+
+/** 허용값 검증이 있는 선택 필드는 빈 문자열이면 400 이라 null 로 보낸다. */
+function toNullableCode(value: string): string | null {
+  return value.trim() || null;
 }
 
 /** admin-web/user-web 이 공유하는 경력사항 수정 페이지. */
@@ -156,23 +175,31 @@ function StaffCareerEditPage() {
     }
 
     const { record, applicant } = submission;
+    const gender = toApiGender(applicant.gender);
+
+    if (!gender) {
+      throw new Error(
+        "대상자 성별 정보가 없어 수정할 수 없습니다. 인적사항 수정에서 성별을 먼저 지정해 주세요.",
+      );
+    }
 
     await updateCertificate(
       certificateId,
       {
         name: applicant.name,
         birthDate: toIsoDate(applicant.birthDate),
-        gender: toApiGender(applicant.gender),
+        gender,
         jobTitle: record.position,
         keyResponsibilities: record.duties,
         hireDate: toIsoDate(record.startDate),
-        expirationDate: original.expirationDate,
-        retirementDate: record.endDate ? toIsoDate(record.endDate) : "",
+        expirationDate: toIsoDate(original.expirationDate),
+        retirementDate: toIsoDate(record.endDate),
         // 구분(채용/전보/해지/퇴직)은 화면에서 편집하지 않으므로 원본을 유지한다.
-        division: original.division,
+        // 목록 조회가 null 을 빈 문자열로 정규화해 주므로 여기서 다시 null 로 되돌린다.
+        division: toNullableCode(original.division),
         department: record.department,
         reason: record.retirementReason,
-        employmentType: original.employmentType,
+        employmentType: toNullableCode(original.employmentType),
         note: record.note,
       },
       { token },

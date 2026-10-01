@@ -54,6 +54,8 @@ export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
   "증명서를 내려받을 권한이 없습니다.";
 export const CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE =
   "증명서를 찾을 수 없습니다. 다시 발급해 주세요.";
+export const CERTIFICATE_UPDATE_BAD_REQUEST_MESSAGE =
+  "입력값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
 export const CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE =
@@ -161,21 +163,32 @@ export interface CreatedCertificate {
   certificateId: number | null;
 }
 
+/**
+ * 경력증명서 한 줄 수정(PUT /api/certificates/{certificateId}) 요청 본문.
+ *
+ * 성별 표기가 엔드포인트마다 다르다 — /api/human 은 M/F(@JsonValue) 지만 이 엔드포인트의
+ * Gender 에는 Jackson 애너테이션이 없어 enum 이름(MALE/FEMALE)으로 읽힌다.
+ * M/F 나 빈 문자열을 보내면 @NotNull 검증에 걸려 400 이다.
+ *
+ * 구분/근무형태는 허용값 검증(@AssertTrue)이 있어 빈 문자열이면 400 이다. 모르면 null 을 보낸다.
+ * 날짜도 빈 문자열은 LocalDate 로 읽히지 않으므로 값이 없으면 null 을 보낸다.
+ */
 export interface UpdateCertificateRequest {
   name: string;
-  birthDate: string;
-  gender: "M" | "F" | "";
+  birthDate: string | null;
+  gender: "MALE" | "FEMALE";
   jobTitle: string;
   keyResponsibilities: string;
-  hireDate: string;
-  expirationDate: string;
-  retirementDate: string;
-  /** 구분(채용/전보/해지/퇴직). 백엔드가 이 네 값만 허용한다. */
-  division: string;
+  hireDate: string | null;
+  expirationDate: string | null;
+  retirementDate: string | null;
+  /** 구분(채용/전보/해지/퇴직). 모르면 null. */
+  division: string | null;
   /** 근무부서 */
   department: string;
   reason: string;
-  employmentType: string;
+  /** 근무형태(기간제/단시간근로자). 모르면 null. */
+  employmentType: string | null;
   note: string;
 }
 
@@ -513,13 +526,15 @@ export async function updateCertificate(
   { token, signal }: CertificateRequestOptions = {},
 ): Promise<void> {
   // 204 No Content 응답이라 본문 검증 없이 성공으로 처리한다.
-  // 에러 명세가 없어 401/404만 방어적으로 매핑한다.
+  // 에러 명세가 없어 400/401/404만 방어적으로 매핑한다.
+  // 검증 실패 400 은 백엔드가 `error` 맵으로 필드별 사유를 주므로 그 문구가 먼저 쓰인다.
   await request<unknown>(getCertificateUpdateEndpoint(certificateId), {
     method: "PUT",
     body,
     token,
     signal,
     errorMessages: {
+      400: CERTIFICATE_UPDATE_BAD_REQUEST_MESSAGE,
       401: CERTIFICATE_UPDATE_UNAUTHORIZED_MESSAGE,
       404: CERTIFICATE_UPDATE_NOT_FOUND_MESSAGE,
     },
