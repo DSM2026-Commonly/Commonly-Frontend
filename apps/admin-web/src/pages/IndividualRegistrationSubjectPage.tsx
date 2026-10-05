@@ -4,7 +4,7 @@ import {
   type IndividualRegistrationDuplicateCandidate,
   type IndividualRegistrationSubjectData,
 } from "@commonly/ui";
-import { getAuthToken, searchHumans } from "@commonly/utils";
+import { getAuthToken, searchHumansPaged } from "@commonly/utils";
 import { Navigate, useLocation, useNavigate } from "react-router";
 
 // 이름 + 생년월일이 같은 기존 대상자를 서버에서 찾아 중복 후보로 보여준다.
@@ -13,27 +13,36 @@ async function findDuplicateSubjects(
     IndividualRegistrationSubjectData,
     "duplicateResolution" | "existingSubjectId"
   >,
-): Promise<IndividualRegistrationDuplicateCandidate[]> {
+  { page }: { page: number },
+): Promise<{
+  items: IndividualRegistrationDuplicateCandidate[];
+  totalPages: number;
+}> {
   const birthDate = `${subject.birthYear}-${subject.birthMonth}-${subject.birthDay}`;
-  const humans = await searchHumans(
+  // 화면은 1부터, 서버는 0부터 세므로 요청 시 한 칸 당긴다.
+  const result = await searchHumansPaged(
     { name: subject.name, birthDateFrom: birthDate, birthDateTo: birthDate },
+    { page: page - 1 },
     { token: getAuthToken() },
   );
 
-  return humans.map((human) => {
-    const [birthYear = "", birthMonth = "", birthDay = ""] =
-      human.birthDate.split("-");
+  return {
+    items: result.items.map((human) => {
+      const [birthYear = "", birthMonth = "", birthDay = ""] =
+        human.birthDate.split("-");
 
-    return {
-      id: String(human.humanId),
-      name: human.name,
-      gender: human.gender === "F" ? "female" : "male",
-      birthYear,
-      birthMonth,
-      birthDay,
-      address: human.address,
-    };
-  });
+      return {
+        id: String(human.humanId),
+        name: human.name,
+        gender: human.gender === "F" ? "female" : "male",
+        birthYear,
+        birthMonth,
+        birthDay,
+        address: human.address,
+      };
+    }),
+    totalPages: result.totalPages,
+  };
 }
 
 function IndividualRegistrationSubjectPage() {

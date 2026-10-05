@@ -2,7 +2,7 @@ import {
   deleteHuman,
   fetchHumanCertificates,
   getAuthToken,
-  searchHumans,
+  searchHumansPaged,
   updateCertificate,
   updateHuman,
   type HumanCertificate,
@@ -64,32 +64,38 @@ function StaffCareerEditPage() {
   const handleSearch = async (query: {
     name: string;
     birthDate: string;
-  }): Promise<readonly CareerEditApplicant[]> => {
-    const humans = await searchHumans(
+    page: number;
+  }): Promise<{ items: CareerEditApplicant[]; totalPages: number }> => {
+    // 화면은 1부터, 서버는 0부터 세므로 요청 시 한 칸 당긴다.
+    const result = await searchHumansPaged(
       {
         name: query.name,
         birthDateFrom: query.birthDate,
         birthDateTo: query.birthDate,
       },
+      { page: query.page - 1 },
       { token: getAuthToken() },
     );
 
     humanDepartmentsRef.current = new Map(
-      humans.map((human) => [String(human.humanId), human.department]),
+      result.items.map((human) => [String(human.humanId), human.department]),
     );
 
-    return humans.map((human) => ({
-      id: String(human.humanId),
-      name: human.name,
-      birthDate: human.birthDate,
-      address: human.address,
-      gender:
-        human.gender === "M"
-          ? ("male" as const)
-          : human.gender === "F"
-            ? ("female" as const)
-            : undefined,
-    }));
+    return {
+      items: result.items.map((human) => ({
+        id: String(human.humanId),
+        name: human.name,
+        birthDate: human.birthDate,
+        address: human.address,
+        gender:
+          human.gender === "M"
+            ? ("male" as const)
+            : human.gender === "F"
+              ? ("female" as const)
+              : undefined,
+      })),
+      totalPages: result.totalPages,
+    };
   };
 
   const handleLoadCareerRecords = async (

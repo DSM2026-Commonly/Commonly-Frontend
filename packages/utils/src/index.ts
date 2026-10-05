@@ -142,6 +142,8 @@ export {
   HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
   HUMAN_CREATE_UNAUTHORIZED_MESSAGE,
   HUMAN_ENDPOINT,
+  HUMAN_SEARCH_DEFAULT_PAGE_SIZE,
+  HUMAN_SEARCH_MAX_PAGE_SIZE,
   HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
   HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
   HUMAN_UPDATE_BAD_REQUEST_MESSAGE,
@@ -156,13 +158,16 @@ export {
   getHumanDeleteEndpoint,
   getHumanUpdateEndpoint,
   searchHumans,
+  searchHumansPaged,
   updateHuman,
 } from "./humans";
 export type {
   CreateHumanRequest,
   CreatedHuman,
+  HumanPage,
   HumanRequestOptions,
   HumanSummary,
+  SearchHumansPageParams,
   SearchHumansQuery,
   UpdateHumanRequest,
 } from "./humans";

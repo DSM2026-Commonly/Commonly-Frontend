@@ -46,6 +46,7 @@ import {
   sanitizeDatePart,
 } from "../../career-certificate/CareerCertificateIssue.validation";
 import { findDuplicateCandidates } from "./IndividualRegistrationSubject.utils";
+import Pagination, { type PagedResult } from "../../pagination/Pagination";
 import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 import AddressSearchModal, {
   type AddressSearchItem,
@@ -97,7 +98,9 @@ export interface IndividualRegistrationSubjectProps {
       IndividualRegistrationSubjectData,
       "duplicateResolution" | "existingSubjectId"
     >,
-  ) => Promise<readonly IndividualRegistrationDuplicateCandidate[]>;
+    /** 조회할 페이지(1부터 시작). */
+    params: { page: number },
+  ) => Promise<PagedResult<IndividualRegistrationDuplicateCandidate>>;
   previousLabel?: string;
   nextLabel?: string;
   onPrevious?: () => void;
@@ -141,6 +144,9 @@ function IndividualRegistrationSubject({
   const [fetchedDuplicateCandidates, setFetchedDuplicateCandidates] = useState<
     readonly IndividualRegistrationDuplicateCandidate[]
   >(EMPTY_DUPLICATE_CANDIDATES);
+  // 서버 중복 조회 결과는 페이지 단위로 내려온다(기본 20건).
+  const [duplicatePage, setDuplicatePage] = useState(1);
+  const [duplicateTotalPages, setDuplicateTotalPages] = useState(1);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [duplicateCheckError, setDuplicateCheckError] = useState("");
   const duplicateCheckRequestIdRef = useRef(0);
@@ -190,6 +196,8 @@ function IndividualRegistrationSubject({
     setDuplicateStatus("idle");
     setSelectedDuplicateId("");
     setFetchedDuplicateCandidates(EMPTY_DUPLICATE_CANDIDATES);
+    setDuplicatePage(1);
+    setDuplicateTotalPages(1);
     setIsCheckingDuplicate(false);
     setDuplicateCheckError("");
   };
@@ -257,11 +265,7 @@ function IndividualRegistrationSubject({
     resetDuplicateCheck();
   };
 
-  const handleDuplicateCheck = async () => {
-    if (!hasRequiredInformation || isCheckingDuplicate) {
-      return;
-    }
-
+  const runDuplicateCheck = async (page: number) => {
     if (!onCheckDuplicate) {
       applyDuplicateCandidates(localDuplicateCandidates);
       return;
@@ -272,15 +276,17 @@ function IndividualRegistrationSubject({
     setDuplicateCheckError("");
 
     try {
-      const candidates = await onCheckDuplicate(subjectData);
+      const result = await onCheckDuplicate(subjectData, { page });
 
       // 확인 중 입력이 바뀌면(resetDuplicateCheck) 이전 응답은 버린다.
       if (duplicateCheckRequestIdRef.current !== requestId) {
         return;
       }
 
-      setFetchedDuplicateCandidates(candidates);
-      applyDuplicateCandidates(candidates);
+      setFetchedDuplicateCandidates(result.items);
+      setDuplicatePage(page);
+      setDuplicateTotalPages(Math.max(1, result.totalPages));
+      applyDuplicateCandidates(result.items);
     } catch (error) {
       if (duplicateCheckRequestIdRef.current !== requestId) {
         return;
@@ -296,6 +302,22 @@ function IndividualRegistrationSubject({
         setIsCheckingDuplicate(false);
       }
     }
+  };
+
+  const handleDuplicateCheck = () => {
+    if (!hasRequiredInformation || isCheckingDuplicate) {
+      return;
+    }
+
+    void runDuplicateCheck(1);
+  };
+
+  const handleDuplicatePageChange = (nextPage: number) => {
+    if (isCheckingDuplicate || nextPage === duplicatePage) {
+      return;
+    }
+
+    void runDuplicateCheck(nextPage);
   };
 
   const handleSubmit = (
@@ -482,7 +504,7 @@ function IndividualRegistrationSubject({
                   duplicateStatus === "available" ||
                   isCheckingDuplicate
                 }
-                onClick={() => void handleDuplicateCheck()}
+                onClick={() => handleDuplicateCheck()}
               >
                 {isCheckingDuplicate
                   ? "확인 중..."
@@ -557,6 +579,15 @@ function IndividualRegistrationSubject({
                   </Table.Tbody>
                 </Table>
               </DuplicateTableFrame>
+              {duplicateTotalPages > 1 && (
+                <Pagination
+                  currentPage={duplicatePage}
+                  totalPages={duplicateTotalPages}
+                  isLoading={isCheckingDuplicate}
+                  navLabel="중복 대상자 목록 페이지"
+                  onPageChange={handleDuplicatePageChange}
+                />
+              )}
             </DuplicateResultCard>
           )}
         </FormMainContent>

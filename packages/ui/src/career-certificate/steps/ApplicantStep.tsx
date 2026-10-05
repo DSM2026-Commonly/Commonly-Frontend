@@ -2,6 +2,7 @@ import { Button, Radio, Select, Table, TextInput } from "krds-react";
 import { YEAR_OPTIONS } from "../CareerCertificateIssue.constants";
 import { FlowError } from "../CareerCertificateIssue.styles";
 import type { CertificateApplicant } from "../CareerCertificateIssue.types";
+import Pagination from "../../pagination/Pagination";
 import {
   getDaysInBirthMonth,
   isValidBirthDay,
@@ -27,6 +28,9 @@ interface ApplicantStepProps {
   canSearch: boolean;
   hasSearchResult: boolean;
   applicants: readonly CertificateApplicant[];
+  /** 현재 페이지(1부터 시작). */
+  applicantsPage: number;
+  applicantsTotalPages: number;
   isSearching?: boolean;
   isLoadingCareerRows?: boolean;
   searchError?: string;
@@ -36,6 +40,7 @@ interface ApplicantStepProps {
   onBirthMonthChange: (value: string) => void;
   onBirthDayChange: (value: string) => void;
   onSearch: () => void;
+  onApplicantsPageChange: (page: number) => void;
   onSelectedPersonChange: (personId: string) => void;
 }
 
@@ -47,6 +52,8 @@ function ApplicantStep({
   canSearch,
   hasSearchResult,
   applicants,
+  applicantsPage,
+  applicantsTotalPages,
   isSearching = false,
   isLoadingCareerRows = false,
   searchError = "",
@@ -56,6 +63,7 @@ function ApplicantStep({
   onBirthMonthChange,
   onBirthDayChange,
   onSearch,
+  onApplicantsPageChange,
   onSelectedPersonChange,
 }: ApplicantStepProps) {
   const isBirthMonthInvalid =
@@ -187,6 +195,15 @@ function ApplicantStep({
             <EmptyResult role="status">
               일치하는 대상자가 없습니다.
             </EmptyResult>
+          )}
+          {applicants.length > 0 && applicantsTotalPages > 1 && (
+            <Pagination
+              currentPage={applicantsPage}
+              totalPages={applicantsTotalPages}
+              isLoading={isSearching || isLoadingCareerRows}
+              navLabel="대상자 목록 페이지"
+              onPageChange={onApplicantsPageChange}
+            />
           )}
         </FormCard>
       )}

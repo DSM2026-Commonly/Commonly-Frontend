@@ -77,6 +77,9 @@ function CareerCertificateIssue({
   const [applicants, setApplicants] = useState<readonly CertificateApplicant[]>(
     [],
   );
+  // 대상자 검색 결과는 서버가 페이지 단위로 내려준다(기본 20건).
+  const [applicantsPage, setApplicantsPage] = useState(1);
+  const [applicantsTotalPages, setApplicantsTotalPages] = useState(1);
   const [isSearchingApplicants, setIsSearchingApplicants] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [issueType, setIssueType] = useState<CertificateIssueType>("all");
@@ -309,11 +312,7 @@ function CareerCertificateIssue({
     setSelectedCareerIds(checked ? careerRows.map((row) => row.id) : []);
   };
 
-  const handlePersonSearch = async () => {
-    if (!canSearchPerson || isSearchingApplicants) {
-      return;
-    }
-
+  const runApplicantSearch = async (page: number) => {
     if (!onSearchApplicants) {
       setSearchError("대상자 조회 기능이 연결되지 않았습니다.");
       return;
@@ -329,21 +328,26 @@ function CareerCertificateIssue({
       const result = await onSearchApplicants({
         name: applicantName.trim(),
         birthDate,
+        page,
       });
 
       if (requestId !== searchRequestIdRef.current) {
         return;
       }
 
-      setApplicants(result);
+      setApplicants(result.items);
+      setApplicantsPage(page);
+      setApplicantsTotalPages(Math.max(1, result.totalPages));
       setHasPersonSearchResult(true);
-      setSelectedPerson(result.length === 1 ? result[0].id : "");
+      // 페이지가 바뀌면 이전 선택은 목록에 없을 수 있어 단건일 때만 자동 선택한다.
+      setSelectedPerson(result.items.length === 1 ? result.items[0].id : "");
     } catch (error) {
       if (requestId !== searchRequestIdRef.current) {
         return;
       }
 
       setApplicants([]);
+      setApplicantsTotalPages(1);
       setHasPersonSearchResult(false);
       setSelectedPerson("");
       setSearchError(getErrorMessage(error));
@@ -352,11 +356,29 @@ function CareerCertificateIssue({
     }
   };
 
+  const handlePersonSearch = () => {
+    if (!canSearchPerson || isSearchingApplicants) {
+      return;
+    }
+
+    void runApplicantSearch(1);
+  };
+
+  const handleApplicantsPageChange = (nextPage: number) => {
+    if (isSearchingApplicants || nextPage === applicantsPage) {
+      return;
+    }
+
+    void runApplicantSearch(nextPage);
+  };
+
   const resetPersonSearchResult = () => {
     searchRequestIdRef.current += 1;
     setHasPersonSearchResult(false);
     setSelectedPerson("");
     setApplicants([]);
+    setApplicantsPage(1);
+    setApplicantsTotalPages(1);
     setSearchError("");
   };
 
@@ -459,6 +481,8 @@ function CareerCertificateIssue({
             canSearch={canSearchPerson}
             hasSearchResult={hasPersonSearchResult}
             applicants={applicants}
+            applicantsPage={applicantsPage}
+            applicantsTotalPages={applicantsTotalPages}
             isSearching={isSearchingApplicants}
             isLoadingCareerRows={isLoadingCareerRows}
             searchError={searchError}
@@ -467,7 +491,8 @@ function CareerCertificateIssue({
             onBirthYearChange={handleBirthYearChange}
             onBirthMonthChange={handleBirthMonthChange}
             onBirthDayChange={handleBirthDayChange}
-            onSearch={() => void handlePersonSearch()}
+            onSearch={() => handlePersonSearch()}
+            onApplicantsPageChange={handleApplicantsPageChange}
             onSelectedPersonChange={setSelectedPerson}
           />
         );

@@ -1,3 +1,5 @@
+import type { PagedResult } from "../pagination/Pagination";
+
 export type CareerCertificateIssueView =
   | "notice"
   | "reason"
@@ -60,7 +62,9 @@ export interface CareerCertificateIssueProps {
   onSearchApplicants?: (query: {
     name: string;
     birthDate: string;
-  }) => Promise<readonly CertificateApplicant[]>;
+    /** 조회할 페이지(1부터 시작). */
+    page: number;
+  }) => Promise<PagedResult<CertificateApplicant>>;
   onLoadCareerRows?: (
     applicantId: string,
   ) => Promise<readonly CertificateCareerRow[]>;

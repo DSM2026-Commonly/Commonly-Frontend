@@ -1,7 +1,12 @@
-import { ApiError, request } from "./api";
+import { ApiError, normalizePositiveInteger, request } from "./api";
 
 export const HUMAN_ENDPOINT = "/api/human";
 export const HUMAN_SEARCH_ENDPOINT = "/api/human/search";
+
+/** 대상자 검색 기본 페이지 크기. 백엔드 기본값과 맞춘다. */
+export const HUMAN_SEARCH_DEFAULT_PAGE_SIZE = 20;
+/** 백엔드 size 제약(@Max(100)). 초과로 보내면 400 이라 요청 전에 상한을 지킨다. */
+export const HUMAN_SEARCH_MAX_PAGE_SIZE = 100;
 
 export function getHumanUpdateEndpoint(humanId: number): string {
   return `/api/human/${humanId}`;
@@ -56,6 +61,23 @@ export interface SearchHumansQuery {
   birthDateFrom?: string;
   birthDateTo?: string;
   address?: string;
+}
+
+/** 대상자 검색 페이지 요청. page 는 0부터 시작한다(백엔드와 동일). */
+export interface SearchHumansPageParams {
+  page?: number;
+  size?: number;
+}
+
+/** 대상자 검색 페이지 응답. 서버 메타가 없으면 안전한 기본값으로 채운다. */
+export interface HumanPage {
+  items: HumanSummary[];
+  /** 0부터 시작하는 현재 페이지 번호 */
+  page: number;
+  size: number;
+  totalElements: number;
+  /** 전체 페이지 수(1 이상) */
+  totalPages: number;
 }
 
 export interface CreateHumanRequest {
@@ -126,6 +148,32 @@ function normalizeHumanSummary(value: unknown): HumanSummary | null {
   };
 }
 
+// 형식이 맞지 않는 행은 건너뛴다. 한 행 때문에 목록 전체가 실패하지 않게 한다.
+function parseHumanSummaries(content: unknown[]): HumanSummary[] {
+  const humans: HumanSummary[] = [];
+
+  for (const row of content) {
+    const human = normalizeHumanSummary(row);
+
+    if (human) {
+      humans.push(human);
+    }
+  }
+
+  return humans;
+}
+
+// 서버 페이지 메타는 숫자가 아니거나 누락될 수 있으므로 안전한 기본값으로 보정한다.
+function normalizeMetaInteger(
+  value: unknown,
+  fallback: number,
+  min: number,
+): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(min, Math.floor(value))
+    : fallback;
+}
+
 export async function searchHumans(
   query: SearchHumansQuery = {},
   { token, signal }: HumanRequestOptions = {},
@@ -151,17 +199,68 @@ export async function searchHumans(
     throw new ApiError(200, HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE);
   }
 
-  const humans: HumanSummary[] = [];
+  return parseHumanSummaries(content);
+}
 
-  for (const row of content) {
-    const human = normalizeHumanSummary(row);
+/**
+ * 대상자 검색을 페이지 단위로 조회한다. 요청 본문에 page(0부터)·size 를 실어 보내고
+ * 응답의 {content, page, size, totalElements, totalPages} 메타까지 돌려준다.
+ * 메타가 없으면 요청값과 결과 건수로 안전하게 채운다.
+ */
+export async function searchHumansPaged(
+  query: SearchHumansQuery = {},
+  {
+    page = 0,
+    size = HUMAN_SEARCH_DEFAULT_PAGE_SIZE,
+  }: SearchHumansPageParams = {},
+  { token, signal }: HumanRequestOptions = {},
+): Promise<HumanPage> {
+  const requestedPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0;
+  // size 는 1~100 사이여야 한다. 상한을 넘기면 백엔드가 400 을 낸다.
+  const requestedSize = Math.min(
+    HUMAN_SEARCH_MAX_PAGE_SIZE,
+    normalizePositiveInteger(size, HUMAN_SEARCH_DEFAULT_PAGE_SIZE),
+  );
 
-    if (human) {
-      humans.push(human);
-    }
+  const response = await request<unknown>(HUMAN_SEARCH_ENDPOINT, {
+    method: "POST",
+    body: { ...query, page: requestedPage, size: requestedSize },
+    token,
+    signal,
+    errorMessages: {
+      400: HUMAN_SEARCH_BAD_REQUEST_MESSAGE,
+      401: HUMAN_SEARCH_UNAUTHORIZED_MESSAGE,
+    },
+  });
+
+  if (!response || typeof response !== "object" || Array.isArray(response)) {
+    throw new ApiError(200, HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE);
   }
 
-  return humans;
+  const record = response as Record<string, unknown>;
+
+  if (!Array.isArray(record.content)) {
+    throw new ApiError(200, HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE);
+  }
+
+  const items = parseHumanSummaries(record.content);
+  const resolvedSize = normalizeMetaInteger(record.size, requestedSize, 1);
+  const totalElements = normalizeMetaInteger(
+    record.totalElements,
+    items.length,
+    0,
+  );
+  // 응답도 0-based page 다. 빈 결과(totalElements 0)는 totalPages 0 이 정상이므로
+  // 서버가 준 값은 그대로 두고(min 0), 메타가 없을 때만 건수로 계산한다.
+  const computedTotalPages = Math.ceil(totalElements / resolvedSize);
+
+  return {
+    items,
+    page: normalizeMetaInteger(record.page, requestedPage, 0),
+    size: resolvedSize,
+    totalElements,
+    totalPages: normalizeMetaInteger(record.totalPages, computedTotalPages, 0),
+  };
 }
 
 export async function createHuman(

@@ -7,7 +7,7 @@ import {
   getIssuedCertificateSession,
   issueCertificate,
   saveBlobAsFile,
-  searchHumans,
+  searchHumansPaged,
   setIssuedCertificateSession,
   type HumanCertificate,
 } from "@commonly/utils";
@@ -54,25 +54,32 @@ function StaffCareerCertificateIssuePage() {
   const handleSearchApplicants = async ({
     name,
     birthDate,
+    page,
   }: {
     name: string;
     birthDate: string;
-  }): Promise<readonly CertificateApplicant[]> => {
-    const humans = await searchHumans(
+    page: number;
+  }): Promise<{ items: CertificateApplicant[]; totalPages: number }> => {
+    // 화면은 1부터, 서버는 0부터 세므로 요청 시 한 칸 당긴다.
+    const result = await searchHumansPaged(
       { name, birthDateFrom: birthDate, birthDateTo: birthDate },
+      { page: page - 1 },
       { token: getAuthToken() },
     );
 
     humanNamesRef.current = new Map(
-      humans.map((human) => [String(human.humanId), human.name]),
+      result.items.map((human) => [String(human.humanId), human.name]),
     );
 
-    return humans.map((human) => ({
-      id: String(human.humanId),
-      name: human.name,
-      birthDate: human.birthDate,
-      address: human.address,
-    }));
+    return {
+      items: result.items.map((human) => ({
+        id: String(human.humanId),
+        name: human.name,
+        birthDate: human.birthDate,
+        address: human.address,
+      })),
+      totalPages: result.totalPages,
+    };
   };
 
   const handleLoadCareerRows = async (

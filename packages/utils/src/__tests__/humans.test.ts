@@ -12,6 +12,7 @@ import {
   getHumanDeleteEndpoint,
   getHumanUpdateEndpoint,
   searchHumans,
+  searchHumansPaged,
   updateHuman,
 } from "../humans";
 
@@ -134,6 +135,140 @@ describe("searchHumans", () => {
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("searchHumansPaged", () => {
+  test("sends page(0-based)/size in the body and returns the page meta", async () => {
+    const query = {
+      name: "홍길동",
+      birthDateFrom: "1990-01-01",
+      birthDateTo: "1990-01-01",
+    };
+
+    mockFetch(
+      200,
+      {
+        content: [hongHuman],
+        page: 2,
+        size: 20,
+        totalElements: 45,
+        totalPages: 3,
+      },
+      (url, init) => {
+        expect(url).toBe(HUMAN_SEARCH_ENDPOINT);
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          ...query,
+          page: 2,
+          size: 20,
+        });
+      },
+    );
+
+    expect(await searchHumansPaged(query, { page: 2 })).toEqual({
+      items: [hongHuman],
+      page: 2,
+      size: 20,
+      totalElements: 45,
+      totalPages: 3,
+    });
+  });
+
+  test("defaults to page 0 / size 20 and clamps a negative page", async () => {
+    mockFetch(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }, (_url, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({ page: 0, size: 20 });
+    });
+    await searchHumansPaged();
+
+    mockFetch(200, { content: [] }, (_url, init) => {
+      expect(JSON.parse(String(init?.body)).page).toBe(0);
+    });
+    await searchHumansPaged({}, { page: -5 });
+  });
+
+  test("fills missing meta: totalPages from totalElements/size, falling back to the request", async () => {
+    mockFetch(200, { content: [hongHuman], totalElements: 41 });
+    expect(await searchHumansPaged({}, { page: 1, size: 20 })).toEqual({
+      items: [hongHuman],
+      page: 1,
+      size: 20,
+      totalElements: 41,
+      totalPages: 3,
+    });
+  });
+
+  test("defaults totalElements to the row count and totalPages to at least 1", async () => {
+    mockFetch(200, { content: [hongHuman] });
+    expect(await searchHumansPaged()).toEqual({
+      items: [hongHuman],
+      page: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+  });
+
+  test("preserves totalPages 0 for an empty result (totalElements 0)", async () => {
+    mockFetch(200, {
+      content: [],
+      page: 0,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+    });
+    expect(await searchHumansPaged()).toEqual({
+      items: [],
+      page: 0,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+    });
+  });
+
+  test("reads the last page meta as the server reports it", async () => {
+    // 45건 / size 20 → 마지막 페이지는 0-based 2.
+    mockFetch(200, {
+      content: [hongHuman],
+      page: 2,
+      size: 20,
+      totalElements: 45,
+      totalPages: 3,
+    });
+    const result = await searchHumansPaged({}, { page: 2 });
+    expect(result.page).toBe(2);
+    expect(result.totalPages).toBe(3);
+  });
+
+  test("clamps size to the backend max of 100", async () => {
+    mockFetch(200, { content: [] }, (_url, init) => {
+      expect(JSON.parse(String(init?.body)).size).toBe(100);
+    });
+    await searchHumansPaged({}, { page: 0, size: 500 });
+  });
+
+  test("skips malformed rows but keeps the meta", async () => {
+    mockFetch(200, {
+      content: [hongHuman, { ...hongHuman, humanId: "2" }, null],
+      page: 0,
+      size: 20,
+      totalElements: 3,
+      totalPages: 1,
+    });
+    const result = await searchHumansPaged();
+    expect(result.items).toEqual([hongHuman]);
+    expect(result.totalElements).toBe(3);
+  });
+
+  test("rejects a bare array or a body without a content array", async () => {
+    for (const body of [[hongHuman], {}, { content: "oops" }, "oops"]) {
+      mockFetch(200, body);
+      const error = await searchHumansPaged().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).message).toBe(
+        HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
+      );
     }
   });
 });

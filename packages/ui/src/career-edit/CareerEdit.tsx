@@ -49,6 +49,7 @@ import {
   TextareaFrame as ReasonTextareaFrame,
 } from "../career-certificate/steps/ReasonStep.styles";
 import CareerEditNoticeStep from "./CareerEditNoticeStep";
+import Pagination from "../pagination/Pagination";
 import AddressSearchModal, {
   type AddressSearchItem,
 } from "../registration/address-search/AddressSearchModal";
@@ -121,12 +122,16 @@ interface ApplicantStepProps {
   isSearching: boolean;
   searchError: string;
   searchResults: readonly CareerEditApplicant[];
+  /** 현재 페이지(1부터 시작). */
+  searchPage: number;
+  searchTotalPages: number;
   selectedApplicantId: string;
   onApplicantNameChange: (value: string) => void;
   onBirthYearChange: (value: string) => void;
   onBirthMonthChange: (value: string) => void;
   onBirthDayChange: (value: string) => void;
   onSearch: () => void;
+  onSearchPageChange: (page: number) => void;
   onSelectApplicant: (applicantId: string) => void;
   /** 없으면 삭제 열 자체를 그리지 않는다. */
   onDeleteApplicant?: (applicant: CareerEditApplicant) => void;
@@ -364,12 +369,15 @@ function ApplicantStep({
   isSearching,
   searchError,
   searchResults,
+  searchPage,
+  searchTotalPages,
   selectedApplicantId,
   onApplicantNameChange,
   onBirthYearChange,
   onBirthMonthChange,
   onBirthDayChange,
   onSearch,
+  onSearchPageChange,
   onSelectApplicant,
   onDeleteApplicant,
   deletingApplicantId,
@@ -527,6 +535,15 @@ function ApplicantStep({
                 확인해 주세요.
               </EmptyState>
             </TableFrame>
+          )}
+          {searchResults.length > 0 && searchTotalPages > 1 && (
+            <Pagination
+              currentPage={searchPage}
+              totalPages={searchTotalPages}
+              isLoading={isSearching}
+              navLabel="대상자 목록 페이지"
+              onPageChange={onSearchPageChange}
+            />
           )}
           {deleteError && <FlowError role="alert">{deleteError}</FlowError>}
         </FormCard>
@@ -1020,6 +1037,9 @@ function CareerEdit({
   >(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  // 대상자 검색 결과는 서버가 페이지 단위로 내려준다(기본 20건).
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchTotalPages, setSearchTotalPages] = useState(1);
   const [deletingApplicantId, setDeletingApplicantId] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [fetchedRecords, setFetchedRecords] = useState<
@@ -1097,6 +1117,8 @@ function CareerEdit({
     setSelectedApplicantId("");
     setPersonalInfo(createPersonalInfo(undefined));
     setFetchedApplicants(null);
+    setSearchPage(1);
+    setSearchTotalPages(1);
     setSearchError("");
     setDeleteError("");
     setFetchedRecords(null);
@@ -1129,7 +1151,59 @@ function CareerEdit({
     resetSearchResult();
   };
 
-  const handleSearch = async () => {
+  const runSearch = async (page: number) => {
+    if (!onSearch) {
+      return;
+    }
+
+    const requestId = ++searchRequestIdRef.current;
+
+    setIsSearching(true);
+    setSearchError("");
+
+    try {
+      const result = await onSearch({
+        name: applicantName.trim(),
+        birthDate: `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
+        page,
+      });
+
+      // 응답 대기 중 입력이 바뀌어 리셋됐다면 이전 응답으로 화면을 덮어쓰지 않는다.
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      // 페이지가 바뀌면 이전 선택은 목록에 없을 수 있어 단건일 때만 자동 선택한다.
+      const onlyMatch =
+        result.items.length === 1 ? result.items[0] : undefined;
+
+      setFetchedApplicants(result.items);
+      setSearchPage(page);
+      setSearchTotalPages(Math.max(1, result.totalPages));
+      setHasSearchResult(true);
+      setSelectedApplicantId(onlyMatch?.id ?? "");
+      setPersonalInfo(createPersonalInfo(onlyMatch));
+    } catch (error) {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      setFetchedApplicants(null);
+      setSearchTotalPages(1);
+      setHasSearchResult(false);
+      setSelectedApplicantId("");
+      setSearchError(
+        getErrorMessage(
+          error,
+          "대상자 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+      );
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearch = () => {
     if (!canSearch || isSearching) {
       return;
     }
@@ -1147,45 +1221,15 @@ function CareerEdit({
       return;
     }
 
-    const requestId = ++searchRequestIdRef.current;
+    void runSearch(1);
+  };
 
-    setIsSearching(true);
-    setSearchError("");
-
-    try {
-      const results = await onSearch({
-        name: applicantName.trim(),
-        birthDate: `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
-      });
-
-      // 응답 대기 중 입력이 바뀌어 리셋됐다면 이전 응답으로 화면을 덮어쓰지 않는다.
-      if (requestId !== searchRequestIdRef.current) {
-        return;
-      }
-
-      const onlyMatch = results.length === 1 ? results[0] : undefined;
-
-      setFetchedApplicants(results);
-      setHasSearchResult(true);
-      setSelectedApplicantId(onlyMatch?.id ?? "");
-      setPersonalInfo(createPersonalInfo(onlyMatch));
-    } catch (error) {
-      if (requestId !== searchRequestIdRef.current) {
-        return;
-      }
-
-      setFetchedApplicants(null);
-      setHasSearchResult(false);
-      setSelectedApplicantId("");
-      setSearchError(
-        getErrorMessage(
-          error,
-          "대상자 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-        ),
-      );
-    } finally {
-      setIsSearching(false);
+  const handleSearchPageChange = (nextPage: number) => {
+    if (!onSearch || isSearching || nextPage === searchPage) {
+      return;
     }
+
+    void runSearch(nextPage);
   };
 
   const handleDeleteApplicant = async (applicant: CareerEditApplicant) => {
@@ -1502,12 +1546,15 @@ function CareerEdit({
                   isSearching={isSearching}
                   searchError={searchError}
                   searchResults={searchResults}
+                  searchPage={searchPage}
+                  searchTotalPages={searchTotalPages}
                   selectedApplicantId={selectedApplicantId}
                   onApplicantNameChange={handleApplicantNameChange}
                   onBirthYearChange={handleBirthYearChange}
                   onBirthMonthChange={handleBirthMonthChange}
                   onBirthDayChange={handleBirthDayChange}
-                  onSearch={() => void handleSearch()}
+                  onSearch={() => handleSearch()}
+                  onSearchPageChange={handleSearchPageChange}
                   onSelectApplicant={handleSelectApplicant}
                   onDeleteApplicant={
                     onDeleteApplicant
