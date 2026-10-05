@@ -1,6 +1,5 @@
 import {
   CareerCertificateIssue,
-  useAuthSession,
   type CareerCertificateApplicationData,
   type IssuedCertificateSummary,
   type RestoredIssuedCertificate,
@@ -23,7 +22,6 @@ interface IssuedCertificateRef {
 }
 
 function CareerCertificateIssuePage() {
-  const { session } = useAuthSession();
   const issuedRef = useRef<IssuedCertificateRef | null>(null);
 
   const handleComplete = async (
@@ -74,7 +72,7 @@ function CareerCertificateIssuePage() {
         };
 
         return {
-          applicantName: detail.human?.name ?? session?.name ?? "",
+          applicantName: detail.human?.name ?? "",
           issueType: storedSession.issueType,
           documentNo: detail.documentNo,
           issuedAt: detail.issuedAt,
@@ -101,18 +99,18 @@ function CareerCertificateIssuePage() {
     const blob = await downloadCertificate(issued.certificateId, {
       token: getAuthToken(),
     });
-    const namePart = session?.name ? `_${session.name}` : "";
 
     saveBlobAsFile(
       blob,
-      `유성구청${namePart}_경력증명서_${issued.documentNo}.pdf`,
+      `유성구청_경력증명서_${issued.documentNo}.pdf`,
     );
   };
 
   return (
     <CareerCertificateIssue
       variant="civil"
-      applicantName={session?.name ?? ""}
+      // 계정 아이디는 실명이 아니므로 발급 전에는 성명으로 쓰지 않는다.
+      applicantName=""
       onComplete={handleComplete}
       onDownload={handleDownload}
       onRestoreIssued={handleRestoreIssued}

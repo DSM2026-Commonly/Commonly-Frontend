@@ -73,7 +73,8 @@ function CertificateSuccessView({
         <SummaryLabel>신청정보</SummaryLabel>
         <SummaryValue>
           <p>유성 구청 기간제 근로자 경력증명서 발급 신청</p>
-          <p>{issueType === "all" ? "전체 발급" : "선택 발급"}</p>
+          {/* 본인(civil) 발급은 항상 본인 전체 경력이 발급된다. */}
+          <p>{isCivil || issueType === "all" ? "전체 발급" : "선택 발급"}</p>
         </SummaryValue>
         {documentNo && (
           <>
