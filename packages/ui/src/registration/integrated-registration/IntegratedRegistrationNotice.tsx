@@ -8,6 +8,7 @@ import {
 } from "krds-react";
 import bookIcon from "../../assets/[U-regi-02] 통합 등록 페이지 - 1/icon/book.svg";
 import guideCheckIcon from "../../assets/guide_check.svg";
+import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 import {
   ActionBar,
   ButtonGroup,
@@ -51,6 +52,8 @@ export interface IntegratedRegistrationNoticeProps {
   nextLabel?: string;
   onPrevious?: () => void;
   onNext?: () => void;
+  /** 다음 단계로 넘어가지 못한 이유. 값이 있으면 동의 영역 아래에 안내한다. */
+  errorMessage?: string;
 }
 
 const defaultSteps = [
@@ -81,6 +84,7 @@ function IntegratedRegistrationNotice({
   nextLabel = "다음으로",
   onPrevious,
   onNext,
+  errorMessage = "",
 }: IntegratedRegistrationNoticeProps) {
   const titleId = useId();
   const agreementId = useId();
@@ -157,6 +161,7 @@ function IntegratedRegistrationNotice({
               onChange={(event) => setIsAgreed(event.target.checked)}
             />
           </AgreementBand>
+          {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
         </FormMainContent>
 
         <ActionBar $individual={variant === "individual"}>

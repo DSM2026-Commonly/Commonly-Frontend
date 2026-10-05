@@ -45,7 +45,10 @@ import {
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "../../career-certificate/CareerCertificateIssue.validation";
-import { findDuplicateCandidates } from "./IndividualRegistrationSubject.utils";
+import {
+  findDuplicateCandidates,
+  getDuplicateRetryPage,
+} from "./IndividualRegistrationSubject.utils";
 import Pagination, { type PagedResult } from "../../pagination/Pagination";
 import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 import AddressSearchModal, {
@@ -280,6 +283,19 @@ function IndividualRegistrationSubject({
 
       // 확인 중 입력이 바뀌면(resetDuplicateCheck) 이전 응답은 버린다.
       if (duplicateCheckRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      // 빈 페이지를 "중복 없음"으로 판정하지 않고 마지막 유효 페이지를 다시 조회한다.
+      // 페이지가 계속 줄어 1페이지에 닿으므로 끝없이 반복되지 않는다.
+      const retryPage = getDuplicateRetryPage(
+        page,
+        result.items.length,
+        result.totalPages,
+      );
+
+      if (retryPage !== null) {
+        void runDuplicateCheck(retryPage);
         return;
       }
 
