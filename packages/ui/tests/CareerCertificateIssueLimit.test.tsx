@@ -4,6 +4,7 @@ import type { CertificateCareerRow } from "../src/career-certificate/CareerCerti
 import {
   isCareerSelectionWithinLimit,
   resolveIssuedIssueType,
+  retainAvailableCareerIds,
 } from "../src/career-certificate/CareerCertificateIssue.validation";
 import DetailsStep from "../src/career-certificate/steps/DetailsStep";
 
@@ -116,5 +117,22 @@ describe("DetailsStep 10건 제한", () => {
     const markup = renderDetails("all", careerRows(10), []);
 
     expect(markup).not.toContain('role="alert"');
+  });
+});
+
+describe("retainAvailableCareerIds", () => {
+  test("keeps only selections that are still in the reloaded list", () => {
+    expect(retainAvailableCareerIds(["1", "2", "3"], ["1", "3", "4"])).toEqual([
+      "1",
+      "3",
+    ]);
+  });
+
+  test("drops everything when none of the selected careers remain", () => {
+    expect(retainAvailableCareerIds(["1", "2"], ["5"])).toEqual([]);
+  });
+
+  test("does not add careers the user had not selected", () => {
+    expect(retainAvailableCareerIds(["2"], ["1", "2", "3"])).toEqual(["2"]);
   });
 });

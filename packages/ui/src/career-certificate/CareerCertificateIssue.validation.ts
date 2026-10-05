@@ -65,6 +65,19 @@ export const isCareerSelectionWithinLimit = (
     : selectedCount > 0 && selectedCount <= MAX_ISSUE_CAREER_COUNT;
 
 /**
+ * 같은 대상자의 경력을 다시 불러왔을 때 기존 선택 중 새 목록에 남아 있는 것만 고른다.
+ * 사라진 경력 id 를 남겨 두면 미리보기엔 없는 경력이 발급 요청에 들어간다.
+ */
+export const retainAvailableCareerIds = (
+  selectedIds: readonly string[],
+  rowIds: readonly string[],
+): string[] => {
+  const available = new Set(rowIds);
+
+  return selectedIds.filter((id) => available.has(id));
+};
+
+/**
  * 실제로 발급되는 구분. 민원인이 경력 목록 없이(조회 실패) 선택 발급을 고르면
  * 보낼 경력이 없어 본인 전체로 발급되므로 전체 발급이다.
  */

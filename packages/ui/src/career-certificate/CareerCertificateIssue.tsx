@@ -23,6 +23,7 @@ import {
   isCareerSelectionWithinLimit,
   isValidBirthDate,
   resolveIssuedIssueType,
+  retainAvailableCareerIds,
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "./CareerCertificateIssue.validation";
@@ -127,6 +128,13 @@ function CareerCertificateIssue({
   const careerLoadedPersonRef = useRef<string | null>(null);
   // 미리보기를 떠났다(이전으로 등) 다시 들어오면 이전 PDF 응답을 버리기 위한 요청 id.
   const previewRequestIdRef = useRef(0);
+  // 경력 응답이 도착했을 때 그 사이 대상자가 바뀌었는지 보려고 최신 선택을 따로 둔다.
+  // 렌더 중에 ref 를 쓰면 React Compiler 가정을 깨므로 effect 에서 맞춘다.
+  const selectedPersonRef = useRef(selectedPerson);
+
+  useEffect(() => {
+    selectedPersonRef.current = selectedPerson;
+  }, [selectedPerson]);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
@@ -324,22 +332,34 @@ function CareerCertificateIssue({
       setIsLoadingCareerRows(true);
 
       const requestId = ++careerLoadRequestIdRef.current;
+      const requestedPerson = selectedPerson;
 
       try {
-        const rows = await onLoadCareerRows(selectedPerson);
+        const rows = await onLoadCareerRows(requestedPerson);
 
-        // 이 사이 다음 요청이 시작됐다면(대상자 변경 등) 이 응답은 버린다.
+        // 이 사이 다음 요청이 시작됐다면 이 응답은 버린다.
         if (requestId !== careerLoadRequestIdRef.current) {
           return;
         }
 
-        // 같은 대상자를 재조회할 때는 기존 선택을 유지하고, 대상자가 바뀌면 전체 선택으로 초기화한다.
-        const isSamePerson = careerLoadedPersonRef.current === selectedPerson;
+        // 요청 뒤 대상자가 바뀌었다면 이전 대상자의 경력을 새 대상자에 얹지 않는다.
+        // 요청 id 는 그대로라 finally 가 로딩 상태를 풀어 준다.
+        if (selectedPersonRef.current !== requestedPerson) {
+          return;
+        }
+
+        const isSamePerson = careerLoadedPersonRef.current === requestedPerson;
         setCareerRows(rows);
-        if (!isSamePerson) {
+        if (isSamePerson) {
+          // 같은 대상자를 재조회하면 선택은 유지하되, 새 목록에서 사라진 경력은 뺀다.
+          const rowIds = rows.map((row) => row.id);
+          setSelectedCareerIds((previous) =>
+            retainAvailableCareerIds(previous, rowIds),
+          );
+        } else {
           setSelectedCareerIds(selectCareerIdsWithinLimit(rows));
         }
-        careerLoadedPersonRef.current = selectedPerson;
+        careerLoadedPersonRef.current = requestedPerson;
       } catch (error) {
         if (requestId !== careerLoadRequestIdRef.current) {
           return;

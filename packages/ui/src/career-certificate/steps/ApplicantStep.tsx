@@ -176,6 +176,8 @@ function ApplicantStep({
                           name="certificate-person"
                           value={applicant.id}
                           checked={selectedPerson === applicant.id}
+                          // 경력을 불러오는 중 대상자를 바꾸면 이전 대상자의 경력이 새 대상자에 얹힌다.
+                          disabled={isLoadingCareerRows}
                           onChange={() => onSelectedPersonChange(applicant.id)}
                         >
                           <span className="sr-only">
