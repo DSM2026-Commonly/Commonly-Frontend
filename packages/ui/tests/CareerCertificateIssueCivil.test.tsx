@@ -5,7 +5,7 @@ import DetailsStep from "../src/career-certificate/steps/DetailsStep";
 const noop = () => undefined;
 
 describe("DetailsStep (민원인 본인 발급)", () => {
-  // 본인 경력 목록 조회 API 가 명세에 없어 목록은 항상 비어 있다.
+  // 본인 경력 목록 조회가 막혀 있으면(본인 발급 비활성) 목록이 비어 있다.
   // 표를 지우는 대신 전체 경력으로 발급된다는 안내를 남긴다.
   test("shows why the career list is empty for 민원인", () => {
     const markup = renderToStaticMarkup(

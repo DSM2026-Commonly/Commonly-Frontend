@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { getStepIndex, STEP_VIEWS } from "./CareerCertificateIssue.constants";
+import {
+  getStepIndex,
+  MAX_ISSUE_CAREER_COUNT,
+  STEP_VIEWS,
+} from "./CareerCertificateIssue.constants";
 import {
   FlowError,
   FlowLoading,
@@ -12,10 +16,13 @@ import type {
   CertificateApplicant,
   CertificateCareerRow,
   CertificateIssueType,
+  CertificatePreviewPdfState,
   IssuedCertificateSummary,
 } from "./CareerCertificateIssue.types";
 import {
+  isCareerSelectionWithinLimit,
   isValidBirthDate,
+  resolveIssuedIssueType,
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "./CareerCertificateIssue.validation";
@@ -50,6 +57,13 @@ function getErrorMessage(error: unknown): string {
     : UNEXPECTED_ERROR_MESSAGE;
 }
 
+/** 처음 고를 경력. 한 번에 10건까지만 발급되므로 넘치면 앞의 10건만 고른다. */
+function selectCareerIdsWithinLimit(
+  rows: readonly CertificateCareerRow[],
+): string[] {
+  return rows.slice(0, MAX_ISSUE_CAREER_COUNT).map((row) => row.id);
+}
+
 function CareerCertificateIssue({
   initialView,
   variant = "staff",
@@ -57,6 +71,7 @@ function CareerCertificateIssue({
   onCancel,
   onSearchApplicants,
   onLoadCareerRows,
+  onPreview,
   onComplete,
   onDownload,
   onRestoreIssued,
@@ -91,6 +106,9 @@ function CareerCertificateIssue({
   const [selectedCareerIds, setSelectedCareerIds] = useState<string[]>([]);
   const [additionalNote, setAdditionalNote] = useState("");
   const [purpose, setPurpose] = useState("");
+  const [previewPdf, setPreviewPdf] = useState<CertificatePreviewPdfState>({
+    status: "idle",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
@@ -107,21 +125,30 @@ function CareerCertificateIssue({
   const careerLoadRequestIdRef = useRef(0);
   // 마지막으로 경력을 불러온 대상자. 같은 대상자를 재조회하면 선택을 보존한다.
   const careerLoadedPersonRef = useRef<string | null>(null);
+  // 미리보기를 떠났다(이전으로 등) 다시 들어오면 이전 PDF 응답을 버리기 위한 요청 id.
+  const previewRequestIdRef = useRef(0);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
     applicantName.trim().length > 0 &&
     isValidBirthDate(birthYear, birthMonth, birthDay);
+  const isSelectionWithinLimit = isCareerSelectionWithinLimit(
+    issueType,
+    careerRows.length,
+    selectedCareerIds.length,
+  );
   // 발급 용도는 증명서에 기재되는 필수 항목이다.
   const canContinue =
     variant === "civil"
-      ? // 민원인 본인 발급은 대상 경력을 서버가 정하므로 용도만 채우면 신청할 수 있다.
-        purpose.trim().length > 0
+      ? // 민원인은 본인 목록을 못 불러오면(본인 발급 비활성 등) 서버가 본인 전체로 발급하므로
+        // 용도만 채우면 신청할 수 있다. 목록이 있으면 담당자와 같은 10건 제한을 따른다.
+        purpose.trim().length > 0 &&
+        (careerRows.length === 0 || isSelectionWithinLimit)
       : (currentStep !== 0 || noticeAccepted) &&
         (currentStep !== 2 || Boolean(selectedPerson)) &&
         (currentStep !== 3 ||
           (careerRows.length > 0 &&
-            (issueType === "all" || selectedCareerIds.length > 0) &&
+            isSelectionWithinLimit &&
             purpose.trim().length > 0));
   const selectedApplicantName =
     applicants.find((applicant) => applicant.id === selectedPerson)?.name ??
@@ -171,11 +198,96 @@ function CareerCertificateIssue({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const loadOwnCareerRows = async () => {
+    if (!onLoadCareerRows) {
+      return;
+    }
+
+    const requestId = ++careerLoadRequestIdRef.current;
+
+    setIsLoadingCareerRows(true);
+
+    try {
+      const rows = await onLoadCareerRows("");
+
+      if (requestId !== careerLoadRequestIdRef.current) {
+        return;
+      }
+
+      setCareerRows(rows);
+      setSelectedCareerIds(selectCareerIdsWithinLimit(rows));
+    } catch {
+      // 목록 조회가 막혀 있으면(현재 운영은 본인 발급 비활성) 빈 목록 안내를 그대로 두고
+      // 전체 발급으로 진행한다.
+    } finally {
+      if (requestId === careerLoadRequestIdRef.current) {
+        setIsLoadingCareerRows(false);
+      }
+    }
+  };
+
+  // 민원인은 대상자 입력 단계 없이 발급 정보 화면에서 시작하므로 들어오자마자 본인 경력을 불러온다.
+  useEffect(() => {
+    if (variant === "civil") {
+      void loadOwnCareerRows();
+    }
+    // onLoadCareerRows 는 페이지가 매 렌더마다 새로 만드는 콜백이라 의존성에서 제외한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const moveToView = (nextView: CareerCertificateIssueView) => {
     setStepError("");
     setSubmissionError("");
     setSearchError("");
+    // 화면을 옮기면 받고 있던 미리보기 PDF 는 버린다. 다시 들어오면 새로 요청한다.
+    previewRequestIdRef.current += 1;
+    setPreviewPdf({ status: "idle" });
     setView(nextView);
+  };
+
+  // 미리보기와 발급이 같은 값을 보내도록 한 곳에서 만든다.
+  const buildApplicationData = (): CareerCertificateApplicationData => ({
+    issueType: resolveIssuedIssueType(issueType, careerRows.length),
+    reason,
+    note,
+    applicantId: selectedPerson,
+    applicantName,
+    birthYear,
+    birthMonth,
+    birthDay,
+    selectedCareerIds:
+      issueType === "all" ? careerRows.map((row) => row.id) : selectedCareerIds,
+    additionalNote,
+    purpose,
+  });
+
+  const openPreview = async () => {
+    moveToView("preview");
+
+    if (!onPreview) {
+      return;
+    }
+
+    const requestId = previewRequestIdRef.current;
+
+    setPreviewPdf({ status: "loading" });
+
+    try {
+      const pdf = await onPreview(buildApplicationData());
+
+      if (requestId !== previewRequestIdRef.current) {
+        return;
+      }
+
+      setPreviewPdf({ status: "ready", pdf });
+    } catch {
+      if (requestId !== previewRequestIdRef.current) {
+        return;
+      }
+
+      // 서버 미리보기를 못 받으면(민원인 경로가 닫혀 있는 등) 입력값으로 그린 미리보기로 대신한다.
+      setPreviewPdf({ status: "failed" });
+    }
   };
 
   const handlePrevious = () => {
@@ -225,7 +337,7 @@ function CareerCertificateIssue({
         const isSamePerson = careerLoadedPersonRef.current === selectedPerson;
         setCareerRows(rows);
         if (!isSamePerson) {
-          setSelectedCareerIds(rows.map((row) => row.id));
+          setSelectedCareerIds(selectCareerIdsWithinLimit(rows));
         }
         careerLoadedPersonRef.current = selectedPerson;
       } catch (error) {
@@ -250,7 +362,7 @@ function CareerCertificateIssue({
       return;
     }
 
-    moveToView("preview");
+    void openPreview();
   };
 
   const handlePreviewNext = async () => {
@@ -258,24 +370,10 @@ function CareerCertificateIssue({
       return;
     }
 
-    const applicationData: CareerCertificateApplicationData = {
-      issueType,
-      reason,
-      note,
-      applicantId: selectedPerson,
-      applicantName,
-      birthYear,
-      birthMonth,
-      birthDay,
-      selectedCareerIds:
-        issueType === "all"
-          ? careerRows.map((row) => row.id)
-          : selectedCareerIds,
-      additionalNote,
-      purpose,
-    };
+    const applicationData = buildApplicationData();
 
     if (!onComplete) {
+      setIssueType(applicationData.issueType);
       moveToView("success");
       return;
     }
@@ -290,6 +388,8 @@ function CareerCertificateIssue({
         setIssuedSummary(summary);
       }
 
+      // 완료 화면에는 실제로 발급한 구분을 표시한다(목록 없이 고른 선택 발급은 전체 발급이다).
+      setIssueType(applicationData.issueType);
       moveToView("success");
     } catch (error) {
       setSubmissionError(getErrorMessage(error));
@@ -301,7 +401,10 @@ function CareerCertificateIssue({
   const handleCareerSelection = (id: string, checked: boolean) => {
     setSelectedCareerIds((currentIds) => {
       if (checked) {
-        return currentIds.includes(id) ? currentIds : [...currentIds, id];
+        return currentIds.includes(id) ||
+          currentIds.length >= MAX_ISSUE_CAREER_COUNT
+          ? currentIds
+          : [...currentIds, id];
       }
 
       return currentIds.filter((currentId) => currentId !== id);
@@ -309,7 +412,7 @@ function CareerCertificateIssue({
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedCareerIds(checked ? careerRows.map((row) => row.id) : []);
+    setSelectedCareerIds(checked ? selectCareerIdsWithinLimit(careerRows) : []);
   };
 
   const runApplicantSearch = async (page: number) => {
@@ -429,6 +532,10 @@ function CareerCertificateIssue({
     setRestoredApplicantName("");
     onRestart?.();
     moveToView(variant === "civil" ? "details" : "notice");
+
+    if (variant === "civil") {
+      void loadOwnCareerRows();
+    }
   };
 
   const handleDownload = async () => {
@@ -538,6 +645,7 @@ function CareerCertificateIssue({
           careerRows={selectedCareerRows}
           purpose={purpose}
           additionalNote={additionalNote}
+          previewPdf={previewPdf}
           isSubmitting={isSubmitting}
           submissionError={submissionError}
           onPrevious={() => moveToView("details")}

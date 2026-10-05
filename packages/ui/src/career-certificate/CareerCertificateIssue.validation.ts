@@ -1,7 +1,9 @@
 import {
   EARLIEST_BIRTH_YEAR,
   LATEST_BIRTH_YEAR,
+  MAX_ISSUE_CAREER_COUNT,
 } from "./CareerCertificateIssue.constants";
+import type { CertificateIssueType } from "./CareerCertificateIssue.types";
 
 const DATE_PART_PATTERN = /^\d{1,2}$/;
 
@@ -48,6 +50,29 @@ export const isValidBirthDay = (
     day <= getDaysInBirthMonth(year, month)
   );
 };
+
+/**
+ * 발급할 경력 수가 서식 한도 안에 드는지.
+ * 전체 발급은 불러온 경력 전체가 10건 이하, 선택 발급은 고른 경력이 1~10건이어야 한다.
+ */
+export const isCareerSelectionWithinLimit = (
+  issueType: CertificateIssueType,
+  careerRowCount: number,
+  selectedCount: number,
+) =>
+  issueType === "all"
+    ? careerRowCount <= MAX_ISSUE_CAREER_COUNT
+    : selectedCount > 0 && selectedCount <= MAX_ISSUE_CAREER_COUNT;
+
+/**
+ * 실제로 발급되는 구분. 민원인이 경력 목록 없이(조회 실패) 선택 발급을 고르면
+ * 보낼 경력이 없어 본인 전체로 발급되므로 전체 발급이다.
+ */
+export const resolveIssuedIssueType = (
+  issueType: CertificateIssueType,
+  careerRowCount: number,
+): CertificateIssueType =>
+  issueType === "selected" && careerRowCount === 0 ? "all" : issueType;
 
 export const isValidBirthDate = (
   year: string,

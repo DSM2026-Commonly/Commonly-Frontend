@@ -6,6 +6,7 @@ import {
   getAuthToken,
   getIssuedCertificateSession,
   issueCertificate,
+  previewCertificate,
   saveBlobAsFile,
   searchHumansPaged,
   setIssuedCertificateSession,
@@ -21,6 +22,7 @@ import type {
   IssuedCertificateSummary,
   RestoredIssuedCertificate,
 } from "../career-certificate/CareerCertificateIssue.types";
+import { toIssueCertificateRequest } from "./issueCertificateRequest";
 
 interface IssuedCertificateRef {
   certificateId: number;
@@ -102,32 +104,17 @@ function StaffCareerCertificateIssuePage() {
     return certificates.map(toCareerRow);
   };
 
+  const handlePreview = async (data: CareerCertificateApplicationData) =>
+    previewCertificate(toIssueCertificateRequest(data), {
+      token: getAuthToken(),
+    });
+
   const handleComplete = async (
     data: CareerCertificateApplicationData,
   ): Promise<IssuedCertificateSummary> => {
-    const humanId = Number(data.applicantId);
-    const certificateIds = data.selectedCareerIds.map(Number);
-
-    if (
-      !Number.isInteger(humanId) ||
-      humanId <= 0 ||
-      certificateIds.length === 0 ||
-      certificateIds.some((id) => !Number.isInteger(id) || id <= 0)
-    ) {
-      throw new Error(
-        "발급 대상 정보가 올바르지 않습니다. 대상자를 다시 조회해 주세요.",
-      );
-    }
-
-    const issued = await issueCertificate(
-      {
-        humanId,
-        certificateIds,
-        purpose: data.purpose,
-        otherMatters: data.additionalNote,
-      },
-      { token: getAuthToken() },
-    );
+    const issued = await issueCertificate(toIssueCertificateRequest(data), {
+      token: getAuthToken(),
+    });
 
     issuedRef.current = {
       certificateId: issued.certificateId,
@@ -208,6 +195,7 @@ function StaffCareerCertificateIssuePage() {
       onCancel={() => void navigate("/")}
       onSearchApplicants={handleSearchApplicants}
       onLoadCareerRows={handleLoadCareerRows}
+      onPreview={handlePreview}
       onComplete={handleComplete}
       onDownload={handleDownload}
       onRestoreIssued={handleRestoreIssued}

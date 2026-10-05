@@ -34,6 +34,13 @@ export const SelectionCount = styled.p`
   }
 `;
 
+export const SelectionLimitNotice = styled.p`
+  margin: 8px 0 0;
+  color: var(--career-color-text-subtle);
+  font-size: 15px;
+  line-height: 1.5;
+`;
+
 export const SelectAllButton = styled.button`
   min-height: 24px;
   padding: 0 2px;

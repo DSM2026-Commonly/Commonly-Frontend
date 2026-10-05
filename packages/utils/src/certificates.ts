@@ -2,6 +2,8 @@ import { ApiError, request, requestBlob } from "./api";
 
 export const CERTIFICATES_ENDPOINT = "/api/certificates";
 export const CERTIFICATE_SELF_ENDPOINT = "/api/certificates/self";
+export const CERTIFICATE_PREVIEW_ENDPOINT = "/api/certificates/preview";
+export const CERTIFICATE_SELF_PREVIEW_ENDPOINT = "/api/certificates/self/preview";
 export const CERTIFICATE_CREATE_ENDPOINT = "/api/certificates/create";
 
 // 경력 증명 사항 찾기 — 해당 인적사항(humanId)의 경력증명서 행 목록을 반환한다.
@@ -38,16 +40,24 @@ export const CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE =
   "대상 인력 또는 경력사항을 찾을 수 없습니다. 대상자를 다시 조회해 주세요.";
 export const CERTIFICATE_ISSUE_CONFLICT_MESSAGE =
   "문서번호 발급이 중복되었습니다. 잠시 후 다시 시도해 주세요.";
-export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
-  "본인 경력만 발급할 수 있습니다.";
-export const CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE =
-  "발급할 경력 사항이 없습니다.";
 /**
- * 본인 발급은 백엔드에서 아직 열려 있지 않아(self-issue-enabled=false) 401 로 막힌다.
- * 세션 만료가 아니므로 "다시 로그인" 안내를 쓰지 않는다.
+ * 본인 발급 경로(GET·POST /self, POST /self/preview)는 백엔드 스위치
+ * (CERTIFICATE_SELF_ISSUE_ENABLED, 기본 false)가 꺼져 있으면 막히고, 켜져도 PETITIONER 권한이 있어야 열린다.
+ * 막히면 본문 없는 401 또는 403 이 온다. 세션 만료가 아니므로 "다시 로그인" 안내를 쓰지 않는다.
  */
 export const CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE =
   "본인 증명서 발급 권한이 없습니다. 042-611-2114로 문의해 주세요.";
+/** SELF_ISSUE_DISABLED(403) 문구. 본문 없는 403 에도 같은 안내를 쓴다. */
+export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
+  "본인 발급은 현재 사용할 수 없습니다.";
+/** CERTIFICATE_LIMIT_EXCEEDED(400). 고르지 않고 전체를 발급하려는데 재직 이력이 10건을 넘는 경우. */
+export const CERTIFICATE_LIMIT_EXCEEDED_MESSAGE =
+  "재직 이력이 10건을 넘어 본인 발급이 불가능합니다. 민원 담당자에게 문의하세요.";
+/** PETITIONER_HUMAN_NOT_MATCHED(404). 민원인 계정의 성명·생년월일과 맞는 인적사항이 없다. */
+export const PETITIONER_HUMAN_NOT_MATCHED_MESSAGE =
+  "계정 정보와 일치하는 인적사항이 없습니다.";
+export const CERTIFICATE_PREVIEW_INVALID_RESPONSE_MESSAGE =
+  "증명서 미리보기 응답이 올바르지 않습니다.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
   "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const CERTIFICATE_DOWNLOAD_FORBIDDEN_MESSAGE =
@@ -93,11 +103,15 @@ export interface IssueCertificateRequest {
   otherMatters: string;
 }
 
-// 민원인 본인 발급 — 대상자도 발급 대상 경력도 로그인 토큰에서 정해진다.
-// 명세와 백엔드 모두 humanId/certificateIds 를 받지 않아 항상 본인 전체 경력이 발급된다.
+// 민원인 본인 발급 — 대상자는 로그인 토큰에서 정해지므로 humanId 를 보내지 않는다.
 export interface IssueSelfCertificateRequest {
   purpose: string;
   otherMatters: string;
+  /**
+   * GET /api/certificates/self 목록에서 고른 재직 이력(10건까지). 생략하면 본인 전체가 발급되고,
+   * 전체가 10건을 넘으면 400(CERTIFICATE_LIMIT_EXCEEDED)이다.
+   */
+  certificateIds?: number[];
 }
 
 export interface IssuedCertificate {
@@ -275,6 +289,24 @@ export async function fetchHumanCertificates(
   return normalizeHumanCertificates(response);
 }
 
+/** 민원인 본인 재직 이력 목록. 선택 발급 화면에서 고를 행을 보여준다. 응답 모양은 fetchHumanCertificates 와 같다. */
+export async function fetchMyCertificates({
+  token,
+  signal,
+}: CertificateRequestOptions = {}): Promise<HumanCertificate[]> {
+  const response = await request<unknown>(CERTIFICATE_SELF_ENDPOINT, {
+    token,
+    signal,
+    errorMessages: {
+      401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
+      403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
+      404: PETITIONER_HUMAN_NOT_MATCHED_MESSAGE,
+    },
+  });
+
+  return normalizeHumanCertificates(response);
+}
+
 function normalizeHumanCertificates(response: unknown): HumanCertificate[] {
   if (!Array.isArray(response)) {
     throw new ApiError(200, HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE);
@@ -438,6 +470,17 @@ export async function issueCertificate(
   return issued;
 }
 
+/**
+ * 본인 발급·본인 미리보기 공통 오류 문구. 백엔드 오류 본문에는 code 가 없어({status, timestamp, message})
+ * 상태 코드로 고른다. 404 는 인적사항 불일치(PETITIONER_HUMAN_NOT_MATCHED)와 경력 없음·남의 id
+ * (CERTIFICATE_NOT_FOUND) 두 갈래라 상태 코드로 하나를 고를 수 없어, 매핑하지 않고 백엔드 문구를 그대로 쓴다.
+ */
+const SELF_CERTIFICATE_ERROR_MESSAGES = {
+  400: CERTIFICATE_LIMIT_EXCEEDED_MESSAGE,
+  401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
+  403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
+};
+
 export async function issueSelfCertificate(
   requestBody: IssueSelfCertificateRequest,
   { token, signal }: CertificateRequestOptions = {},
@@ -447,11 +490,7 @@ export async function issueSelfCertificate(
     body: requestBody,
     token,
     signal,
-    errorMessages: {
-      401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
-      403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
-      404: CERTIFICATE_SELF_ISSUE_NOT_FOUND_MESSAGE,
-    },
+    errorMessages: SELF_CERTIFICATE_ERROR_MESSAGES,
   });
 
   const issued = normalizeIssuedCertificate(response);
@@ -477,6 +516,54 @@ export async function downloadCertificate(
       404: CERTIFICATE_DOWNLOAD_NOT_FOUND_MESSAGE,
     },
   });
+}
+
+// 미리보기는 200 에 PDF 를 inline 으로 준다. 다른 형식이 오면(프록시가 HTML 을 돌려주는 등)
+// 화면에 그대로 띄우지 않도록 오류로 돌려 호출부가 입력값 미리보기로 대신하게 한다.
+function ensurePdfBlob(blob: Blob): Blob {
+  if (
+    blob.size === 0 ||
+    !blob.type.toLowerCase().startsWith("application/pdf")
+  ) {
+    throw new ApiError(200, CERTIFICATE_PREVIEW_INVALID_RESPONSE_MESSAGE);
+  }
+
+  return blob;
+}
+
+/** 발급 전 미리보기. 발급과 같은 본문을 보내며, 문서번호 자리에 "미리보기"가 찍히고 서버에 아무것도 남지 않는다. */
+export async function previewCertificate(
+  requestBody: IssueCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<Blob> {
+  const blob = await requestBlob(CERTIFICATE_PREVIEW_ENDPOINT, {
+    method: "POST",
+    body: requestBody,
+    token,
+    signal,
+    errorMessages: {
+      401: CERTIFICATE_ISSUE_UNAUTHORIZED_MESSAGE,
+      404: CERTIFICATE_ISSUE_NOT_FOUND_MESSAGE,
+    },
+  });
+
+  return ensurePdfBlob(blob);
+}
+
+/** 민원인 본인 발급 미리보기. 본인 발급과 같은 본문을 보낸다. */
+export async function previewSelfCertificate(
+  requestBody: IssueSelfCertificateRequest,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<Blob> {
+  const blob = await requestBlob(CERTIFICATE_SELF_PREVIEW_ENDPOINT, {
+    method: "POST",
+    body: requestBody,
+    token,
+    signal,
+    errorMessages: SELF_CERTIFICATE_ERROR_MESSAGES,
+  });
+
+  return ensurePdfBlob(blob);
 }
 
 export const CERTIFICATE_CREATE_BAD_REQUEST_MESSAGE =

@@ -296,6 +296,9 @@ export async function request<TResponse>(
 }
 
 export interface BlobRequestOptions {
+  /** 미리보기처럼 본문을 보내 PDF 를 받는 요청은 POST 로 부른다. */
+  method?: "GET" | "POST";
+  body?: unknown;
   token?: string | null;
   signal?: AbortSignal;
   errorMessages?: ErrorMessageMap;
@@ -303,9 +306,19 @@ export interface BlobRequestOptions {
 
 export async function requestBlob(
   path: string,
-  { token, signal, errorMessages = {} }: BlobRequestOptions = {},
+  {
+    method = "GET",
+    body,
+    token,
+    signal,
+    errorMessages = {},
+  }: BlobRequestOptions = {},
 ): Promise<Blob> {
   const headers: Record<string, string> = {};
+
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -314,7 +327,12 @@ export async function requestBlob(
   let response: Response;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}${path}`, { headers, signal });
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
+    });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;

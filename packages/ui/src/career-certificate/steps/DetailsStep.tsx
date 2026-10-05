@@ -9,10 +9,13 @@ import {
   RadioSection,
   SelectionCount,
   SelectionIntro,
+  SelectionLimitNotice,
   SelectAllButton,
   SelectionToolbar,
   TableFrame,
 } from "./DetailsStep.styles";
+import { MAX_ISSUE_CAREER_COUNT } from "../CareerCertificateIssue.constants";
+import { FlowError } from "../CareerCertificateIssue.styles";
 import type {
   CertificateCareerRow,
   CertificateIssueType,
@@ -86,9 +89,14 @@ function DetailsStep({
   onAdditionalNoteChange,
   onPurposeChange,
 }: DetailsStepProps) {
+  // 경력이 10건을 넘으면 "전체 선택"은 앞의 10건까지만 고르므로 그만큼 찼을 때를 전체로 본다.
   const allCareersSelected =
-    careerRows.length > 0 && selectedCareerIds.length === careerRows.length;
+    careerRows.length > 0 &&
+    selectedCareerIds.length ===
+      Math.min(careerRows.length, MAX_ISSUE_CAREER_COUNT);
   const isCivil = variant === "civil";
+  const exceedsIssueLimit = careerRows.length > MAX_ISSUE_CAREER_COUNT;
+  const isSelectionFull = selectedCareerIds.length >= MAX_ISSUE_CAREER_COUNT;
 
   return (
     <CardStack>
@@ -113,6 +121,12 @@ function DetailsStep({
               </Radio>
             </RadioGroup>
           </RadioSection>
+          {issueType === "all" && exceedsIssueLimit && (
+            <FlowError role="alert">
+              경력이 {MAX_ISSUE_CAREER_COUNT}건을 넘어 전체 발급할 수 없습니다.
+              선택 발급으로 {MAX_ISSUE_CAREER_COUNT}건 이하를 골라주세요.
+            </FlowError>
+          )}
         </Fieldset>
       </FormCard>
 
@@ -135,6 +149,11 @@ function DetailsStep({
                 </SelectAllButton>
               )}
             </SelectionToolbar>
+            {exceedsIssueLimit && (
+              <SelectionLimitNotice>
+                최대 {MAX_ISSUE_CAREER_COUNT}건까지 선택할 수 있습니다.
+              </SelectionLimitNotice>
+            )}
           </SelectionIntro>
           <TableFrame>
             <Table>
@@ -182,6 +201,10 @@ function DetailsStep({
                       <Checkbox
                         id={`certificate-${row.id}`}
                         checked={selectedCareerIds.includes(row.id)}
+                        // 10건을 채우면 고르지 않은 행은 더 고를 수 없다.
+                        disabled={
+                          isSelectionFull && !selectedCareerIds.includes(row.id)
+                        }
                         aria-label={`${row.job} 선택`}
                         onChange={(event) =>
                           onCareerSelection(row.id, event.target.checked)

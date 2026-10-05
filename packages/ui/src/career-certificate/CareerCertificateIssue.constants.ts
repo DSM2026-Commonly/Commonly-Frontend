@@ -7,6 +7,12 @@ export const STEP_VIEWS: CareerCertificateIssueView[] = [
   "details",
 ];
 
+/**
+ * 한 번에 발급할 수 있는 경력 수. 증명서 서식의 재직사항 표가 10행 고정이라
+ * 백엔드도 certificateIds 를 10개까지만 받는다(넘으면 400).
+ */
+export const MAX_ISSUE_CAREER_COUNT = 10;
+
 export const STEP_INDICATOR_ITEMS = [
   { id: "notice", step: "1단계", title: "유의사항 확인" },
   { id: "reason", step: "2단계", title: "발급 사유 입력" },
