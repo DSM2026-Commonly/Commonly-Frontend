@@ -1,4 +1,5 @@
 import { IntegratedRegistrationNotice } from "@commonly/ui";
+import { updateRegistrationSession } from "@commonly/utils";
 import { useNavigate } from "react-router";
 
 function IntegratedRegistrationNoticePage() {
@@ -7,7 +8,10 @@ function IntegratedRegistrationNoticePage() {
   return (
     <IntegratedRegistrationNotice
       onPrevious={() => void navigate("/career/register")}
-      onNext={() => void navigate("/career/register/bulk/upload")}
+      onNext={() => {
+        updateRegistrationSession({ noticeAgreed: true });
+        void navigate("/career/register/bulk/upload");
+      }}
     />
   );
 }

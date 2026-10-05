@@ -5,7 +5,7 @@ import {
   type IndividualRegistrationSubjectData,
 } from "@commonly/ui";
 import { getAuthToken, searchHumans } from "@commonly/utils";
-import { useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 
 // 이름 + 생년월일이 같은 기존 대상자를 서버에서 찾아 중복 후보로 보여준다.
 async function findDuplicateSubjects(
@@ -37,7 +37,14 @@ async function findDuplicateSubjects(
 }
 
 function IndividualRegistrationSubjectPage() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const noticeAgreed = (location.state as { noticeAgreed?: boolean } | null)
+    ?.noticeAgreed;
+
+  if (!noticeAgreed) {
+    return <Navigate to="/career/register/individual" replace />;
+  }
 
   return (
     <IndividualRegistrationSubject

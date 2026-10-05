@@ -7,6 +7,8 @@ import type { FileMapping, FileMappingResult, UploadedFile } from "./files";
 export const REGISTRATION_SESSION_STORAGE_KEY = "integratedRegistration";
 
 export interface IntegratedRegistrationSession {
+  /** 1단계 유의사항 확인(동의) 여부. 이후 단계 직접 진입을 막는 가드에 쓴다. */
+  noticeAgreed?: boolean;
   uploadedFile?: UploadedFile;
   mappings?: FileMapping[];
   result?: FileMappingResult;

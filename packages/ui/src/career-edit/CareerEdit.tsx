@@ -852,8 +852,8 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
           <FormFields>
             <TextInput
               id="career-edit-position"
-              label="직급명"
-              placeholder="직급을 입력해주세요"
+              label="직종명"
+              placeholder="직종을 입력해주세요"
               value={record.position}
               onChange={(value) => onChange("position", value)}
             />
