@@ -100,6 +100,10 @@ function CareerCertificateIssue({
   const [isRestoring, setIsRestoring] = useState(Boolean(onRestoreIssued));
   // 검색 중 입력이 바뀌어 리셋된 뒤 도착하는 이전 응답을 무시하기 위한 요청 id.
   const searchRequestIdRef = useRef(0);
+  // 경력 로딩 중 다음 요청이 시작되면 이전 응답을 버리기 위한 요청 id.
+  const careerLoadRequestIdRef = useRef(0);
+  // 마지막으로 경력을 불러온 대상자. 같은 대상자를 재조회하면 선택을 보존한다.
+  const careerLoadedPersonRef = useRef<string | null>(null);
 
   const currentStep = getStepIndex(view);
   const canSearchPerson =
@@ -166,6 +170,8 @@ function CareerCertificateIssue({
 
   const moveToView = (nextView: CareerCertificateIssueView) => {
     setStepError("");
+    setSubmissionError("");
+    setSearchError("");
     setView(nextView);
   };
 
@@ -202,15 +208,34 @@ function CareerCertificateIssue({
       setStepError("");
       setIsLoadingCareerRows(true);
 
+      const requestId = ++careerLoadRequestIdRef.current;
+
       try {
         const rows = await onLoadCareerRows(selectedPerson);
+
+        // 이 사이 다음 요청이 시작됐다면(대상자 변경 등) 이 응답은 버린다.
+        if (requestId !== careerLoadRequestIdRef.current) {
+          return;
+        }
+
+        // 같은 대상자를 재조회할 때는 기존 선택을 유지하고, 대상자가 바뀌면 전체 선택으로 초기화한다.
+        const isSamePerson = careerLoadedPersonRef.current === selectedPerson;
         setCareerRows(rows);
-        setSelectedCareerIds(rows.map((row) => row.id));
+        if (!isSamePerson) {
+          setSelectedCareerIds(rows.map((row) => row.id));
+        }
+        careerLoadedPersonRef.current = selectedPerson;
       } catch (error) {
+        if (requestId !== careerLoadRequestIdRef.current) {
+          return;
+        }
+
         setStepError(getErrorMessage(error));
         return;
       } finally {
-        setIsLoadingCareerRows(false);
+        if (requestId === careerLoadRequestIdRef.current) {
+          setIsLoadingCareerRows(false);
+        }
       }
 
       moveToView("details");
@@ -365,9 +390,14 @@ function CareerCertificateIssue({
     setNoticeAccepted(false);
     setReason("visit");
     setNote("");
+    setApplicantName("");
+    setBirthYear("");
+    setBirthMonth("");
+    setBirthDay("");
     setIssueType("all");
     setCareerRows([]);
     setSelectedCareerIds([]);
+    careerLoadedPersonRef.current = null;
     setAdditionalNote("");
     setPurpose("");
     resetPersonSearchResult();
@@ -430,6 +460,7 @@ function CareerCertificateIssue({
             hasSearchResult={hasPersonSearchResult}
             applicants={applicants}
             isSearching={isSearchingApplicants}
+            isLoadingCareerRows={isLoadingCareerRows}
             searchError={searchError}
             selectedPerson={selectedPerson}
             onApplicantNameChange={handleApplicantNameChange}

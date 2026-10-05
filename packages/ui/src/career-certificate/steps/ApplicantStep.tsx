@@ -28,6 +28,7 @@ interface ApplicantStepProps {
   hasSearchResult: boolean;
   applicants: readonly CertificateApplicant[];
   isSearching?: boolean;
+  isLoadingCareerRows?: boolean;
   searchError?: string;
   selectedPerson: string;
   onApplicantNameChange: (value: string) => void;
@@ -47,6 +48,7 @@ function ApplicantStep({
   hasSearchResult,
   applicants,
   isSearching = false,
+  isLoadingCareerRows = false,
   searchError = "",
   selectedPerson,
   onApplicantNameChange,
@@ -73,6 +75,7 @@ function ApplicantStep({
             label="이름"
             placeholder="이름을 입력해주세요"
             value={applicantName}
+            disabled={isLoadingCareerRows}
             onChange={onApplicantNameChange}
           />
         </FieldGroup>
@@ -83,6 +86,7 @@ function ApplicantStep({
               aria-label="생년"
               options={YEAR_OPTIONS}
               value={birthYear}
+              disabled={isLoadingCareerRows}
               onChange={onBirthYearChange}
             />
             <TextInput
@@ -98,6 +102,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="월"
               value={birthMonth}
+              disabled={isLoadingCareerRows}
               onChange={onBirthMonthChange}
             />
             <TextInput
@@ -113,6 +118,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="일"
               value={birthDay}
+              disabled={isLoadingCareerRows}
               onChange={onBirthDayChange}
             />
           </DateFields>
@@ -121,7 +127,7 @@ function ApplicantStep({
           <Button
             variant="secondary"
             size="large"
-            disabled={!canSearch || isSearching}
+            disabled={!canSearch || isSearching || isLoadingCareerRows}
             onClick={onSearch}
           >
             {isSearching ? "조회 중..." : "대상자 조회"}
