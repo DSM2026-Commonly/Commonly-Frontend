@@ -9,6 +9,7 @@ import {
   saveBlobAsFile,
   searchHumans,
   setIssuedCertificateSession,
+  type HumanCertificate,
 } from "@commonly/utils";
 import { useRef } from "react";
 import { useNavigate } from "react-router";
@@ -25,6 +26,19 @@ interface IssuedCertificateRef {
   certificateId: number;
   documentNo: string;
   humanName: string;
+}
+
+/**
+ * 경력 목록 응답 한 줄을 미리보기 표의 한 행으로 바꾼다.
+ * 근무부서는 `department` 다. `division` 은 구분(채용/전보/해지/퇴직)이라 이 칸에 넣으면 안 된다.
+ */
+export function toCareerRow(certificate: HumanCertificate): CertificateCareerRow {
+  return {
+    id: String(certificate.certificateId),
+    job: certificate.keyResponsibilities,
+    department: certificate.department,
+    period: `${certificate.hireDate} ~ ${certificate.retirementDate || certificate.expirationDate}`,
+  };
 }
 
 /** admin-web/user-web 이 공유하는 직원용 경력증명서 발급 페이지. */
@@ -75,12 +89,7 @@ function StaffCareerCertificateIssuePage() {
       throw new Error("대상자의 경력 사항이 없습니다. 대상자를 확인해 주세요.");
     }
 
-    return certificates.map((certificate) => ({
-      id: String(certificate.certificateId),
-      job: certificate.keyResponsibilities,
-      department: certificate.division,
-      period: `${certificate.hireDate} ~ ${certificate.retirementDate || certificate.expirationDate}`,
-    }));
+    return certificates.map(toCareerRow);
   };
 
   const handleComplete = async (
