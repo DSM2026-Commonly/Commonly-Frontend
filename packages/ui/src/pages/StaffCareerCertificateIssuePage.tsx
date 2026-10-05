@@ -33,11 +33,14 @@ interface IssuedCertificateRef {
  * 근무부서는 `department` 다. `division` 은 구분(채용/전보/해지/퇴직)이라 이 칸에 넣으면 안 된다.
  */
 export function toCareerRow(certificate: HumanCertificate): CertificateCareerRow {
+  // 퇴직일·만료일이 모두 없으면 재직 중이므로 끝이 비어 보이지 않게 "현재"로 표기한다.
+  const endDate = certificate.retirementDate || certificate.expirationDate;
+
   return {
     id: String(certificate.certificateId),
     job: certificate.keyResponsibilities,
     department: certificate.department,
-    period: `${certificate.hireDate} ~ ${certificate.retirementDate || certificate.expirationDate}`,
+    period: `${certificate.hireDate} ~ ${endDate || "현재"}`,
   };
 }
 
