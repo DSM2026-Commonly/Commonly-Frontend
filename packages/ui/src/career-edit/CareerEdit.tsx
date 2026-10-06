@@ -134,6 +134,8 @@ interface ApplicantStepProps {
   canSearch: boolean;
   hasSearchResult: boolean;
   isSearching: boolean;
+  /** 선택한 대상자의 경력을 불러오는 중. 대상자 조건·선택·페이지 이동을 잠근다. */
+  isLoadingRecords: boolean;
   searchError: string;
   searchResults: readonly CareerEditApplicant[];
   /** 현재 페이지(1부터 시작). */
@@ -347,6 +349,7 @@ function ApplicantStep({
   canSearch,
   hasSearchResult,
   isSearching,
+  isLoadingRecords,
   searchError,
   searchResults,
   searchPage,
@@ -380,6 +383,7 @@ function ApplicantStep({
             label="이름"
             placeholder="이름을 입력해주세요"
             value={applicantName}
+            disabled={isLoadingRecords}
             onChange={onApplicantNameChange}
             autoComplete="name"
           />
@@ -393,6 +397,7 @@ function ApplicantStep({
               aria-label="생년"
               options={YEAR_OPTIONS}
               value={birthYear}
+              disabled={isLoadingRecords}
               onChange={onBirthYearChange}
             />
             <TextInput
@@ -408,6 +413,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="월"
               value={birthMonth}
+              disabled={isLoadingRecords}
               onChange={onBirthMonthChange}
             />
             <TextInput
@@ -423,6 +429,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="일"
               value={birthDay}
+              disabled={isLoadingRecords}
               onChange={onBirthDayChange}
             />
           </ApplicantDateFields>
@@ -432,7 +439,7 @@ function ApplicantStep({
             variant="secondary"
             size="large"
             type="button"
-            disabled={!canSearch || isSearching}
+            disabled={!canSearch || isSearching || isLoadingRecords}
             onClick={onSearch}
           >
             {isSearching ? "조회 중..." : "대상자 조회"}
@@ -477,6 +484,7 @@ function ApplicantStep({
                           name="career-edit-applicant"
                           value={applicant.id}
                           checked={selectedApplicantId === applicant.id}
+                          disabled={isLoadingRecords}
                           onChange={() => onSelectApplicant(applicant.id)}
                         >
                           <span className="sr-only">
@@ -494,7 +502,9 @@ function ApplicantStep({
                           <Button
                             variant="tertiary"
                             size="small"
-                            disabled={deletingApplicantId !== ""}
+                            disabled={
+                              deletingApplicantId !== "" || isLoadingRecords
+                            }
                             onClick={() => onDeleteApplicant(applicant)}
                           >
                             {deletingApplicantId === applicant.id
@@ -520,7 +530,7 @@ function ApplicantStep({
             <Pagination
               currentPage={searchPage}
               totalPages={searchTotalPages}
-              isLoading={isSearching}
+              isLoading={isSearching || isLoadingRecords}
               navLabel="대상자 목록 페이지"
               onPageChange={onSearchPageChange}
             />
@@ -1056,6 +1066,9 @@ function CareerEdit({
   const [fetchedRecords, setFetchedRecords] = useState<
     readonly CareerEditRecord[] | null
   >(null);
+  // 불러온 경력이 어느 대상자의 것인지. 저장 직전에 선택한 대상자와 같은지 확인한다.
+  const [fetchedRecordsApplicantId, setFetchedRecordsApplicantId] =
+    useState("");
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
   const [recordsError, setRecordsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1126,6 +1139,7 @@ function CareerEdit({
     setSearchError("");
     setDeleteError("");
     setFetchedRecords(null);
+    setFetchedRecordsApplicantId("");
     setRecordsError("");
   };
 
@@ -1381,8 +1395,11 @@ function CareerEdit({
     setCurrentStep(3);
   };
 
+  // 대상자 조회 응답이 오면 선택이 바뀔 수 있어, 조회 중에는 다음 단계로 넘어가지 않는다.
+  const isWaitingForSearch = currentStep === 2 && isSearching;
+
   const handleNext = async () => {
-    if (!canContinue || isLoadingRecords || isSubmitting) {
+    if (!canContinue || isLoadingRecords || isSubmitting || isWaitingForSearch) {
       return;
     }
 
@@ -1405,6 +1422,7 @@ function CareerEdit({
           const records = await onLoadCareerRecords(selectedApplicant.id);
 
           setFetchedRecords(records);
+          setFetchedRecordsApplicantId(selectedApplicant.id);
           setSelectedCareerId(records[0]?.id ?? "");
           setDraftRecord(cloneRecord(records[0]));
         } catch (error) {
@@ -1430,6 +1448,18 @@ function CareerEdit({
     }
 
     if (!selectedApplicant) {
+      return;
+    }
+
+    // 다른 대상자의 경력 id 와 인적 사항이 섞여 저장되지 않게 막는다.
+    if (
+      editTarget === "career" &&
+      onLoadCareerRecords &&
+      fetchedRecordsApplicantId !== selectedApplicant.id
+    ) {
+      setSubmissionError(
+        "선택한 대상자와 불러온 경력이 일치하지 않습니다. 대상자 조회부터 다시 진행해 주세요.",
+      );
       return;
     }
 
@@ -1484,6 +1514,7 @@ function CareerEdit({
     setSearchError("");
     setDeleteError("");
     setFetchedRecords(null);
+    setFetchedRecordsApplicantId("");
     setIsLoadingRecords(false);
     setRecordsError("");
     setIsSubmitting(false);
@@ -1563,6 +1594,7 @@ function CareerEdit({
                   canSearch={canSearch}
                   hasSearchResult={hasSearchResult}
                   isSearching={isSearching}
+                  isLoadingRecords={isLoadingRecords}
                   searchError={searchError}
                   searchResults={searchResults}
                   searchPage={searchPage}
@@ -1631,7 +1663,12 @@ function CareerEdit({
                 variant="primary"
                 size="xlarge"
                 type="button"
-                disabled={!canContinue || isLoadingRecords || isSubmitting}
+                disabled={
+                  !canContinue ||
+                  isLoadingRecords ||
+                  isSubmitting ||
+                  isWaitingForSearch
+                }
                 onClick={() => void handleNext()}
               >
                 {currentStep === 4
