@@ -3,6 +3,8 @@ import { ApiError } from "../api";
 import {
   HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
   HUMAN_DELETE_CONFLICT_MESSAGE,
+  HUMAN_DELETE_HAS_CAREER_MESSAGE,
+  HUMAN_DELETE_HAS_ISSUED_MESSAGE,
   HUMAN_DELETE_NOT_FOUND_MESSAGE,
   HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
   HUMAN_ENDPOINT,
@@ -399,6 +401,19 @@ describe("deleteHuman", () => {
     });
 
     await deleteHuman(1, { token: "token-1" });
+  });
+
+  test("tells the two 409 reasons apart by code", async () => {
+    const cases = [
+      ["HUMAN_HAS_ISSUED_CERTIFICATE", HUMAN_DELETE_HAS_ISSUED_MESSAGE],
+      ["HUMAN_HAS_CERTIFICATE", HUMAN_DELETE_HAS_CAREER_MESSAGE],
+    ] as const;
+
+    for (const [code, message] of cases) {
+      mockFetch(409, { code, status: 409, message: "백엔드 문구" });
+
+      await expect(deleteHuman(3)).rejects.toMatchObject({ status: 409, message });
+    }
   });
 
   test("maps error statuses to Korean messages", async () => {

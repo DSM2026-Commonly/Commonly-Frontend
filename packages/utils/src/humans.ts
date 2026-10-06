@@ -47,6 +47,15 @@ export const HUMAN_DELETE_NOT_FOUND_MESSAGE =
   "이미 삭제되었거나 찾을 수 없는 대상자입니다.";
 export const HUMAN_DELETE_CONFLICT_MESSAGE =
   "연결된 경력 사항이나 발급 기록이 있어 삭제할 수 없습니다.";
+/** HUMAN_HAS_ISSUED_CERTIFICATE(409). 발급 기록은 공문서 대장이라 지울 수 없다. */
+export const HUMAN_DELETE_HAS_ISSUED_MESSAGE =
+  "이미 발급된 경력증명서가 있어 삭제할 수 없습니다. 발급 이력은 보존해야 하므로 인적사항 수정을 이용해 주세요.";
+/**
+ * HUMAN_HAS_CERTIFICATE(409). 백엔드 문구는 "재직 이력을 먼저 삭제"하라고 하지만
+ * 재직 이력을 지우는 기능이 없어 그 안내는 하지 않는다.
+ */
+export const HUMAN_DELETE_HAS_CAREER_MESSAGE =
+  "등록된 경력 사항이 있어 삭제할 수 없습니다.";
 
 export interface HumanSummary {
   humanId: number;
@@ -333,7 +342,9 @@ export async function deleteHuman(
       401: HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
       403: HUMAN_DELETE_FORBIDDEN_MESSAGE,
       404: HUMAN_DELETE_NOT_FOUND_MESSAGE,
-      // 재직 이력이나 발급 기록이 연결돼 있으면 백엔드가 삭제를 거절한다(#64).
+      // 재직 이력이나 발급 기록이 연결돼 있으면 백엔드가 409 로 삭제를 거절한다(#64).
+      HUMAN_HAS_ISSUED_CERTIFICATE: HUMAN_DELETE_HAS_ISSUED_MESSAGE,
+      HUMAN_HAS_CERTIFICATE: HUMAN_DELETE_HAS_CAREER_MESSAGE,
       409: HUMAN_DELETE_CONFLICT_MESSAGE,
     },
   });
