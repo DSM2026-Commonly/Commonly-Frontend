@@ -105,4 +105,24 @@ describe("WorkHistory", () => {
       }),
     ).toBe("");
   });
+
+  test("lets the long details cell wrap instead of overflowing", () => {
+    const markup = renderToStaticMarkup(
+      <WorkHistory
+        records={[
+          {
+            id: "001",
+            category: "증명서 발급",
+            occurredAt: "2026-10-06 13:52",
+            details:
+              "유성구-2026-000002 · 홍길동 · 은행 제출 · 사유: 민원인 발급 신청 (전화) - 창구 접수",
+            operator: "-",
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain('class="work-history-details"');
+    expect(markup).toContain("사유: 민원인 발급 신청 (전화)");
+  });
 });

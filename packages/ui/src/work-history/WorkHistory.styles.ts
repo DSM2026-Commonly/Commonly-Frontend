@@ -50,7 +50,6 @@ export const TableFrame = styled.div`
   }
 
   .krds-table-wrap .tbl {
-    height: 539px;
     min-width: 780px;
     table-layout: fixed;
     border-collapse: collapse;
@@ -83,6 +82,19 @@ export const TableFrame = styled.div`
     text-align: left;
     vertical-align: middle;
     white-space: nowrap;
+  }
+
+  /* 이력이 적을 때 행이 표 높이만큼 늘어나지 않게 데이터 행은 내용 높이로 두고,
+     빈 목록·오류 안내만 표 영역 가운데에 둔다. */
+  .krds-table-wrap .tbl:has(td[colspan]) {
+    height: 539px;
+  }
+
+  /* 상세 내용은 문서번호·대상자·용도·발급 사유가 이어져 길어지므로 칸 안에서 줄바꿈한다. */
+  .krds-table-wrap .tbl td.work-history-details {
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
   }
 `;
 
