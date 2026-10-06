@@ -9,7 +9,7 @@ describe("IntegratedRegistrationConfirm required mappings", () => {
       <IntegratedRegistrationConfirm rowOptions={["열 선택", "성명"]} />,
     );
 
-    for (const label of ["성명", "생년 월일", "성별", "채용일"]) {
+    for (const label of ["성명", "생년월일", "성별", "채용일"]) {
       expect(markup).toContain(`aria-label="${label} 행 선택 (필수)"`);
     }
     expect(markup).toContain('aria-label="근무부서 행 선택"');
