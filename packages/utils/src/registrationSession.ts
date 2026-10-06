@@ -10,6 +10,8 @@ export interface IntegratedRegistrationSession {
   /** 1단계 유의사항 확인(동의) 여부. 이후 단계 직접 진입을 막는 가드에 쓴다. */
   noticeAgreed?: boolean;
   uploadedFile?: UploadedFile;
+  /** 업로드한 파일 크기(바이트). 새로고침 뒤 복원한 파일 목록에 크기를 표시한다. */
+  uploadedFileSize?: number;
   mappings?: FileMapping[];
   result?: FileMappingResult;
 }

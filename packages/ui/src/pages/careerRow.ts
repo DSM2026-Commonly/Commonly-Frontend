@@ -14,5 +14,8 @@ export function toCareerRow(certificate: HumanCertificate): CertificateCareerRow
     job: certificate.keyResponsibilities,
     department: certificate.department,
     period: `${certificate.hireDate} ~ ${endDate || "현재"}`,
+    startDate: certificate.hireDate,
+    endDate,
+    reason: certificate.reason,
   };
 }

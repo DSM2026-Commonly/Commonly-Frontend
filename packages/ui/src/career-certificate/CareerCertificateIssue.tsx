@@ -29,6 +29,7 @@ import {
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "./CareerCertificateIssue.validation";
+import { formatDocumentDate } from "./certificateDocument";
 import { getEmptyPageRetryPage } from "../pagination/pagination.utils";
 import ApplicantStep from "./steps/ApplicantStep";
 import DetailsStep from "./steps/DetailsStep";
@@ -705,10 +706,14 @@ function CareerCertificateIssue({
         <CertificatePreviewView
           variant={variant}
           applicantName={selectedApplicantName}
-          birthDate={
+          birthDate={formatDocumentDate(
             variant === "civil"
-              ? applicantBirthDate.replace(/-/g, ".")
-              : `${birthYear}.${birthMonth.padStart(2, "0")}.${birthDay.padStart(2, "0")}`
+              ? applicantBirthDate
+              : `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
+          )}
+          address={
+            applicants.find((applicant) => applicant.id === selectedPerson)
+              ?.address ?? ""
           }
           careerRows={selectedCareerRows}
           purpose={purpose}

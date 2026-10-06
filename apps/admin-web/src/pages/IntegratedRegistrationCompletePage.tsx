@@ -45,6 +45,13 @@ function IntegratedRegistrationCompletePage() {
         { id: "total", label: "대상 건수", value: `${totalCount}건` },
         { id: "success", label: "성공 건수", value: `${result.insertedCount}건` },
         { id: "failure", label: "실패 건수", value: `${failureCount}건` },
+        // 엑셀에만 있던 대상자는 인적사항을 새로 만든다. 성명 오타도 새 사람이 되므로 수를 확인하게 한다.
+        {
+          id: "created",
+          label: "신규 인적사항",
+          // 세션에 남은 예전 결과에는 이 값이 없을 수 있다.
+          value: `${result.createdHumanCount ?? 0}명`,
+        },
       ]}
       failures={result.failedRows}
       onAdd={() => leaveFlow("/career/register")}

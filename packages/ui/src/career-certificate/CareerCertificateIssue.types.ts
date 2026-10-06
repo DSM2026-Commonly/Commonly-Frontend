@@ -24,6 +24,12 @@ export interface CertificateCareerRow {
   job: string;
   department: string;
   period: string;
+  /** 근무 시작일(YYYY-MM-DD). 대체 미리보기의 "부터" 칸과 총 근무기간 계산에 쓴다. */
+  startDate?: string;
+  /** 근무 종료일(퇴직일, 없으면 만료예정일). 재직 중이면 빈 문자열이다. */
+  endDate?: string;
+  /** 퇴직사유. 서식의 퇴직사유 칸에 모아 찍는다. */
+  reason?: string;
 }
 
 /**

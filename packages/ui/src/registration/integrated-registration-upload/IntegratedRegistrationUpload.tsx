@@ -42,6 +42,8 @@ export interface IntegratedRegistrationUploadProps {
   nextLabel?: string;
   /** 이미 업로드를 마친 파일 이름. 새로고침/뒤로가기 시 목록을 복원할 때 쓴다. */
   initialFileName?: string;
+  /** 복원한 파일의 크기(바이트). 모르면 0 으로 표시된다. */
+  initialFileSize?: number;
   /** 파일이 선택될 때마다 호출된다. reject 되면 파일 상태가 error 로 표시된다. */
   onFileUpload?: (file: File) => Promise<void>;
   /** 파일 목록에서 파일이 제거될 때 호출된다. 남은 파일 목록을 함께 전달한다. */
@@ -72,6 +74,7 @@ function IntegratedRegistrationUpload({
   previousLabel = "이전으로",
   nextLabel = "다음으로",
   initialFileName,
+  initialFileSize = 0,
   onFileUpload,
   onFileDelete,
   errorMessage,
@@ -86,8 +89,9 @@ function IntegratedRegistrationUpload({
           {
             id: "session-restored-file",
             name: initialFileName,
-            size: 0,
-            type: "",
+            size: initialFileSize,
+            // 목록에 "[xlsx, 1.7KB]"처럼 형식을 보여주므로 확장자를 채운다.
+            type: initialFileName.split(".").pop()?.toLowerCase() ?? "",
             status: "completed",
           },
         ]
