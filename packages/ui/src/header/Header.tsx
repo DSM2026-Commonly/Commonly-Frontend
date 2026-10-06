@@ -2,6 +2,7 @@ import logo from "../assets/Logo/logo1.png";
 import type { MouseEvent } from "react";
 import useAuthSession from "../hooks/useAuthSession";
 import useMe from "../hooks/useMe";
+import { PASSWORD_CHANGE_PATH } from "../pages/PasswordChangePage";
 import {
   adminHeaderMenus,
   type HeaderMenuItem,
@@ -19,6 +20,7 @@ import {
   PrimaryNavigationList,
   UtilityButton,
   UtilityDivider,
+  UtilityLink,
   UtilityRow,
   UtilityText,
 } from "./header.styles";
@@ -125,6 +127,17 @@ const Header = ({
             >
               연장
             </UtilityButton>
+            <UtilityDivider aria-hidden="true" />
+            <UtilityLink
+              href={PASSWORD_CHANGE_PATH}
+              variant="unstyled"
+              underline="none"
+              size="small"
+              $width={92}
+              onClick={(event) => handleNavigation(event, PASSWORD_CHANGE_PATH)}
+            >
+              비밀번호 변경
+            </UtilityLink>
             <UtilityDivider aria-hidden="true" />
             <UtilityButton
               variant="text"

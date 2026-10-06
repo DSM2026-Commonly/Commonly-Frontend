@@ -146,6 +146,70 @@ export const UtilityButton = styled(Button, {
   }
 `;
 
+// 연장·로그아웃 버튼과 같은 모양이지만 화면 이동이라 링크로 둔다.
+export const UtilityLink = styled(Link, {
+  shouldForwardProp: (prop) => prop !== "$width",
+})<FixedWidthProps>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: ${({ $width }) => `${$width}px`};
+  height: 24px;
+  flex: 0 0 ${({ $width }) => `${$width}px`};
+  padding: 0 2px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #1e2124;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-position: from-font;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background: #f4f5f6;
+    color: #0b50d0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #246beb;
+    outline-offset: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+
+  &.krds-btn.link {
+    display: inline-flex;
+    width: ${({ $width }) => `${$width}px`};
+    min-width: 0;
+    height: 24px !important;
+    min-height: 0;
+    padding: 0 2px !important;
+    aspect-ratio: auto;
+    flex: 0 0 ${({ $width }) => `${$width}px`};
+    color: #1e2124;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-decoration: underline;
+    white-space: nowrap;
+  }
+
+  &.krds-btn.link:hover {
+    background: #f4f5f6;
+    color: #0b50d0;
+  }
+`;
+
 export const MainRow = styled.div`
   display: flex;
   align-items: center;

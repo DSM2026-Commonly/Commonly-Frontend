@@ -20,6 +20,7 @@ import IntegratedRegistrationPreviewPage from "../pages/IntegratedRegistrationPr
 import IntegratedRegistrationUploadPage from "../pages/IntegratedRegistrationUploadPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import PasswordChangePage from "../pages/PasswordChangePage";
 import RegistrationMethodPage from "../pages/RegistrationMethodPage";
 
 function requireAuth({ request }: LoaderFunctionArgs) {
@@ -55,6 +56,10 @@ export const router = createBrowserRouter([
       {
         path: "password/initial",
         Component: InitialPasswordChangePage,
+      },
+      {
+        path: "password/change",
+        Component: PasswordChangePage,
       },
       {
         path: "career/issue",

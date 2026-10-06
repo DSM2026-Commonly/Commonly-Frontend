@@ -16,11 +16,14 @@ function loadMe(token: string): Promise<Me | null> {
   return cachedRequest.promise;
 }
 
-/**
- * 로그인한 사용자 정보(실명·생년월일 등). 조회 전이거나 실패하면 null 이므로
- * 호출부는 토큰에서 읽은 계정 정보로 대신 표시한다.
- */
-function useMe(): Me | null {
+export interface MeState {
+  me: Me | null;
+  /** 지금 토큰으로 조회가 아직 끝나지 않았다. 끝났는데 me 가 null 이면 조회에 실패한 것이다. */
+  isLoading: boolean;
+}
+
+/** useMe 와 같지만, 조회 중인지 실패했는지 구분해야 하는 화면을 위해 로딩 여부도 돌려준다. */
+export function useMeState(): MeState {
   const token = getAuthToken();
   const [loaded, setLoaded] = useState<{ token: string; me: Me | null } | null>(
     null,
@@ -45,7 +48,17 @@ function useMe(): Me | null {
   }, [token]);
 
   // 토큰이 바뀌었는데 이전 사용자 정보가 남아 보이지 않게 지금 토큰의 결과만 돌려준다.
-  return token && loaded?.token === token ? loaded.me : null;
+  return token && loaded?.token === token
+    ? { me: loaded.me, isLoading: false }
+    : { me: null, isLoading: Boolean(token) };
+}
+
+/**
+ * 로그인한 사용자 정보(실명·생년월일 등). 조회 전이거나 실패하면 null 이므로
+ * 호출부는 토큰에서 읽은 계정 정보로 대신 표시한다.
+ */
+function useMe(): Me | null {
+  return useMeState().me;
 }
 
 export default useMe;

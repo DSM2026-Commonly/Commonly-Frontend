@@ -32,12 +32,18 @@ export {
   INITIAL_PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
   INITIAL_PASSWORD_MAX_LENGTH,
   INITIAL_PASSWORD_MIN_LENGTH,
+  PASSWORD_CHANGE_BAD_REQUEST_MESSAGE,
+  PASSWORD_CHANGE_FORBIDDEN_MESSAGE,
+  PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
   changeInitialPassword,
+  changePassword,
+  getPasswordChangeEndpoint,
   requiresInitialPasswordChange,
 } from "./password";
 export type {
   ChangeInitialPasswordOptions,
   ChangeInitialPasswordRequest,
+  ChangePasswordRequest,
 } from "./password";
 export type {
   ApiErrorBody,
