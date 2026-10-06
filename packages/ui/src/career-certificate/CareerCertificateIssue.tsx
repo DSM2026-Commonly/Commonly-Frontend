@@ -82,6 +82,7 @@ function CareerCertificateIssue({
   initialView,
   variant = "staff",
   applicantName: fixedApplicantName = "",
+  applicantBirthDate = "",
   onCancel,
   onSearchApplicants,
   onLoadCareerRows,
@@ -703,7 +704,7 @@ function CareerCertificateIssue({
           applicantName={selectedApplicantName}
           birthDate={
             variant === "civil"
-              ? ""
+              ? applicantBirthDate.replace(/-/g, ".")
               : `${birthYear}.${birthMonth.padStart(2, "0")}.${birthDay.padStart(2, "0")}`
           }
           careerRows={selectedCareerRows}

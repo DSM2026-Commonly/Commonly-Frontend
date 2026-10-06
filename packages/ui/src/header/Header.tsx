@@ -1,6 +1,7 @@
 import logo from "../assets/Logo/logo1.png";
 import type { MouseEvent } from "react";
 import useAuthSession from "../hooks/useAuthSession";
+import useMe from "../hooks/useMe";
 import {
   adminHeaderMenus,
   type HeaderMenuItem,
@@ -82,7 +83,9 @@ const Header = ({
 }: HeaderProps) => {
   const configuration = headerConfigurations[variant];
   const { session, remainingTime } = useAuthSession();
-  const displayName = userName ?? session?.name ?? "";
+  const me = useMe();
+  // 토큰에는 계정 id 만 있어, 내 정보 조회로 실명을 받으면 그걸 보여준다.
+  const displayName = userName ?? (me?.name || session?.name || "");
   const handleNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     href: string,

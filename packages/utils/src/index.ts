@@ -290,3 +290,10 @@ export {
   hasValidAuthToken,
 } from "./authSession";
 export type { AuthSession } from "./authSession";
+export {
+  fetchMe,
+  ME_ENDPOINT,
+  ME_INVALID_RESPONSE_MESSAGE,
+  ME_UNAUTHORIZED_MESSAGE,
+} from "./users";
+export type { Me, UserRequestOptions } from "./users";

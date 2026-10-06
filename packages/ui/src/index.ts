@@ -118,6 +118,7 @@ export type {
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";
 export { default as useAuthSession } from "./hooks/useAuthSession";
+export { default as useMe } from "./hooks/useMe";
 export { default as useSessionGuard } from "./hooks/useSessionGuard";
 export { default as usePasswordChangeGuard } from "./hooks/usePasswordChangeGuard";
 export type { AuthSessionState } from "./hooks/useAuthSession";

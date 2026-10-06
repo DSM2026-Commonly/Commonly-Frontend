@@ -1,6 +1,7 @@
 import {
   CareerCertificateIssue,
   toCareerRow,
+  useMe,
   type CareerCertificateApplicationData,
   type CertificateCareerRow,
   type IssuedCertificateSummary,
@@ -28,6 +29,9 @@ interface IssuedCertificateRef {
 
 function CareerCertificateIssuePage() {
   const issuedRef = useRef<IssuedCertificateRef | null>(null);
+  // 실명·생년월일은 토큰에 없어 내 정보 조회로 받는다. 받기 전이거나 실패하면 비워 둔다
+  // (계정 아이디는 실명이 아니므로 성명 자리에 쓰지 않는다).
+  const me = useMe();
 
   // 본인 발급이 닫혀 있으면(백엔드 스위치 off) 거부되고, 화면은 빈 목록으로 전체 발급을 진행한다.
   const handleLoadCareerRows = async (): Promise<
@@ -117,17 +121,19 @@ function CareerCertificateIssuePage() {
       token: getAuthToken(),
     });
 
+    const namePart = me?.name ? `_${me.name}` : "";
+
     saveBlobAsFile(
       blob,
-      `유성구청_경력증명서_${issued.documentNo}.pdf`,
+      `유성구청${namePart}_경력증명서_${issued.documentNo}.pdf`,
     );
   };
 
   return (
     <CareerCertificateIssue
       variant="civil"
-      // 계정 아이디는 실명이 아니므로 발급 전에는 성명으로 쓰지 않는다.
-      applicantName=""
+      applicantName={me?.name ?? ""}
+      applicantBirthDate={me?.birthDate ?? ""}
       onLoadCareerRows={handleLoadCareerRows}
       onPreview={handlePreview}
       onComplete={handleComplete}
