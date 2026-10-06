@@ -51,6 +51,10 @@ export const isValidBirthDay = (
   );
 };
 
+/** 발급 4단계에서 아직 입력하지 않은 필수 항목의 라벨. 발급 용도는 증명서에 기재된다. */
+export const getMissingCertificateDetailsFields = (purpose: string): string[] =>
+  purpose.trim().length > 0 ? [] : ["용도"];
+
 /**
  * 발급할 경력 수가 서식 한도 안에 드는지.
  * 전체 발급은 불러온 경력 전체가 10건 이하, 선택 발급은 고른 경력이 1~10건이어야 한다.

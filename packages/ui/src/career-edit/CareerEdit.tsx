@@ -42,6 +42,19 @@ import {
   CAREER_EDIT_TARGET_OPTIONS,
 } from "./CareerEdit.constants";
 import {
+  type BirthDateParts,
+  getBirthDateParts,
+  getEditableDateParts,
+  getMissingCareerRecordFields,
+  getMissingPersonalInfoFields,
+  isCareerRecordSavable,
+  isEmptyEditableDate,
+  isPartialEditableDate,
+  isPersonalInfoSavable,
+} from "./CareerEdit.validation";
+import { FormHint, RequiredMark } from "../form/requiredFields.styles";
+import { getRequiredFieldsMessage } from "../form/requiredFields.utils";
+import {
   CardSubheading as ReasonCardTitle,
   Fieldset as ReasonFieldset,
   FormCard as ReasonFormCard,
@@ -159,6 +172,7 @@ interface CareerDateInputProps {
   label: string;
   /** 라벨 옆 괄호 안내 문구. 생략하면 숫자 입력 안내를 보여준다. */
   hint?: string;
+  required?: boolean;
   value: string;
   onChange: (value: string) => void;
 }
@@ -179,28 +193,6 @@ interface SuccessViewProps {
   onHome?: () => void;
 }
 
-interface BirthDateParts {
-  year: string;
-  month: string;
-  day: string;
-}
-
-function getBirthDateParts(value: string | undefined): BirthDateParts {
-  const [year = "", month = "", day = ""] = value?.match(/\d+/g) ?? [];
-
-  return { year, month, day };
-}
-
-function getEditableDateParts(value: string): BirthDateParts {
-  if (!value.includes(".")) {
-    return getBirthDateParts(value);
-  }
-
-  const [year = "", month = "", day = ""] = value.split(".");
-
-  return { year, month, day };
-}
-
 function updateEditableDatePart(
   value: string,
   part: keyof BirthDateParts,
@@ -216,19 +208,6 @@ function updateEditableDatePart(
 
 function serializeEditableDate(dateParts: BirthDateParts) {
   return `${dateParts.year}.${dateParts.month}.${dateParts.day}`;
-}
-
-function isValidEditableDate(value: string) {
-  const { year, month, day } = getEditableDateParts(value);
-
-  return isValidBirthDate(year, month, day);
-}
-
-// 재직 중 경력은 종료일이 비어 있으므로 "모든 부분이 빈 날짜"를 구분한다.
-function isEmptyEditableDate(value: string) {
-  const { year, month, day } = getEditableDateParts(value);
-
-  return !year && !month && !day;
 }
 
 function normalizeEditableDate(value: string) {
@@ -688,6 +667,7 @@ function PersonalDetailsStep({
             id="career-edit-personal-name"
             label="이름"
             placeholder="이름을 입력해주세요"
+            aria-required
             value={personalInfo.name}
             onChange={(value) =>
               onChange("name", sanitizeApplicantName(value))
@@ -695,16 +675,27 @@ function PersonalDetailsStep({
             autoComplete="name"
           />
           <GenderField>
-            <ApplicantFieldLabel>성별</ApplicantFieldLabel>
+            <ApplicantFieldLabel>
+              성별
+              <RequiredMark aria-hidden="true">*</RequiredMark>
+            </ApplicantFieldLabel>
             <RadioGroup
               name="career-edit-personal-gender"
               value={personalInfo.gender}
               onChange={handleGenderChange}
             >
-              <Radio id="career-edit-personal-gender-male" value="male">
+              <Radio
+                id="career-edit-personal-gender-male"
+                value="male"
+                required
+              >
                 남
               </Radio>
-              <Radio id="career-edit-personal-gender-female" value="female">
+              <Radio
+                id="career-edit-personal-gender-female"
+                value="female"
+                required
+              >
                 여
               </Radio>
             </RadioGroup>
@@ -714,17 +705,21 @@ function PersonalDetailsStep({
 
       <ApplicantFieldGroup>
         <ApplicantFieldLabel>
-          생년월일 (숫자만 입력해주세요)
+          생년월일
+          <RequiredMark aria-hidden="true">*</RequiredMark>
+          {" (숫자만 입력해주세요)"}
         </ApplicantFieldLabel>
         <ApplicantDateFields>
           <Select
             aria-label="수정할 생년"
+            aria-required
             options={YEAR_OPTIONS}
             value={personalInfo.birthYear}
             onChange={(value) => onChange("birthYear", value)}
           />
           <TextInput
             aria-label="수정할 생월"
+            aria-required
             aria-invalid={isBirthMonthInvalid}
             error={
               isBirthMonthInvalid
@@ -742,6 +737,7 @@ function PersonalDetailsStep({
           />
           <TextInput
             aria-label="수정할 생일"
+            aria-required
             aria-invalid={isBirthDayInvalid}
             error={
               isBirthDayInvalid
@@ -761,10 +757,14 @@ function PersonalDetailsStep({
       </ApplicantFieldGroup>
 
       <ApplicantFieldGroup>
-        <ApplicantFieldLabel>주소지</ApplicantFieldLabel>
+        <ApplicantFieldLabel>
+          주소지
+          <RequiredMark aria-hidden="true">*</RequiredMark>
+        </ApplicantFieldLabel>
         <AddressFields>
           <TextInput
             aria-label="주소지"
+            aria-required
             placeholder="검색 버튼을 눌러주세요"
             value={personalInfo.address}
             onChange={(value) => onChange("address", value)}
@@ -788,6 +788,7 @@ function CareerDateInput({
   idPrefix,
   label,
   hint = "숫자만 입력해주세요",
+  required = false,
   value,
   onChange,
 }: CareerDateInputProps) {
@@ -809,11 +810,14 @@ function CareerDateInput({
   return (
     <div>
       <ApplicantFieldLabel>
-        {label} ({hint})
+        {label}
+        {required && <RequiredMark aria-hidden="true">*</RequiredMark>}
+        {` (${hint})`}
       </ApplicantFieldLabel>
       <ApplicantDateFields>
         <Select
           aria-label={`${label} 연도`}
+          aria-required={required}
           options={YEAR_OPTIONS}
           value={year}
           onChange={(nextYear) =>
@@ -823,6 +827,7 @@ function CareerDateInput({
         <TextInput
           id={`${idPrefix}-month`}
           aria-label={`${label} 월`}
+          aria-required={required}
           aria-invalid={isMonthInvalid}
           error={
             isMonthInvalid
@@ -841,6 +846,7 @@ function CareerDateInput({
         <TextInput
           id={`${idPrefix}-day`}
           aria-label={`${label} 일`}
+          aria-required={required}
           aria-invalid={isDayInvalid}
           error={
             isDayInvalid
@@ -872,6 +878,7 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
               id="career-edit-position"
               label="직종명"
               placeholder="직종을 입력해주세요"
+              aria-required
               value={record.position}
               onChange={(value) => onChange("position", value)}
             />
@@ -879,6 +886,7 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
               id="career-edit-duties"
               label="담당업무"
               placeholder="업무 내용을 입력해주세요"
+              aria-required
               value={record.duties}
               onChange={(value) => onChange("duties", value)}
             />
@@ -886,12 +894,14 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
               id="career-edit-department"
               label="근무부서"
               placeholder="부서를 입력해주세요"
+              aria-required
               value={record.department}
               onChange={(value) => onChange("department", value)}
             />
             <CareerDateInput
               idPrefix="career-edit-start-date"
               label="근무 시작일"
+              required
               value={record.startDate}
               onChange={(value) => onChange("startDate", value)}
             />
@@ -1083,23 +1093,16 @@ function CareerEdit({
   const selectedApplicant = availableApplicants.find(
     (applicant) => applicant.id === selectedApplicantId,
   );
-  const canSavePersonalInfo =
-    personalInfo.name.trim().length > 0 &&
-    Boolean(personalInfo.gender) &&
-    isValidBirthDate(
-      personalInfo.birthYear,
-      personalInfo.birthMonth,
-      personalInfo.birthDay,
-    ) &&
-    personalInfo.address.trim().length > 0;
-  const canSaveCareerInfo =
-    draftRecord.position.trim().length > 0 &&
-    draftRecord.duties.trim().length > 0 &&
-    draftRecord.department.trim().length > 0 &&
-    isValidEditableDate(draftRecord.startDate) &&
-    // 재직 중(퇴직일 없음) 경력은 종료일을 비워둔 채 저장할 수 있어야 한다.
-    (isEmptyEditableDate(draftRecord.endDate) ||
-      isValidEditableDate(draftRecord.endDate));
+  const canSavePersonalInfo = isPersonalInfoSavable(personalInfo);
+  const canSaveCareerInfo = isCareerRecordSavable(draftRecord);
+  // 5단계 저장 버튼이 비활성인 이유. 형식 오류는 입력란 아래에서 따로 알린다.
+  const saveHint =
+    editTarget === "personal"
+      ? getRequiredFieldsMessage(getMissingPersonalInfoFields(personalInfo))
+      : getRequiredFieldsMessage(getMissingCareerRecordFields(draftRecord)) ||
+        (isPartialEditableDate(draftRecord.endDate)
+          ? "근무 종료일은 모두 입력하거나, 재직 중이면 모두 비워 주세요."
+          : "");
   const canContinue =
     (currentStep === 0 && noticeAccepted) ||
     (currentStep === 1 &&
@@ -1610,6 +1613,9 @@ function CareerEdit({
             )}
             {currentStep === 4 && submissionError && (
               <FlowError role="alert">{submissionError}</FlowError>
+            )}
+            {currentStep === 4 && saveHint && (
+              <FormHint role="status">{saveHint}</FormHint>
             )}
             <ActionRow>
               <Button

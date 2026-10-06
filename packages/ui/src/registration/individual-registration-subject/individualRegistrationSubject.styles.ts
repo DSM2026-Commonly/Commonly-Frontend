@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { requiredLabelStyles } from "../../form/requiredFields.styles";
 
 export const IndividualRegistrationSubjectRoot = styled.section`
   display: flex;
@@ -11,6 +12,8 @@ export const IndividualRegistrationSubjectRoot = styled.section`
   color: var(--krds-light-color-text-basic, #1e2124);
   font-family:
     "Pretendard GOV", Pretendard, "Noto Sans KR", "Malgun Gothic", sans-serif;
+
+  ${requiredLabelStyles}
 
   @media (max-width: 767px) {
     width: calc(100% - 40px);

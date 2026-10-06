@@ -45,7 +45,12 @@ import {
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "../../career-certificate/CareerCertificateIssue.validation";
-import { findDuplicateCandidates } from "./IndividualRegistrationSubject.utils";
+import {
+  findDuplicateCandidates,
+  getMissingSubjectFields,
+} from "./IndividualRegistrationSubject.utils";
+import { FormHint, RequiredMark } from "../../form/requiredFields.styles";
+import { getRequiredFieldsMessage } from "../../form/requiredFields.utils";
 import { getEmptyPageRetryPage } from "../../pagination/pagination.utils";
 import Pagination, { type PagedResult } from "../../pagination/Pagination";
 import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
@@ -154,14 +159,21 @@ function IndividualRegistrationSubject({
   const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false);
   const [addressSearchError, setAddressSearchError] = useState("");
 
-  const hasRequiredInformation = useMemo(
+  const missingRequiredFields = useMemo(
     () =>
-      Boolean(name.trim()) &&
-      Boolean(gender) &&
-      isValidBirthDate(birthYear, birthMonth, birthDay) &&
-      Boolean(address),
+      getMissingSubjectFields({
+        name,
+        gender,
+        birthYear,
+        birthMonth,
+        birthDay,
+        address,
+      }),
     [address, birthDay, birthMonth, birthYear, gender, name],
   );
+  const hasRequiredInformation =
+    missingRequiredFields.length === 0 &&
+    isValidBirthDate(birthYear, birthMonth, birthDay);
   const subjectData = useMemo(
     () => ({
       name: name.trim(),
@@ -185,6 +197,10 @@ function IndividualRegistrationSubject({
     : localDuplicateCandidates;
   const canProceed =
     hasRequiredInformation && duplicateStatus === "available" && Boolean(onNext);
+  // 다음 버튼이 비활성인 이유. 형식 오류는 입력란 아래에서 따로 알린다.
+  const proceedHint =
+    getRequiredFieldsMessage(missingRequiredFields) ||
+    (duplicateStatus === "idle" ? "중복 확인을 완료해 주세요." : "");
   const isBirthMonthInvalid =
     birthMonth.length > 0 && !isValidBirthMonth(birthMonth);
   const maximumBirthDay = getDaysInBirthMonth(birthYear, birthMonth);
@@ -412,24 +428,34 @@ function IndividualRegistrationSubject({
                 size="large"
                 autoComplete="name"
                 placeholder="이름을 입력해주세요"
+                aria-required
                 value={name}
                 onChange={handleNameChange}
               />
 
               <RadioFieldset>
-                <legend>성별</legend>
+                <legend>
+                  성별
+                  <RequiredMark aria-hidden="true">*</RequiredMark>
+                </legend>
                 <RadioGroup
                   name={`${titleId}-gender`}
                   value={gender}
                   onChange={handleGenderChange}
                 >
-                  <Radio id={`${titleId}-gender-male`} value="male" size="medium">
+                  <Radio
+                    id={`${titleId}-gender-male`}
+                    value="male"
+                    size="medium"
+                    required
+                  >
                     남
                   </Radio>
                   <Radio
                     id={`${titleId}-gender-female`}
                     value="female"
                     size="medium"
+                    required
                   >
                     여
                   </Radio>
@@ -439,7 +465,9 @@ function IndividualRegistrationSubject({
 
             <div>
               <FieldLabel htmlFor={`${titleId}-birth-year`}>
-                생년월일 (숫자만 입력해주세요)
+                생년월일
+                <RequiredMark aria-hidden="true">*</RequiredMark>
+                {" (숫자만 입력해주세요)"}
               </FieldLabel>
               <BirthDateFields>
                 <Select
@@ -447,6 +475,7 @@ function IndividualRegistrationSubject({
                   size="large"
                   className={birthYear ? "completed" : undefined}
                   aria-label="출생 연도"
+                  aria-required
                   options={YEAR_OPTIONS}
                   value={birthYear}
                   onChange={handleBirthYearChange}
@@ -455,6 +484,7 @@ function IndividualRegistrationSubject({
                   id={`${titleId}-birth-month`}
                   size="large"
                   aria-label="출생 월"
+                  aria-required
                   aria-invalid={isBirthMonthInvalid}
                   error={
                     isBirthMonthInvalid
@@ -472,6 +502,7 @@ function IndividualRegistrationSubject({
                   id={`${titleId}-birth-day`}
                   size="large"
                   aria-label="출생 일"
+                  aria-required
                   aria-invalid={isBirthDayInvalid}
                   error={
                     isBirthDayInvalid
@@ -494,6 +525,7 @@ function IndividualRegistrationSubject({
                 label="주소지"
                 size="large"
                 placeholder="검색 버튼을 눌러주세요"
+                aria-required
                 value={address}
                 error={addressSearchError || undefined}
                 disabled
@@ -605,6 +637,8 @@ function IndividualRegistrationSubject({
             </DuplicateResultCard>
           )}
         </FormMainContent>
+
+        {proceedHint && <FormHint role="status">{proceedHint}</FormHint>}
 
         <ActionBar>
           <ButtonGroup>

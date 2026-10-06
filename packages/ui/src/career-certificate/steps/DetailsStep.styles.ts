@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { requiredLabelStyles } from "../../form/requiredFields.styles";
 
 export {
   CardStack,
@@ -70,6 +71,8 @@ export const ExtraFields = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 24px;
+
+  ${requiredLabelStyles}
 
   .form-group,
   .form-conts,

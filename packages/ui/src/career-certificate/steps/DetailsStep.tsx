@@ -16,6 +16,9 @@ import {
 } from "./DetailsStep.styles";
 import { MAX_ISSUE_CAREER_COUNT } from "../CareerCertificateIssue.constants";
 import { FlowError } from "../CareerCertificateIssue.styles";
+import { getMissingCertificateDetailsFields } from "../CareerCertificateIssue.validation";
+import { FormHint } from "../../form/requiredFields.styles";
+import { getRequiredFieldsMessage } from "../../form/requiredFields.utils";
 import type {
   CertificateCareerRow,
   CertificateIssueType,
@@ -86,6 +89,7 @@ function CertificateExtraFields({
         id={`${idPrefix}-purpose`}
         label="용도"
         placeholder="용도를 입력해주세요"
+        aria-required
         value={purpose}
         onChange={onPurposeChange}
       />
@@ -116,6 +120,10 @@ function DetailsStep({
   const isCivil = variant === "civil";
   const exceedsIssueLimit = careerRows.length > MAX_ISSUE_CAREER_COUNT;
   const isSelectionFull = selectedCareerIds.length >= MAX_ISSUE_CAREER_COUNT;
+  // 신청 버튼이 비활성인 이유 중 아직 입력하지 않은 필수 항목을 버튼 바로 위에서 알린다.
+  const requiredFieldsHint = getRequiredFieldsMessage(
+    getMissingCertificateDetailsFields(purpose),
+  );
 
   return (
     <CardStack>
@@ -271,6 +279,9 @@ function DetailsStep({
             onPurposeChange={onPurposeChange}
           />
         </FormCard>
+      )}
+      {requiredFieldsHint && (
+        <FormHint role="status">{requiredFieldsHint}</FormHint>
       )}
     </CardStack>
   );

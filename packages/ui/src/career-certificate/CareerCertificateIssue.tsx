@@ -21,6 +21,7 @@ import type {
   OwnCareerLoadStatus,
 } from "./CareerCertificateIssue.types";
 import {
+  getMissingCertificateDetailsFields,
   isCareerSelectionWithinLimit,
   isValidBirthDate,
   resolveIssuedIssueType,
@@ -166,18 +167,20 @@ function CareerCertificateIssue({
     selectedCareerIds.length,
   );
   // 발급 용도는 증명서에 기재되는 필수 항목이다.
+  const hasDetailsRequiredFields =
+    getMissingCertificateDetailsFields(purpose).length === 0;
   const canContinue =
     variant === "civil"
       ? // 민원인은 본인 목록을 못 불러오면(본인 발급 비활성 등) 서버가 본인 전체로 발급하므로
         // 용도만 채우면 신청할 수 있다. 목록이 있으면 담당자와 같은 10건 제한을 따른다.
-        purpose.trim().length > 0 &&
+        hasDetailsRequiredFields &&
         (careerRows.length === 0 || isSelectionWithinLimit)
       : (currentStep !== 0 || noticeAccepted) &&
         (currentStep !== 2 || Boolean(selectedPerson)) &&
         (currentStep !== 3 ||
           (careerRows.length > 0 &&
             isSelectionWithinLimit &&
-            purpose.trim().length > 0));
+            hasDetailsRequiredFields));
   const selectedApplicantName =
     applicants.find((applicant) => applicant.id === selectedPerson)?.name ??
     (restoredApplicantName || fixedApplicantName);
