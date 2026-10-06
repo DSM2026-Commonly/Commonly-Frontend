@@ -3,6 +3,7 @@ import {
   AUTH_TOKEN_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
   clearAuthToken,
+  getSafeRedirectPath,
   setAuthToken,
   type AuthStorage,
 } from "../auth";
@@ -82,5 +83,44 @@ describe("clearAuthToken", () => {
     setAuthToken("access", storage);
 
     expect(clearAuthToken(storage)).toBe(false);
+  });
+});
+
+// 로그인 후 redirectTo 로 돌아갈 때 외부로 튕기지 않게 막는 함수(오픈 리다이렉트 방어).
+describe("getSafeRedirectPath", () => {
+  test("keeps an in-app path with its query and hash", () => {
+    expect(getSafeRedirectPath("/career/issue")).toBe("/career/issue");
+    expect(getSafeRedirectPath("/history?page=2#top")).toBe("/history?page=2#top");
+  });
+
+  test("trims surrounding whitespace", () => {
+    expect(getSafeRedirectPath("  /career/edit  ")).toBe("/career/edit");
+  });
+
+  test.each([
+    ["absolute URL", "https://evil.example/phish"],
+    ["protocol-relative URL", "//evil.example/phish"],
+    ["backslash trick", "/\\evil.example"],
+    ["javascript scheme", "javascript:alert(1)"],
+    ["relative path without leading slash", "career/issue"],
+    ["control character", "/career\tissue"],
+  ])("falls back for %s", (_label, candidate) => {
+    expect(getSafeRedirectPath(candidate)).toBe("/");
+  });
+
+  test("does not send the user back to the login page (avoids a loop)", () => {
+    expect(getSafeRedirectPath("/login")).toBe("/");
+    expect(getSafeRedirectPath("/login?redirectTo=%2F")).toBe("/");
+  });
+
+  test("keeps encoded slashes as a same-origin path instead of a host", () => {
+    expect(getSafeRedirectPath("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
+  });
+
+  test("uses the fallback for empty input and honours a custom fallback", () => {
+    expect(getSafeRedirectPath(null)).toBe("/");
+    expect(getSafeRedirectPath(undefined)).toBe("/");
+    expect(getSafeRedirectPath("   ")).toBe("/");
+    expect(getSafeRedirectPath("https://evil.example", "/home")).toBe("/home");
   });
 });

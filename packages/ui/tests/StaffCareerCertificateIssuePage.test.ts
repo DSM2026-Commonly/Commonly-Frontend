@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { HumanCertificate } from "@commonly/utils";
 import type { CareerCertificateApplicationData } from "../src/career-certificate/CareerCertificateIssue.types";
 import { toIssueCertificateRequest } from "../src/pages/issueCertificateRequest";
-import { toCareerRow } from "../src/pages/StaffCareerCertificateIssuePage";
+import { toCareerRow } from "../src/pages/careerRow";
 
 const certificate: HumanCertificate = {
   certificateId: 1,

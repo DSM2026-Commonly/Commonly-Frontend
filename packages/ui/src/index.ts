@@ -130,8 +130,6 @@ export {
   default as InitialPasswordChangePage,
   INITIAL_PASSWORD_CHANGE_PATH,
 } from "./pages/InitialPasswordChangePage";
-export {
-  default as StaffCareerCertificateIssuePage,
-  toCareerRow,
-} from "./pages/StaffCareerCertificateIssuePage";
+export { default as StaffCareerCertificateIssuePage } from "./pages/StaffCareerCertificateIssuePage";
+export { toCareerRow } from "./pages/careerRow";
 export { default as StaffCareerEditPage } from "./pages/StaffCareerEditPage";
