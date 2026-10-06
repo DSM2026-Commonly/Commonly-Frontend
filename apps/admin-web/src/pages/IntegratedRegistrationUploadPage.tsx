@@ -1,6 +1,5 @@
 import { IntegratedRegistrationUpload } from "@commonly/ui";
 import {
-  clearRegistrationSession,
   getAuthToken,
   getRegistrationSession,
   getUploadErrorMessage,
@@ -8,7 +7,7 @@ import {
   uploadFile,
 } from "@commonly/utils";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 
 function IntegratedRegistrationUploadPage() {
   const navigate = useNavigate();
@@ -18,6 +17,14 @@ function IntegratedRegistrationUploadPage() {
   // 진행 중인 업로드 요청. 삭제/새 업로드/페이지 이탈 시 이전 요청을 무효화해
   // 늦게 완료된 요청이 새 등록 세션을 덮어쓰지 못하게 한다.
   const uploadControllerRef = useRef<AbortController | null>(null);
+
+  // 업로드 결과만 비운다. 유의사항 동의 플래그는 유지해야 같은 화면에 머무를 수 있다.
+  const resetUploadSession = () =>
+    updateRegistrationSession({
+      uploadedFile: undefined,
+      mappings: undefined,
+      result: undefined,
+    });
 
   const abortPendingUpload = () => {
     uploadControllerRef.current?.abort();
@@ -32,7 +39,7 @@ function IntegratedRegistrationUploadPage() {
     uploadControllerRef.current = controller;
 
     setErrorMessage("");
-    clearRegistrationSession();
+    resetUploadSession();
 
     try {
       const uploadedFile = await uploadFile(file, {
@@ -64,6 +71,10 @@ function IntegratedRegistrationUploadPage() {
     }
   };
 
+  if (!initialSession.noticeAgreed) {
+    return <Navigate to="/career/register/bulk" replace />;
+  }
+
   return (
     <IntegratedRegistrationUpload
       errorMessage={errorMessage}
@@ -81,7 +92,7 @@ function IntegratedRegistrationUploadPage() {
         );
 
         if (!hasRemainingUpload) {
-          clearRegistrationSession();
+          resetUploadSession();
         }
       }}
       onPrevious={() => void navigate("/career/register/bulk")}

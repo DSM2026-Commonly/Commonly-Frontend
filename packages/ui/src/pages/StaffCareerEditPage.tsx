@@ -1,8 +1,9 @@
 import {
+  assertHumanDeletable,
   deleteHuman,
   fetchHumanCertificates,
   getAuthToken,
-  searchHumans,
+  searchHumansPaged,
   updateCertificate,
   updateHuman,
   type HumanCertificate,
@@ -64,32 +65,38 @@ function StaffCareerEditPage() {
   const handleSearch = async (query: {
     name: string;
     birthDate: string;
-  }): Promise<readonly CareerEditApplicant[]> => {
-    const humans = await searchHumans(
+    page: number;
+  }): Promise<{ items: CareerEditApplicant[]; totalPages: number }> => {
+    // 화면과 서버 모두 페이지를 1부터 센다.
+    const result = await searchHumansPaged(
       {
         name: query.name,
         birthDateFrom: query.birthDate,
         birthDateTo: query.birthDate,
       },
+      { page: query.page },
       { token: getAuthToken() },
     );
 
     humanDepartmentsRef.current = new Map(
-      humans.map((human) => [String(human.humanId), human.department]),
+      result.items.map((human) => [String(human.humanId), human.department]),
     );
 
-    return humans.map((human) => ({
-      id: String(human.humanId),
-      name: human.name,
-      birthDate: human.birthDate,
-      address: human.address,
-      gender:
-        human.gender === "M"
-          ? ("male" as const)
-          : human.gender === "F"
-            ? ("female" as const)
-            : undefined,
-    }));
+    return {
+      items: result.items.map((human) => ({
+        id: String(human.humanId),
+        name: human.name,
+        birthDate: human.birthDate,
+        address: human.address,
+        gender:
+          human.gender === "M"
+            ? ("male" as const)
+            : human.gender === "F"
+              ? ("female" as const)
+              : undefined,
+      })),
+      totalPages: result.totalPages,
+    };
   };
 
   const handleLoadCareerRecords = async (
@@ -131,7 +138,11 @@ function StaffCareerEditPage() {
       throw new Error("대상자 정보가 올바르지 않습니다. 다시 조회해 주세요.");
     }
 
-    await deleteHuman(humanId, { token: getAuthToken() });
+    const token = getAuthToken();
+
+    // 경력이 있는 대상자를 지우면 백엔드가 500 을 내거나 발급 기록이 업무 이력에서 사라진다.
+    await assertHumanDeletable(humanId, { token });
+    await deleteHuman(humanId, { token });
     humanDepartmentsRef.current.delete(applicantId);
   };
 

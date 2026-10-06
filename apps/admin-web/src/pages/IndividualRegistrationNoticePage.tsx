@@ -16,7 +16,9 @@ function IndividualRegistrationNoticePage() {
       title="경력사항 개별 등록"
       steps={individualRegistrationSteps}
       onPrevious={() => void navigate("/career/register")}
-      onNext={() => void navigate("/career/register/individual/subject")}
+      onNext={() => void navigate("/career/register/individual/subject", {
+          state: { noticeAgreed: true },
+        })}
     />
   );
 }

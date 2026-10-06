@@ -1,4 +1,10 @@
-import { hasValidAuthToken } from "./authSession";
+import {
+  clearRefreshToken,
+  getAuthToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "./auth";
+import { decodeJwtPayload } from "./authSession";
 
 const DEFAULT_API_BASE_URL = "";
 
@@ -55,9 +61,21 @@ export const UNAUTHORIZED_EVENT = "commonly:unauthorized";
  * 레이아웃이 받아 비밀번호 변경 화면으로 보낸다.
  */
 export const PASSWORD_CHANGE_REQUIRED_EVENT = "commonly:password-change-required";
-/** 백엔드 InitialPasswordFilter 가 내려주는 메시지. 에러 코드가 없어 이 문구로 구분한다. */
+/** 백엔드 InitialPasswordFilter 가 내려주는 메시지. 화면 안내에 쓴다(판정은 code 로 한다). */
 export const INITIAL_PASSWORD_NOT_CHANGED_MESSAGE =
   "초기 비밀번호를 변경한 후 이용할 수 있습니다.";
+export const INITIAL_PASSWORD_NOT_CHANGED_CODE = "INITIAL_PASSWORD_NOT_CHANGED";
+
+/**
+ * 토큰 자체가 문제인 401 의 code. 이때만 세션이 끝난 것으로 본다.
+ * 비밀번호 불일치(PASSWORD_MISMATCH)처럼 토큰은 멀쩡한 401 도 있기 때문이다.
+ */
+const SESSION_ENDED_CODES = new Set([
+  "UNAUTHORIZED",
+  "EXPIRED_TOKEN",
+  "INVALID_TOKEN",
+]);
+export const EXPIRED_TOKEN_CODE = "EXPIRED_TOKEN";
 
 function dispatchWindowEvent(name: string): void {
   if (typeof window === "undefined" || typeof CustomEvent === "undefined") {
@@ -68,44 +86,48 @@ function dispatchWindowEvent(name: string): void {
 }
 
 /**
- * 백엔드는 권한이 없는 요청에도 403 이 아니라 401 을 준다(민원인 토큰으로 담당자용 API 호출 등).
- * 저장된 토큰이 아직 유효하면 세션 만료가 아니므로 로그아웃시키지 않는다.
- * 그렇지 않으면 권한 밖 API 한 번에 로그인 화면으로 튕기고, 로그인 → 같은 API 재호출 → 401 로
- * 다시 튕기는 루프에 갇힌다.
+ * 401 이 세션 종료(로그인 화면으로 보낼 상황)인지.
+ * 백엔드는 권한 부족을 403 으로, 미인증·만료·위조 토큰을 401 + code 로 구분해 준다.
+ * 토큰 형식이 바뀐 배포 직후처럼 만료 시각이 남은 토큰도 무효일 수 있으므로 토큰 만료 시각은 보지 않는다.
+ * 비밀번호 불일치(PASSWORD_MISMATCH)처럼 토큰과 무관한 401 만 세션을 유지한다.
  */
-function notifyUnauthorized(): void {
-  if (hasValidAuthToken()) {
-    return;
-  }
-
-  dispatchWindowEvent(UNAUTHORIZED_EVENT);
+export function isSessionEndedError(
+  status: number,
+  body: ApiErrorBody,
+): boolean {
+  return status === 401 && (!body.code || SESSION_ENDED_CODES.has(body.code));
 }
 
 export function isInitialPasswordNotChangedError(
   status: number,
   body: ApiErrorBody,
 ): boolean {
-  return (
-    status === 403 &&
-    (body.message?.trim() ?? "") === INITIAL_PASSWORD_NOT_CHANGED_MESSAGE
-  );
+  return status === 403 && body.code === INITIAL_PASSWORD_NOT_CHANGED_CODE;
 }
 
 /**
- * 목록 응답을 `{content, totalCount, <totalPagesKey>}` 로 정규화한다.
- * 백엔드가 배열만 내려주는 경우(현재 /api/admins, /api/issuance-histories)도 받는다.
+ * 목록 응답을 `{content, totalCount, totalPages, hasNext}` 로 정규화한다.
+ * 백엔드 `PageResponse` 는 `{content, page, size, totalElements, totalPages, hasNext}`(page 는 1부터)다.
+ * 예전 배포본처럼 배열만 내려주거나, 명세의 `totalCount`·`totalPage` 이름으로 오는 경우도 받는다.
  */
 export function normalizePageEnvelope(
   response: unknown,
   invalidMessage: string,
   totalPagesKey: "totalPages" | "totalPage" = "totalPages",
-): { content: unknown[]; totalCount: unknown; totalPages: unknown; totalPage: unknown } {
+): {
+  content: unknown[];
+  totalCount: unknown;
+  totalPages: unknown;
+  totalPage: unknown;
+  hasNext: unknown;
+} {
   if (Array.isArray(response)) {
     return {
       content: response,
       totalCount: undefined,
       totalPages: undefined,
       totalPage: undefined,
+      hasNext: undefined,
     };
   }
 
@@ -119,11 +141,16 @@ export function normalizePageEnvelope(
     throw new ApiError(200, invalidMessage);
   }
 
+  // 키 이름이 엔드포인트·버전마다 달라 둘 다 본다(PageResponse 는 totalElements·totalPages).
+  const totalPages =
+    record[totalPagesKey] ?? record.totalPages ?? record.totalPage;
+
   return {
     content: record.content,
-    totalCount: record.totalCount,
-    totalPages: record[totalPagesKey],
-    totalPage: record[totalPagesKey],
+    totalCount: record.totalCount ?? record.totalElements,
+    totalPages,
+    totalPage: totalPages,
+    hasNext: record.hasNext,
   };
 }
 
@@ -140,10 +167,11 @@ export interface RequestOptions {
 async function throwErrorResponse(
   response: Response,
   errorMessages: ErrorMessageMap,
+  { notifySession = true }: { notifySession?: boolean } = {},
 ): Promise<never> {
   const errorBody = await parseErrorBody(response);
-  // 백엔드 에러 본문은 {status, timestamp, message} 형식이라 code 는 오지 않는다.
-  // 검증 실패만 {status, timestamp, error: {필드: 문구}} 로 message 없이 온다. 이때는
+  // 백엔드 에러 본문은 {code, status, timestamp, message} 형식이다.
+  // 검증 실패만 {code, status, timestamp, error: {필드: 문구}} 로 message 없이 온다. 이때는
   // 상태코드 매핑("입력값이 올바르지 않습니다")보다 어느 칸이 왜 틀렸는지 짚어주는
   // 백엔드 문구가 정확하므로 먼저 쓴다.
   const message =
@@ -153,9 +181,12 @@ async function throwErrorResponse(
     (errorBody.message?.trim() || undefined) ??
     SERVER_ERROR_MESSAGE;
 
-  if (response.status === 401) {
-    notifyUnauthorized();
-  } else if (isInitialPasswordNotChangedError(response.status, errorBody)) {
+  if (notifySession && isSessionEndedError(response.status, errorBody)) {
+    dispatchWindowEvent(UNAUTHORIZED_EVENT);
+  } else if (
+    notifySession &&
+    isInitialPasswordNotChangedError(response.status, errorBody)
+  ) {
     dispatchWindowEvent(PASSWORD_CHANGE_REQUIRED_EVENT);
   }
 
@@ -228,6 +259,159 @@ function formatFieldErrors(
     .join(" ");
 }
 
+export const REISSUE_ENDPOINT = "/api/auths/reissue";
+export const SESSION_EXTEND_FAILED_MESSAGE =
+  "로그인 시간을 연장할 수 없습니다. 다시 로그인해 주세요.";
+
+let pendingReissue: Promise<string> | null = null;
+
+function readTokenField(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+async function performReissue(): Promise<string> {
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken) {
+    throw new ApiError(401, SESSION_EXTEND_FAILED_MESSAGE);
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${REISSUE_ENDPOINT}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    throw new ApiError(0, NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!response.ok) {
+    // 이미 쓴(회전된) 토큰이나 만료된 토큰은 다시 써도 실패하므로 지운다.
+    if (response.status === 401 || response.status === 404) {
+      clearRefreshToken(refreshToken);
+    }
+
+    // 연장 실패는 화면에서 안내한다. 액세스 토큰은 아직 유효할 수 있어 세션을 끝내지 않는다.
+    await throwErrorResponse(
+      response,
+      {
+        401: SESSION_EXTEND_FAILED_MESSAGE,
+        404: SESSION_EXTEND_FAILED_MESSAGE,
+      },
+      { notifySession: false },
+    );
+  }
+
+  const body = (await response.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  const accessToken = readTokenField(body?.accessToken);
+  const nextRefreshToken = readTokenField(body?.refreshToken);
+
+  if (!accessToken) {
+    throw new ApiError(200, SESSION_EXTEND_FAILED_MESSAGE);
+  }
+
+  // 응답을 기다리는 사이 로그아웃했거나 다른 계정으로 로그인했으면 받은 토큰을 저장하지 않는다.
+  // 저장하면 로그아웃이 풀리거나 다른 계정의 세션을 덮어쓴다.
+  if (getRefreshToken() !== refreshToken) {
+    throw new ApiError(401, SESSION_EXTEND_FAILED_MESSAGE);
+  }
+
+  setAuthTokens({ accessToken, refreshToken: nextRefreshToken });
+
+  return accessToken;
+}
+
+/**
+ * 리프레시 토큰으로 새 액세스 토큰을 받아 저장하고 돌려준다.
+ * 리프레시 토큰은 한 번 쓰면 폐기(회전)되므로, 동시에 여러 번 불려도 요청은 하나만 보낸다.
+ */
+export function reissueAuthToken(): Promise<string> {
+  pendingReissue ??= performReissue().finally(() => {
+    pendingReissue = null;
+  });
+
+  return pendingReissue;
+}
+
+function getTokenSubject(token: string): string | null {
+  const subject = decodeJwtPayload(token)?.sub;
+
+  return typeof subject === "string" && subject ? subject : null;
+}
+
+/** 두 토큰이 같은 계정의 것인지. 계정을 읽을 수 없으면 다른 계정으로 본다. */
+function isSameAccountToken(left: string, right: string): boolean {
+  const subject = getTokenSubject(left);
+
+  return subject !== null && subject === getTokenSubject(right);
+}
+
+async function isExpiredTokenResponse(response: Response): Promise<boolean> {
+  if (response.status !== 401) {
+    return false;
+  }
+
+  const body = await parseErrorBody(response.clone());
+
+  return body.code === EXPIRED_TOKEN_CODE;
+}
+
+/**
+ * 서버에서 액세스 토큰이 만료돼 401 이 오면(시계 차이 등) 한 번만 새 토큰으로 다시 보낸다.
+ * 다른 탭이 같은 계정으로 이미 새 토큰을 저장했으면 그것을 쓰고, 아니면 재발급한다.
+ * 그 사이 로그아웃했거나 다른 계정으로 바뀌었으면 다시 보내지 않는다(다른 계정 권한으로 요청이 나가지 않게).
+ * 재발급할 수 없으면 처음 응답을 그대로 돌려줘 평소처럼 세션 종료로 처리된다.
+ */
+async function sendWithTokenRetry(
+  token: string | null | undefined,
+  send: (token: string | null | undefined) => Promise<Response>,
+): Promise<{ response: Response; token: string | null | undefined }> {
+  const response = await send(token);
+
+  if (!token || !(await isExpiredTokenResponse(response))) {
+    return { response, token };
+  }
+
+  const storedToken = getAuthToken();
+
+  if (storedToken !== token) {
+    return storedToken && isSameAccountToken(storedToken, token)
+      ? { response: await send(storedToken), token: storedToken }
+      : { response, token };
+  }
+
+  let reissuedToken: string;
+
+  try {
+    reissuedToken = await reissueAuthToken();
+  } catch {
+    return { response, token };
+  }
+
+  return isSameAccountToken(reissuedToken, token)
+    ? { response: await send(reissuedToken), token: reissuedToken }
+    : { response, token };
+}
+
+/**
+ * 실패한 요청이 지금 세션의 것인지. 로그아웃 뒤 다른 계정으로 로그인한 상태에서
+ * 이전 계정의 요청이 401 을 받아도 지금 세션을 끝내지 않는다.
+ */
+function isCurrentSessionRequest(token: string | null | undefined): boolean {
+  const storedToken = getAuthToken();
+
+  return !token || !storedToken || storedToken === token;
+}
+
 export async function request<TResponse>(
   path: string,
   {
@@ -247,24 +431,24 @@ export async function request<TResponse>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  let response: Response;
+  let result: Awaited<ReturnType<typeof sendWithTokenRetry>>;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}${path}`, {
-      method,
-      headers,
-      body:
-        body === undefined
-          ? undefined
-          : isFormData
-            ? (body as FormData)
-            : JSON.stringify(body),
-      signal,
-    });
+    result = await sendWithTokenRetry(token, (requestToken) =>
+      fetch(`${getApiBaseUrl()}${path}`, {
+        method,
+        headers: requestToken
+          ? { ...headers, Authorization: `Bearer ${requestToken}` }
+          : headers,
+        body:
+          body === undefined
+            ? undefined
+            : isFormData
+              ? (body as FormData)
+              : JSON.stringify(body),
+        signal,
+      }),
+    );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;
@@ -273,8 +457,12 @@ export async function request<TResponse>(
     throw new ApiError(0, NETWORK_ERROR_MESSAGE);
   }
 
+  const { response } = result;
+
   if (!response.ok) {
-    await throwErrorResponse(response, errorMessages);
+    await throwErrorResponse(response, errorMessages, {
+      notifySession: isCurrentSessionRequest(result.token),
+    });
   }
 
   if (response.status === 204) {
@@ -296,6 +484,9 @@ export async function request<TResponse>(
 }
 
 export interface BlobRequestOptions {
+  /** 미리보기처럼 본문을 보내 PDF 를 받는 요청은 POST 로 부른다. */
+  method?: "GET" | "POST";
+  body?: unknown;
   token?: string | null;
   signal?: AbortSignal;
   errorMessages?: ErrorMessageMap;
@@ -303,18 +494,33 @@ export interface BlobRequestOptions {
 
 export async function requestBlob(
   path: string,
-  { token, signal, errorMessages = {} }: BlobRequestOptions = {},
+  {
+    method = "GET",
+    body,
+    token,
+    signal,
+    errorMessages = {},
+  }: BlobRequestOptions = {},
 ): Promise<Blob> {
   const headers: Record<string, string> = {};
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
   }
 
-  let response: Response;
+  let result: Awaited<ReturnType<typeof sendWithTokenRetry>>;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}${path}`, { headers, signal });
+    result = await sendWithTokenRetry(token, (requestToken) =>
+      fetch(`${getApiBaseUrl()}${path}`, {
+        method,
+        headers: requestToken
+          ? { ...headers, Authorization: `Bearer ${requestToken}` }
+          : headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal,
+      }),
+    );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;
@@ -323,8 +529,12 @@ export async function requestBlob(
     throw new ApiError(0, NETWORK_ERROR_MESSAGE);
   }
 
+  const { response } = result;
+
   if (!response.ok) {
-    await throwErrorResponse(response, errorMessages);
+    await throwErrorResponse(response, errorMessages, {
+      notifySession: isCurrentSessionRequest(result.token),
+    });
   }
 
   return response.blob();

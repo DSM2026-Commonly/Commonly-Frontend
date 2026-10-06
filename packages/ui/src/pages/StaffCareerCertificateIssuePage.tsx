@@ -6,14 +6,15 @@ import {
   getAuthToken,
   getIssuedCertificateSession,
   issueCertificate,
+  previewCertificate,
   saveBlobAsFile,
-  searchHumans,
+  searchHumansPaged,
   setIssuedCertificateSession,
-  type HumanCertificate,
 } from "@commonly/utils";
 import { useRef } from "react";
 import { useNavigate } from "react-router";
 import CareerCertificateIssue from "../career-certificate/CareerCertificateIssue";
+import { toCareerRow } from "./careerRow";
 import type {
   CareerCertificateApplicationData,
   CertificateApplicant,
@@ -21,24 +22,12 @@ import type {
   IssuedCertificateSummary,
   RestoredIssuedCertificate,
 } from "../career-certificate/CareerCertificateIssue.types";
+import { toIssueCertificateRequest } from "./issueCertificateRequest";
 
 interface IssuedCertificateRef {
   certificateId: number;
   documentNo: string;
   humanName: string;
-}
-
-/**
- * 경력 목록 응답 한 줄을 미리보기 표의 한 행으로 바꾼다.
- * 근무부서는 `department` 다. `division` 은 구분(채용/전보/해지/퇴직)이라 이 칸에 넣으면 안 된다.
- */
-export function toCareerRow(certificate: HumanCertificate): CertificateCareerRow {
-  return {
-    id: String(certificate.certificateId),
-    job: certificate.keyResponsibilities,
-    department: certificate.department,
-    period: `${certificate.hireDate} ~ ${certificate.retirementDate || certificate.expirationDate}`,
-  };
 }
 
 /** admin-web/user-web 이 공유하는 직원용 경력증명서 발급 페이지. */
@@ -51,25 +40,32 @@ function StaffCareerCertificateIssuePage() {
   const handleSearchApplicants = async ({
     name,
     birthDate,
+    page,
   }: {
     name: string;
     birthDate: string;
-  }): Promise<readonly CertificateApplicant[]> => {
-    const humans = await searchHumans(
+    page: number;
+  }): Promise<{ items: CertificateApplicant[]; totalPages: number }> => {
+    // 화면과 서버 모두 페이지를 1부터 센다.
+    const result = await searchHumansPaged(
       { name, birthDateFrom: birthDate, birthDateTo: birthDate },
+      { page: page },
       { token: getAuthToken() },
     );
 
     humanNamesRef.current = new Map(
-      humans.map((human) => [String(human.humanId), human.name]),
+      result.items.map((human) => [String(human.humanId), human.name]),
     );
 
-    return humans.map((human) => ({
-      id: String(human.humanId),
-      name: human.name,
-      birthDate: human.birthDate,
-      address: human.address,
-    }));
+    return {
+      items: result.items.map((human) => ({
+        id: String(human.humanId),
+        name: human.name,
+        birthDate: human.birthDate,
+        address: human.address,
+      })),
+      totalPages: result.totalPages,
+    };
   };
 
   const handleLoadCareerRows = async (
@@ -92,32 +88,17 @@ function StaffCareerCertificateIssuePage() {
     return certificates.map(toCareerRow);
   };
 
+  const handlePreview = async (data: CareerCertificateApplicationData) =>
+    previewCertificate(toIssueCertificateRequest(data), {
+      token: getAuthToken(),
+    });
+
   const handleComplete = async (
     data: CareerCertificateApplicationData,
   ): Promise<IssuedCertificateSummary> => {
-    const humanId = Number(data.applicantId);
-    const certificateIds = data.selectedCareerIds.map(Number);
-
-    if (
-      !Number.isInteger(humanId) ||
-      humanId <= 0 ||
-      certificateIds.length === 0 ||
-      certificateIds.some((id) => !Number.isInteger(id) || id <= 0)
-    ) {
-      throw new Error(
-        "발급 대상 정보가 올바르지 않습니다. 대상자를 다시 조회해 주세요.",
-      );
-    }
-
-    const issued = await issueCertificate(
-      {
-        humanId,
-        certificateIds,
-        purpose: data.purpose,
-        otherMatters: data.additionalNote,
-      },
-      { token: getAuthToken() },
-    );
+    const issued = await issueCertificate(toIssueCertificateRequest(data), {
+      token: getAuthToken(),
+    });
 
     issuedRef.current = {
       certificateId: issued.certificateId,
@@ -198,6 +179,7 @@ function StaffCareerCertificateIssuePage() {
       onCancel={() => void navigate("/")}
       onSearchApplicants={handleSearchApplicants}
       onLoadCareerRows={handleLoadCareerRows}
+      onPreview={handlePreview}
       onComplete={handleComplete}
       onDownload={handleDownload}
       onRestoreIssued={handleRestoreIssued}

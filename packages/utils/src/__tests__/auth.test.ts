@@ -3,7 +3,10 @@ import {
   AUTH_TOKEN_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
   clearAuthToken,
+  getRefreshToken,
+  getSafeRedirectPath,
   setAuthToken,
+  setAuthTokens,
   type AuthStorage,
 } from "../auth";
 
@@ -55,17 +58,47 @@ describe("setAuthToken", () => {
   });
 });
 
-describe("clearAuthToken", () => {
-  test("removes the access token and any legacy refresh token", () => {
+describe("setAuthTokens", () => {
+  test("stores the access and refresh tokens", () => {
     const { storage, data } = createStorage();
-    setAuthToken("access", storage);
-    data.set(REFRESH_TOKEN_STORAGE_KEY, "legacy-refresh");
+
+    expect(
+      setAuthTokens({ accessToken: " access ", refreshToken: " refresh " }, storage),
+    ).toBe(true);
+    expect(data.get(AUTH_TOKEN_STORAGE_KEY)).toBe("access");
+    expect(getRefreshToken(storage)).toBe("refresh");
+  });
+
+  test("drops a stale refresh token when the response has none", () => {
+    const { storage, data } = createStorage();
+    data.set(REFRESH_TOKEN_STORAGE_KEY, "stale-refresh");
+
+    setAuthTokens({ accessToken: "access", refreshToken: null }, storage);
+
+    expect(getRefreshToken(storage)).toBeNull();
+  });
+
+  test("fails when the access token cannot be stored", () => {
+    const { storage } = createStorage({
+      failSetKeys: [AUTH_TOKEN_STORAGE_KEY],
+    });
+
+    expect(
+      setAuthTokens({ accessToken: "access", refreshToken: "refresh" }, storage),
+    ).toBe(false);
+  });
+});
+
+describe("clearAuthToken", () => {
+  test("removes the access token and the refresh token", () => {
+    const { storage, data } = createStorage();
+    setAuthTokens({ accessToken: "access", refreshToken: "refresh" }, storage);
 
     expect(clearAuthToken(storage)).toBe(true);
     expect(data.size).toBe(0);
   });
 
-  test("legacy refresh cleanup is best-effort and does not fail the logout", () => {
+  test("refresh token cleanup is best-effort and does not fail the logout", () => {
     const { storage, data } = createStorage({
       failRemoveKeys: [REFRESH_TOKEN_STORAGE_KEY],
     });
@@ -82,5 +115,44 @@ describe("clearAuthToken", () => {
     setAuthToken("access", storage);
 
     expect(clearAuthToken(storage)).toBe(false);
+  });
+});
+
+// 로그인 후 redirectTo 로 돌아갈 때 외부로 튕기지 않게 막는 함수(오픈 리다이렉트 방어).
+describe("getSafeRedirectPath", () => {
+  test("keeps an in-app path with its query and hash", () => {
+    expect(getSafeRedirectPath("/career/issue")).toBe("/career/issue");
+    expect(getSafeRedirectPath("/history?page=2#top")).toBe("/history?page=2#top");
+  });
+
+  test("trims surrounding whitespace", () => {
+    expect(getSafeRedirectPath("  /career/edit  ")).toBe("/career/edit");
+  });
+
+  test.each([
+    ["absolute URL", "https://evil.example/phish"],
+    ["protocol-relative URL", "//evil.example/phish"],
+    ["backslash trick", "/\\evil.example"],
+    ["javascript scheme", "javascript:alert(1)"],
+    ["relative path without leading slash", "career/issue"],
+    ["control character", "/career\tissue"],
+  ])("falls back for %s", (_label, candidate) => {
+    expect(getSafeRedirectPath(candidate)).toBe("/");
+  });
+
+  test("does not send the user back to the login page (avoids a loop)", () => {
+    expect(getSafeRedirectPath("/login")).toBe("/");
+    expect(getSafeRedirectPath("/login?redirectTo=%2F")).toBe("/");
+  });
+
+  test("keeps encoded slashes as a same-origin path instead of a host", () => {
+    expect(getSafeRedirectPath("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
+  });
+
+  test("uses the fallback for empty input and honours a custom fallback", () => {
+    expect(getSafeRedirectPath(null)).toBe("/");
+    expect(getSafeRedirectPath(undefined)).toBe("/");
+    expect(getSafeRedirectPath("   ")).toBe("/");
+    expect(getSafeRedirectPath("https://evil.example", "/home")).toBe("/home");
   });
 });

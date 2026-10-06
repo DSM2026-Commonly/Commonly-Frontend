@@ -4,7 +4,7 @@ import {
   PASSWORD_FORMAT_MESSAGE,
   isValidAccountId,
   isValidPassword,
-  setAuthToken,
+  setAuthTokens,
   signup,
 } from "@commonly/utils";
 import styled from "@emotion/styled";
@@ -385,7 +385,7 @@ function SignupFormPage() {
     setIsSubmitting(true);
 
     try {
-      const { accessToken } = await signup({
+      const { accessToken, refreshToken } = await signup({
         accountId: formValues.loginId,
         password: formValues.password,
         name: formValues.name.trim(),
@@ -393,7 +393,7 @@ function SignupFormPage() {
         birthDate: toApiBirthDate(formValues.birthDate),
       });
 
-      if (!setAuthToken(accessToken)) {
+      if (!setAuthTokens({ accessToken, refreshToken })) {
         setSubmissionError(
           "브라우저 저장소를 사용할 수 없어 회원가입을 완료할 수 없습니다.",
         );

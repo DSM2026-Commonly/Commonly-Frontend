@@ -94,6 +94,23 @@ describe("fetchAdminUsers", () => {
     });
   });
 
+  test("reads the backend PageResponse meta (totalElements, totalPages, hasNext)", async () => {
+    mockFetch(200, {
+      content: [{ userId: 1 }],
+      page: 1,
+      size: 10,
+      totalElements: 12,
+      totalPages: 2,
+      hasNext: true,
+    });
+    expect(await fetchAdminUsers()).toEqual({
+      content: [{ userId: 1, accountId: "", name: "", department: "" }],
+      totalCount: 12,
+      totalPages: 2,
+      hasNextPage: true,
+    });
+  });
+
   test("missing totals fall back", async () => {
     mockFetch(200, { content: [{ userId: 1 }] });
     expect(await fetchAdminUsers()).toEqual({

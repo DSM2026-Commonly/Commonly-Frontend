@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { requiredLabelStyles } from "../../form/requiredFields.styles";
 
 export {
   CardStack,
@@ -34,6 +35,13 @@ export const SelectionCount = styled.p`
   }
 `;
 
+export const SelectionLimitNotice = styled.p`
+  margin: 8px 0 0;
+  color: var(--career-color-text-subtle);
+  font-size: 15px;
+  line-height: 1.5;
+`;
+
 export const SelectAllButton = styled.button`
   min-height: 24px;
   padding: 0 2px;
@@ -63,6 +71,8 @@ export const ExtraFields = styled.div`
   flex-direction: column;
   gap: 16px;
   margin-top: 24px;
+
+  ${requiredLabelStyles}
 
   .form-group,
   .form-conts,

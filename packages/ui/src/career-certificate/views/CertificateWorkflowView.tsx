@@ -56,7 +56,12 @@ function CertificateWorkflowView({
         </StageHeader>
         <StageContent>{children}</StageContent>
         <ActionRow>
-          <Button variant="tertiary" size="xlarge" onClick={onPrevious}>
+          <Button
+            variant="tertiary"
+            size="xlarge"
+            disabled={nextPending}
+            onClick={onPrevious}
+          >
             이전으로
           </Button>
           <Button

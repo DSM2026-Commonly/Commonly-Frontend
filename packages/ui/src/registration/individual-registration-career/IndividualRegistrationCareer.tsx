@@ -11,10 +11,11 @@ import {
 import { YEAR_OPTIONS } from "../../career-certificate/CareerCertificateIssue.constants";
 import {
   getDaysInBirthMonth,
-  isValidBirthDate,
   isValidBirthDay,
   isValidBirthMonth,
 } from "../../career-certificate/CareerCertificateIssue.validation";
+import { FormHint, RequiredMark } from "../../form/requiredFields.styles";
+import { getRequiredFieldsMessage } from "../../form/requiredFields.utils";
 import {
   ActionBar,
   ButtonGroup,
@@ -36,7 +37,11 @@ import {
   DateFields,
   FieldGroup,
 } from "./individualRegistrationCareer.styles";
-import { isValidCareerDateRange } from "./IndividualRegistrationCareer.validation";
+import {
+  canSubmitCareer,
+  getMissingCareerFields,
+  isCareerDateRangeReversed,
+} from "./IndividualRegistrationCareer.validation";
 import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 
 export interface IndividualRegistrationCareerStep {
@@ -134,25 +139,13 @@ function IndividualRegistrationCareer({
   const isEndDayInvalid =
     career.endDay.length > 0 &&
     !isValidBirthDay(career.endYear, career.endMonth, career.endDay);
-  const canSubmit =
-    Boolean(career.jobTitle.trim()) &&
-    Boolean(career.duties.trim()) &&
-    Boolean(career.department.trim()) &&
-    isValidBirthDate(
-      career.startYear,
-      career.startMonth,
-      career.startDay,
-    ) &&
-    isValidBirthDate(career.endYear, career.endMonth, career.endDay) &&
-    isValidCareerDateRange(
-      career.startYear,
-      career.startMonth,
-      career.startDay,
-      career.endYear,
-      career.endMonth,
-      career.endDay,
-    ) &&
-    Boolean(career.resignationReason.trim());
+  const canSubmit = canSubmitCareer(career);
+  // 등록 버튼이 비활성인 이유. 형식 오류는 입력란 아래에서 따로 알린다.
+  const submitHint =
+    getRequiredFieldsMessage(getMissingCareerFields(career)) ||
+    (isCareerDateRangeReversed(career)
+      ? "근무 종료일은 근무 시작일과 같거나 이후여야 합니다."
+      : "");
 
   const updateField = <Key extends keyof IndividualRegistrationCareerData>(
     field: Key,
@@ -242,7 +235,10 @@ function IndividualRegistrationCareer({
                     />
 
                     <div>
-                      <label htmlFor={`${titleId}-start-year`}>근무 시작일</label>
+                      <label htmlFor={`${titleId}-start-year`}>
+                        근무 시작일
+                        <RequiredMark aria-hidden="true">*</RequiredMark>
+                      </label>
                       <DateFields>
                         <Select
                           id={`${titleId}-start-year`}
@@ -292,7 +288,10 @@ function IndividualRegistrationCareer({
                     </div>
 
                     <div>
-                      <label htmlFor={`${titleId}-end-year`}>근무 종료일</label>
+                      <label htmlFor={`${titleId}-end-year`}>
+                        근무 종료일
+                        <RequiredMark aria-hidden="true">*</RequiredMark>
+                      </label>
                       <DateFields>
                         <Select
                           id={`${titleId}-end-year`}
@@ -371,6 +370,7 @@ function IndividualRegistrationCareer({
           </CareerCard>
 
           {errorMessage && <FormError role="alert">{errorMessage}</FormError>}
+          {submitHint && <FormHint role="status">{submitHint}</FormHint>}
 
           <ActionBar>
             <ButtonGroup>

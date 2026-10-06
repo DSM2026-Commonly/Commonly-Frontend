@@ -2,6 +2,7 @@ import { Button, Radio, Select, Table, TextInput } from "krds-react";
 import { YEAR_OPTIONS } from "../CareerCertificateIssue.constants";
 import { FlowError } from "../CareerCertificateIssue.styles";
 import type { CertificateApplicant } from "../CareerCertificateIssue.types";
+import Pagination from "../../pagination/Pagination";
 import {
   getDaysInBirthMonth,
   isValidBirthDay,
@@ -27,7 +28,11 @@ interface ApplicantStepProps {
   canSearch: boolean;
   hasSearchResult: boolean;
   applicants: readonly CertificateApplicant[];
+  /** 현재 페이지(1부터 시작). */
+  applicantsPage: number;
+  applicantsTotalPages: number;
   isSearching?: boolean;
+  isLoadingCareerRows?: boolean;
   searchError?: string;
   selectedPerson: string;
   onApplicantNameChange: (value: string) => void;
@@ -35,6 +40,7 @@ interface ApplicantStepProps {
   onBirthMonthChange: (value: string) => void;
   onBirthDayChange: (value: string) => void;
   onSearch: () => void;
+  onApplicantsPageChange: (page: number) => void;
   onSelectedPersonChange: (personId: string) => void;
 }
 
@@ -46,7 +52,10 @@ function ApplicantStep({
   canSearch,
   hasSearchResult,
   applicants,
+  applicantsPage,
+  applicantsTotalPages,
   isSearching = false,
+  isLoadingCareerRows = false,
   searchError = "",
   selectedPerson,
   onApplicantNameChange,
@@ -54,6 +63,7 @@ function ApplicantStep({
   onBirthMonthChange,
   onBirthDayChange,
   onSearch,
+  onApplicantsPageChange,
   onSelectedPersonChange,
 }: ApplicantStepProps) {
   const isBirthMonthInvalid =
@@ -73,6 +83,7 @@ function ApplicantStep({
             label="이름"
             placeholder="이름을 입력해주세요"
             value={applicantName}
+            disabled={isLoadingCareerRows}
             onChange={onApplicantNameChange}
           />
         </FieldGroup>
@@ -83,6 +94,7 @@ function ApplicantStep({
               aria-label="생년"
               options={YEAR_OPTIONS}
               value={birthYear}
+              disabled={isLoadingCareerRows}
               onChange={onBirthYearChange}
             />
             <TextInput
@@ -98,6 +110,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="월"
               value={birthMonth}
+              disabled={isLoadingCareerRows}
               onChange={onBirthMonthChange}
             />
             <TextInput
@@ -113,6 +126,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="일"
               value={birthDay}
+              disabled={isLoadingCareerRows}
               onChange={onBirthDayChange}
             />
           </DateFields>
@@ -121,7 +135,7 @@ function ApplicantStep({
           <Button
             variant="secondary"
             size="large"
-            disabled={!canSearch || isSearching}
+            disabled={!canSearch || isSearching || isLoadingCareerRows}
             onClick={onSearch}
           >
             {isSearching ? "조회 중..." : "대상자 조회"}
@@ -162,6 +176,8 @@ function ApplicantStep({
                           name="certificate-person"
                           value={applicant.id}
                           checked={selectedPerson === applicant.id}
+                          // 경력을 불러오는 중 대상자를 바꾸면 이전 대상자의 경력이 새 대상자에 얹힌다.
+                          disabled={isLoadingCareerRows}
                           onChange={() => onSelectedPersonChange(applicant.id)}
                         >
                           <span className="sr-only">
@@ -181,6 +197,15 @@ function ApplicantStep({
             <EmptyResult role="status">
               일치하는 대상자가 없습니다.
             </EmptyResult>
+          )}
+          {applicantsTotalPages > 1 && (
+            <Pagination
+              currentPage={applicantsPage}
+              totalPages={applicantsTotalPages}
+              isLoading={isSearching || isLoadingCareerRows}
+              navLabel="대상자 목록 페이지"
+              onPageChange={onApplicantsPageChange}
+            />
           )}
         </FormCard>
       )}

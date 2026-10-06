@@ -45,7 +45,14 @@ import {
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "../../career-certificate/CareerCertificateIssue.validation";
-import { findDuplicateCandidates } from "./IndividualRegistrationSubject.utils";
+import {
+  findDuplicateCandidates,
+  getMissingSubjectFields,
+} from "./IndividualRegistrationSubject.utils";
+import { FormHint, RequiredMark } from "../../form/requiredFields.styles";
+import { getRequiredFieldsMessage } from "../../form/requiredFields.utils";
+import { getEmptyPageRetryPage } from "../../pagination/pagination.utils";
+import Pagination, { type PagedResult } from "../../pagination/Pagination";
 import { FormError } from "../integrated-registration-upload/integratedRegistrationUpload.styles";
 import AddressSearchModal, {
   type AddressSearchItem,
@@ -97,7 +104,9 @@ export interface IndividualRegistrationSubjectProps {
       IndividualRegistrationSubjectData,
       "duplicateResolution" | "existingSubjectId"
     >,
-  ) => Promise<readonly IndividualRegistrationDuplicateCandidate[]>;
+    /** 조회할 페이지(1부터 시작). */
+    params: { page: number },
+  ) => Promise<PagedResult<IndividualRegistrationDuplicateCandidate>>;
   previousLabel?: string;
   nextLabel?: string;
   onPrevious?: () => void;
@@ -141,20 +150,30 @@ function IndividualRegistrationSubject({
   const [fetchedDuplicateCandidates, setFetchedDuplicateCandidates] = useState<
     readonly IndividualRegistrationDuplicateCandidate[]
   >(EMPTY_DUPLICATE_CANDIDATES);
+  // 서버 중복 조회 결과는 페이지 단위로 내려온다(기본 20건).
+  const [duplicatePage, setDuplicatePage] = useState(1);
+  const [duplicateTotalPages, setDuplicateTotalPages] = useState(1);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [duplicateCheckError, setDuplicateCheckError] = useState("");
   const duplicateCheckRequestIdRef = useRef(0);
   const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false);
   const [addressSearchError, setAddressSearchError] = useState("");
 
-  const hasRequiredInformation = useMemo(
+  const missingRequiredFields = useMemo(
     () =>
-      Boolean(name.trim()) &&
-      Boolean(gender) &&
-      isValidBirthDate(birthYear, birthMonth, birthDay) &&
-      Boolean(address),
+      getMissingSubjectFields({
+        name,
+        gender,
+        birthYear,
+        birthMonth,
+        birthDay,
+        address,
+      }),
     [address, birthDay, birthMonth, birthYear, gender, name],
   );
+  const hasRequiredInformation =
+    missingRequiredFields.length === 0 &&
+    isValidBirthDate(birthYear, birthMonth, birthDay);
   const subjectData = useMemo(
     () => ({
       name: name.trim(),
@@ -178,6 +197,10 @@ function IndividualRegistrationSubject({
     : localDuplicateCandidates;
   const canProceed =
     hasRequiredInformation && duplicateStatus === "available" && Boolean(onNext);
+  // 다음 버튼이 비활성인 이유. 형식 오류는 입력란 아래에서 따로 알린다.
+  const proceedHint =
+    getRequiredFieldsMessage(missingRequiredFields) ||
+    (duplicateStatus === "idle" ? "중복 확인을 완료해 주세요." : "");
   const isBirthMonthInvalid =
     birthMonth.length > 0 && !isValidBirthMonth(birthMonth);
   const maximumBirthDay = getDaysInBirthMonth(birthYear, birthMonth);
@@ -190,6 +213,8 @@ function IndividualRegistrationSubject({
     setDuplicateStatus("idle");
     setSelectedDuplicateId("");
     setFetchedDuplicateCandidates(EMPTY_DUPLICATE_CANDIDATES);
+    setDuplicatePage(1);
+    setDuplicateTotalPages(1);
     setIsCheckingDuplicate(false);
     setDuplicateCheckError("");
   };
@@ -257,11 +282,7 @@ function IndividualRegistrationSubject({
     resetDuplicateCheck();
   };
 
-  const handleDuplicateCheck = async () => {
-    if (!hasRequiredInformation || isCheckingDuplicate) {
-      return;
-    }
-
+  const runDuplicateCheck = async (page: number) => {
     if (!onCheckDuplicate) {
       applyDuplicateCandidates(localDuplicateCandidates);
       return;
@@ -272,15 +293,30 @@ function IndividualRegistrationSubject({
     setDuplicateCheckError("");
 
     try {
-      const candidates = await onCheckDuplicate(subjectData);
+      const result = await onCheckDuplicate(subjectData, { page });
 
       // 확인 중 입력이 바뀌면(resetDuplicateCheck) 이전 응답은 버린다.
       if (duplicateCheckRequestIdRef.current !== requestId) {
         return;
       }
 
-      setFetchedDuplicateCandidates(candidates);
-      applyDuplicateCandidates(candidates);
+      // 빈 페이지를 "중복 없음"으로 판정하지 않고 마지막 유효 페이지를 다시 조회한다.
+      // 페이지가 계속 줄어 1페이지에 닿으므로 끝없이 반복되지 않는다.
+      const retryPage = getEmptyPageRetryPage(
+        page,
+        result.items.length,
+        result.totalPages,
+      );
+
+      if (retryPage !== null) {
+        void runDuplicateCheck(retryPage);
+        return;
+      }
+
+      setFetchedDuplicateCandidates(result.items);
+      setDuplicatePage(page);
+      setDuplicateTotalPages(Math.max(1, result.totalPages));
+      applyDuplicateCandidates(result.items);
     } catch (error) {
       if (duplicateCheckRequestIdRef.current !== requestId) {
         return;
@@ -296,6 +332,22 @@ function IndividualRegistrationSubject({
         setIsCheckingDuplicate(false);
       }
     }
+  };
+
+  const handleDuplicateCheck = () => {
+    if (!hasRequiredInformation || isCheckingDuplicate) {
+      return;
+    }
+
+    void runDuplicateCheck(1);
+  };
+
+  const handleDuplicatePageChange = (nextPage: number) => {
+    if (isCheckingDuplicate || nextPage === duplicatePage) {
+      return;
+    }
+
+    void runDuplicateCheck(nextPage);
   };
 
   const handleSubmit = (
@@ -376,24 +428,34 @@ function IndividualRegistrationSubject({
                 size="large"
                 autoComplete="name"
                 placeholder="이름을 입력해주세요"
+                aria-required
                 value={name}
                 onChange={handleNameChange}
               />
 
               <RadioFieldset>
-                <legend>성별</legend>
+                <legend>
+                  성별
+                  <RequiredMark aria-hidden="true">*</RequiredMark>
+                </legend>
                 <RadioGroup
                   name={`${titleId}-gender`}
                   value={gender}
                   onChange={handleGenderChange}
                 >
-                  <Radio id={`${titleId}-gender-male`} value="male" size="medium">
+                  <Radio
+                    id={`${titleId}-gender-male`}
+                    value="male"
+                    size="medium"
+                    required
+                  >
                     남
                   </Radio>
                   <Radio
                     id={`${titleId}-gender-female`}
                     value="female"
                     size="medium"
+                    required
                   >
                     여
                   </Radio>
@@ -403,7 +465,9 @@ function IndividualRegistrationSubject({
 
             <div>
               <FieldLabel htmlFor={`${titleId}-birth-year`}>
-                생년월일 (숫자만 입력해주세요)
+                생년월일
+                <RequiredMark aria-hidden="true">*</RequiredMark>
+                {" (숫자만 입력해주세요)"}
               </FieldLabel>
               <BirthDateFields>
                 <Select
@@ -411,6 +475,7 @@ function IndividualRegistrationSubject({
                   size="large"
                   className={birthYear ? "completed" : undefined}
                   aria-label="출생 연도"
+                  aria-required
                   options={YEAR_OPTIONS}
                   value={birthYear}
                   onChange={handleBirthYearChange}
@@ -419,6 +484,7 @@ function IndividualRegistrationSubject({
                   id={`${titleId}-birth-month`}
                   size="large"
                   aria-label="출생 월"
+                  aria-required
                   aria-invalid={isBirthMonthInvalid}
                   error={
                     isBirthMonthInvalid
@@ -436,6 +502,7 @@ function IndividualRegistrationSubject({
                   id={`${titleId}-birth-day`}
                   size="large"
                   aria-label="출생 일"
+                  aria-required
                   aria-invalid={isBirthDayInvalid}
                   error={
                     isBirthDayInvalid
@@ -458,6 +525,7 @@ function IndividualRegistrationSubject({
                 label="주소지"
                 size="large"
                 placeholder="검색 버튼을 눌러주세요"
+                aria-required
                 value={address}
                 error={addressSearchError || undefined}
                 disabled
@@ -482,7 +550,7 @@ function IndividualRegistrationSubject({
                   duplicateStatus === "available" ||
                   isCheckingDuplicate
                 }
-                onClick={() => void handleDuplicateCheck()}
+                onClick={() => handleDuplicateCheck()}
               >
                 {isCheckingDuplicate
                   ? "확인 중..."
@@ -557,9 +625,20 @@ function IndividualRegistrationSubject({
                   </Table.Tbody>
                 </Table>
               </DuplicateTableFrame>
+              {duplicateTotalPages > 1 && (
+                <Pagination
+                  currentPage={duplicatePage}
+                  totalPages={duplicateTotalPages}
+                  isLoading={isCheckingDuplicate}
+                  navLabel="중복 대상자 목록 페이지"
+                  onPageChange={handleDuplicatePageChange}
+                />
+              )}
             </DuplicateResultCard>
           )}
         </FormMainContent>
+
+        {proceedHint && <FormHint role="status">{proceedHint}</FormHint>}
 
         <ActionBar>
           <ButtonGroup>

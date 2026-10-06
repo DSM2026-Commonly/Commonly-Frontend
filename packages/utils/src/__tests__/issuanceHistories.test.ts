@@ -118,6 +118,37 @@ describe("fetchIssuanceHistories", () => {
     expect(authorization).toBe("Bearer t");
   });
 
+  test("reads the issue reason from issueReason (backend field name)", async () => {
+    mockFetch(200, {
+      content: [
+        {
+          issuanceHistoryId: 2,
+          documentNo: "유성구-2026-000002",
+          humanId: 3,
+          targetName: "홍길동",
+          purpose: "은행 제출",
+          issueReason: "민원인 발급 신청 (방문) - 창구 접수",
+          totalMonths: 12,
+          totalDays: 0,
+          issuedAt: "2026-10-06T13:40:00",
+        },
+        { issuanceHistoryId: 3, issueReason: null },
+      ],
+      page: 1,
+      size: 10,
+      totalElements: 2,
+      totalPages: 1,
+      hasNext: false,
+    });
+
+    const page = await fetchIssuanceHistories();
+
+    expect(page.content[0].reason).toBe("민원인 발급 신청 (방문) - 창구 접수");
+    expect(page.content[0].certificate.purpose).toBe("은행 제출");
+    // 사유 저장 전에 발급된 건은 null 이다.
+    expect(page.content[1].reason).toBe("");
+  });
+
   test("empty content returns empty page", async () => {
     mockFetch(200, { content: [], totalCount: 0, totalPage: 0 });
     expect(await fetchIssuanceHistories()).toEqual({
@@ -126,6 +157,29 @@ describe("fetchIssuanceHistories", () => {
       totalPage: 1,
       hasNextPage: false,
     });
+  });
+
+  test("reads the backend PageResponse meta (totalElements, totalPages, hasNext)", async () => {
+    // 백엔드 PageResponse: page 1부터, 총 건수는 totalElements, 다음 페이지 여부는 hasNext.
+    mockFetch(200, {
+      content: [history],
+      page: 1,
+      size: 10,
+      totalElements: 25,
+      totalPages: 3,
+      hasNext: true,
+    });
+    expect(await fetchIssuanceHistories()).toEqual({
+      content: [history],
+      totalCount: 25,
+      totalPage: 3,
+      hasNextPage: true,
+    });
+  });
+
+  test("trusts hasNext over the row-count guess on a full last page", async () => {
+    mockFetch(200, { content: [history], page: 3, size: 1, totalElements: 3, totalPages: 3, hasNext: false });
+    expect((await fetchIssuanceHistories({ page: 3, size: 1 })).hasNextPage).toBe(false);
   });
 
   test("missing totals fall back", async () => {

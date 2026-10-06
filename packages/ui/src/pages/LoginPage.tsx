@@ -4,7 +4,7 @@ import {
   getSafeRedirectPath,
   login,
   requiresInitialPasswordChange,
-  setAuthToken,
+  setAuthTokens,
   setRememberedLoginId,
 } from "@commonly/utils";
 import { useLocation, useNavigate } from "react-router";
@@ -26,12 +26,12 @@ function LoginPage({ variant, signupHref }: LoginPageProps) {
   );
 
   const handleLogin = async (formData: LoginFormData) => {
-    const { accessToken } = await login({
+    const { accessToken, refreshToken } = await login({
       accountId: formData.loginId,
       password: formData.password,
     });
 
-    const didStoreToken = setAuthToken(accessToken);
+    const didStoreToken = setAuthTokens({ accessToken, refreshToken });
 
     if (!didStoreToken) {
       throw new Error(

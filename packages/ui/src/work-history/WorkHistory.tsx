@@ -14,17 +14,11 @@ import {
   FilterField,
   FilterForm,
   PageTitle,
-  PageEllipsis,
-  PageMoveButton,
-  PageMoveIcon,
-  PageNumberButton,
-  PageNumberList,
-  PaginationFrame,
-  PaginationNav,
   TableFrame,
   TableStatus,
   WorkHistoryRoot,
 } from "./WorkHistory.styles";
+import Pagination from "../pagination/Pagination";
 
 export interface WorkHistoryRecord {
   id: string;
@@ -63,44 +57,6 @@ export interface WorkHistoryProps {
 const DEFAULT_RECORDS: readonly WorkHistoryRecord[] = [];
 
 const DEFAULT_EMPTY_MESSAGE = "조회된 이력이 없습니다.";
-
-type VisiblePage = number | "ellipsis";
-
-function getVisiblePages(
-  currentPage: number,
-  totalPages: number,
-): readonly VisiblePage[] {
-  if (totalPages <= 8) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-
-  if (currentPage <= 4) {
-    return [1, 2, 3, 4, 5, 6, "ellipsis", totalPages];
-  }
-
-  if (currentPage >= totalPages - 3) {
-    return [
-      1,
-      "ellipsis",
-      totalPages - 5,
-      totalPages - 4,
-      totalPages - 3,
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    ];
-  }
-
-  return [
-    1,
-    "ellipsis",
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    "ellipsis",
-    totalPages,
-  ];
-}
 
 interface DateFieldProps {
   id: string;
@@ -184,12 +140,9 @@ function WorkHistory({
       ? requestedPage
       : Math.min(requestedPage, knownTotalPages);
   const currentFilters = filters === undefined ? internalFilters : filters;
-  // totalPages 를 모르는 경우 현재 페이지(+다음 페이지 존재 시 1)까지만 노출한다.
+  // totalPages 를 모르는 경우 현재 페이지(+다음 페이지 존재 시 1)까지만 이동을 허용한다.
   const normalizedTotalPages =
     knownTotalPages ?? (currentPage + (hasNextPage ? 1 : 0));
-  const visiblePages = getVisiblePages(currentPage, normalizedTotalPages);
-  const isLastPage =
-    totalPages === undefined ? !hasNextPage : currentPage >= normalizedTotalPages;
   const hasSearch = onSearch !== undefined;
   const filterError = hasSearch ? getWorkHistoryFilterError(currentFilters) : "";
   const showTable = !isLoading && !errorMessage && records.length > 0;
@@ -350,51 +303,14 @@ function WorkHistory({
         </Table>
       </TableFrame>
 
-      <PaginationFrame>
-        <PaginationNav aria-label="업무 이력 페이지">
-          <PageMoveButton
-            $direction="prev"
-            aria-label="이전 페이지"
-            disabled={currentPage === 1 || isLoading}
-            type="button"
-            onClick={() => changePage(currentPage - 1)}
-          >
-            <PageMoveIcon $direction="prev" aria-hidden="true" />
-            이전
-          </PageMoveButton>
-          <PageNumberList>
-            {visiblePages.map((visiblePage, index) =>
-              visiblePage === "ellipsis" ? (
-                <PageEllipsis aria-hidden="true" key={`ellipsis-${index}`}>
-                  ···
-                </PageEllipsis>
-              ) : (
-                <PageNumberButton
-                  $active={visiblePage === currentPage}
-                  aria-current={visiblePage === currentPage ? "page" : undefined}
-                  aria-label={`${visiblePage}페이지`}
-                  disabled={isLoading}
-                  key={visiblePage}
-                  type="button"
-                  onClick={() => changePage(visiblePage)}
-                >
-                  {visiblePage}
-                </PageNumberButton>
-              ),
-            )}
-          </PageNumberList>
-          <PageMoveButton
-            $direction="next"
-            aria-label="다음 페이지"
-            disabled={isLastPage || isLoading}
-            type="button"
-            onClick={() => changePage(currentPage + 1)}
-          >
-            다음
-            <PageMoveIcon $direction="next" aria-hidden="true" />
-          </PageMoveButton>
-        </PaginationNav>
-      </PaginationFrame>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={knownTotalPages}
+        hasNextPage={hasNextPage}
+        isLoading={isLoading}
+        navLabel="업무 이력 페이지"
+        onPageChange={changePage}
+      />
     </WorkHistoryRoot>
   );
 }

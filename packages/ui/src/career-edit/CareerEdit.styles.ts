@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { requiredLabelStyles } from "../form/requiredFields.styles";
 
 const MOBILE_BREAKPOINT = "767px";
 
@@ -32,6 +33,8 @@ export const CareerEditRoot = styled.section`
   & * {
     box-sizing: border-box;
   }
+
+  ${requiredLabelStyles}
 
   @keyframes career-edit-view-enter {
     from {

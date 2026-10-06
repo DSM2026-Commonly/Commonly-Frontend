@@ -118,6 +118,7 @@ export type {
 } from "./user-management/UserManagementComplete";
 export { default as useScrollToTopOnChange } from "./hooks/useScrollToTopOnChange";
 export { default as useAuthSession } from "./hooks/useAuthSession";
+export { default as useMe } from "./hooks/useMe";
 export { default as useSessionGuard } from "./hooks/useSessionGuard";
 export { default as usePasswordChangeGuard } from "./hooks/usePasswordChangeGuard";
 export type { AuthSessionState } from "./hooks/useAuthSession";
@@ -129,5 +130,10 @@ export {
   default as InitialPasswordChangePage,
   INITIAL_PASSWORD_CHANGE_PATH,
 } from "./pages/InitialPasswordChangePage";
+export {
+  default as PasswordChangePage,
+  PASSWORD_CHANGE_PATH,
+} from "./pages/PasswordChangePage";
 export { default as StaffCareerCertificateIssuePage } from "./pages/StaffCareerCertificateIssuePage";
+export { toCareerRow } from "./pages/careerRow";
 export { default as StaffCareerEditPage } from "./pages/StaffCareerEditPage";

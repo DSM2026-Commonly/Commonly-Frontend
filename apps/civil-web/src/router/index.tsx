@@ -8,6 +8,7 @@ import CivilLayout from "../layout/CivilLayout";
 import CareerCertificateIssuePage from "../pages/CareerCertificateIssuePage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import PasswordChangePage from "../pages/PasswordChangePage";
 import SignupFormPage from "../pages/SignupFormPage";
 import SignupPage from "../pages/SignupPage";
 
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
       {
         path: "career/issue",
         Component: CareerCertificateIssuePage,
+      },
+      {
+        path: "password/change",
+        Component: PasswordChangePage,
       },
       {
         path: "*",

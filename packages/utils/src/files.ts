@@ -75,6 +75,8 @@ export const CERTIFICATE_TARGET_FIELDS = [
   { id: "expirationDate", label: "만료예정일" },
   { id: "retirementDate", label: "퇴직일" },
   { id: "division", label: "구분" },
+  // 근무부서는 선택 필드다. 구분(division: 채용/전보/해지/퇴직)과 다른 값이다.
+  { id: "department", label: "근무부서" },
   { id: "reason", label: "사유" },
   { id: "employmentType", label: "근무형태" },
   { id: "note", label: "비고" },

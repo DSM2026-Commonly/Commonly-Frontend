@@ -99,6 +99,34 @@ export const DocumentViewer = styled.div<CivilLayoutProps>`
   }
 `;
 
+export const PdfFrame = styled.iframe<CivilLayoutProps>`
+  display: block;
+  width: 100%;
+  height: ${({ $civil }) =>
+    $civil ? "clamp(640px, 85vh, 1492px)" : "clamp(520px, 68vh, 760px)"};
+  border: 0;
+  background: #878079;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    height: min(68vh, 620px);
+    min-height: 420px;
+  }
+`;
+
+export const PreviewLoading = styled.p`
+  margin: 0;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.5;
+`;
+
+export const PreviewFallbackNotice = styled.p`
+  margin: 16px 0;
+  color: var(--career-color-text-subtle);
+  font-size: 15px;
+  line-height: 1.5;
+`;
+
 export const DocumentSheet = styled.article<CivilLayoutProps>`
   display: flex;
   width: min(${({ $civil }) => ($civil ? "842px" : "640px")}, 100%);

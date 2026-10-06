@@ -4,6 +4,7 @@ import { FlowError } from "../CareerCertificateIssue.styles";
 import type {
   CertificateCareerRow,
   CertificateIssueType,
+  OwnCareerLoadStatus,
 } from "../CareerCertificateIssue.types";
 import {
   CivilActionRow,
@@ -23,6 +24,7 @@ interface CivilCertificateApplicationViewProps {
   careerRows: readonly CertificateCareerRow[];
   selectedCareerIds: string[];
   isLoadingCareerRows?: boolean;
+  ownCareerLoadStatus?: OwnCareerLoadStatus;
   loadError?: string;
   canContinue: boolean;
   purpose: string;
@@ -39,6 +41,7 @@ function CivilCertificateApplicationView({
   careerRows,
   selectedCareerIds,
   isLoadingCareerRows = false,
+  ownCareerLoadStatus = "idle",
   loadError = "",
   canContinue,
   purpose,
@@ -82,6 +85,7 @@ function CivilCertificateApplicationView({
         careerRows={careerRows}
         selectedCareerIds={selectedCareerIds}
         isLoadingCareerRows={isLoadingCareerRows}
+        ownCareerLoadStatus={ownCareerLoadStatus}
         additionalNote=""
         purpose={purpose}
         onIssueTypeChange={onIssueTypeChange}
