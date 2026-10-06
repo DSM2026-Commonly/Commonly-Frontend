@@ -57,7 +57,7 @@ describe("searchHumans", () => {
 
     mockFetch(
       200,
-      { content: [hongHuman], page: 0, size: 20, totalElements: 1, totalPages: 1 },
+      { content: [hongHuman], page: 1, size: 20, totalElements: 1, totalPages: 1 },
       (url, init) => {
         expect(url).toBe(HUMAN_SEARCH_ENDPOINT);
         expect(init?.method).toBe("POST");
@@ -72,7 +72,7 @@ describe("searchHumans", () => {
   });
 
   test("returns an empty list when content is empty", async () => {
-    mockFetch(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 });
+    mockFetch(200, { content: [], page: 1, size: 20, totalElements: 0, totalPages: 0 });
     expect(await searchHumans({ name: "없는사람" })).toEqual([]);
   });
 
@@ -140,7 +140,7 @@ describe("searchHumans", () => {
 });
 
 describe("searchHumansPaged", () => {
-  test("sends page(0-based)/size in the body and returns the page meta", async () => {
+  test("sends page(1부터)/size in the body and returns the page meta", async () => {
     const query = {
       name: "홍길동",
       birthDateFrom: "1990-01-01",
@@ -176,14 +176,14 @@ describe("searchHumansPaged", () => {
     });
   });
 
-  test("defaults to page 0 / size 20 and clamps a negative page", async () => {
-    mockFetch(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }, (_url, init) => {
-      expect(JSON.parse(String(init?.body))).toEqual({ page: 0, size: 20 });
+  test("defaults to page 1 / size 20 and clamps a page below 1 (backend counts from 1)", async () => {
+    mockFetch(200, { content: [], page: 1, size: 20, totalElements: 0, totalPages: 0 }, (_url, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({ page: 1, size: 20 });
     });
     await searchHumansPaged();
 
     mockFetch(200, { content: [] }, (_url, init) => {
-      expect(JSON.parse(String(init?.body)).page).toBe(0);
+      expect(JSON.parse(String(init?.body)).page).toBe(1);
     });
     await searchHumansPaged({}, { page: -5 });
   });
@@ -203,7 +203,7 @@ describe("searchHumansPaged", () => {
     mockFetch(200, { content: [hongHuman] });
     expect(await searchHumansPaged()).toEqual({
       items: [hongHuman],
-      page: 0,
+      page: 1,
       size: 20,
       totalElements: 1,
       totalPages: 1,
@@ -213,14 +213,14 @@ describe("searchHumansPaged", () => {
   test("preserves totalPages 0 for an empty result (totalElements 0)", async () => {
     mockFetch(200, {
       content: [],
-      page: 0,
+      page: 1,
       size: 20,
       totalElements: 0,
       totalPages: 0,
     });
     expect(await searchHumansPaged()).toEqual({
       items: [],
-      page: 0,
+      page: 1,
       size: 20,
       totalElements: 0,
       totalPages: 0,
@@ -228,16 +228,16 @@ describe("searchHumansPaged", () => {
   });
 
   test("reads the last page meta as the server reports it", async () => {
-    // 45건 / size 20 → 마지막 페이지는 0-based 2.
+    // 45건 / size 20 → 마지막 페이지는 3(1부터 센다).
     mockFetch(200, {
       content: [hongHuman],
-      page: 2,
+      page: 3,
       size: 20,
       totalElements: 45,
       totalPages: 3,
     });
-    const result = await searchHumansPaged({}, { page: 2 });
-    expect(result.page).toBe(2);
+    const result = await searchHumansPaged({}, { page: 3 });
+    expect(result.page).toBe(3);
     expect(result.totalPages).toBe(3);
   });
 
@@ -245,13 +245,13 @@ describe("searchHumansPaged", () => {
     mockFetch(200, { content: [] }, (_url, init) => {
       expect(JSON.parse(String(init?.body)).size).toBe(100);
     });
-    await searchHumansPaged({}, { page: 0, size: 500 });
+    await searchHumansPaged({}, { page: 1, size: 500 });
   });
 
   test("skips malformed rows but keeps the meta", async () => {
     mockFetch(200, {
       content: [hongHuman, { ...hongHuman, humanId: "2" }, null],
-      page: 0,
+      page: 1,
       size: 20,
       totalElements: 3,
       totalPages: 1,

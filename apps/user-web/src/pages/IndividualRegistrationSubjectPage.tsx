@@ -19,10 +19,10 @@ async function findDuplicateSubjects(
   totalPages: number;
 }> {
   const birthDate = `${subject.birthYear}-${subject.birthMonth}-${subject.birthDay}`;
-  // 화면은 1부터, 서버는 0부터 세므로 요청 시 한 칸 당긴다.
+  // 화면과 서버 모두 페이지를 1부터 센다.
   const result = await searchHumansPaged(
     { name: subject.name, birthDateFrom: birthDate, birthDateTo: birthDate },
-    { page: page - 1 },
+    { page: page },
     { token: getAuthToken() },
   );
 

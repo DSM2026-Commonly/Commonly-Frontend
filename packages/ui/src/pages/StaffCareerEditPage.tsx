@@ -66,14 +66,14 @@ function StaffCareerEditPage() {
     birthDate: string;
     page: number;
   }): Promise<{ items: CareerEditApplicant[]; totalPages: number }> => {
-    // 화면은 1부터, 서버는 0부터 세므로 요청 시 한 칸 당긴다.
+    // 화면과 서버 모두 페이지를 1부터 센다.
     const result = await searchHumansPaged(
       {
         name: query.name,
         birthDateFrom: query.birthDate,
         birthDateTo: query.birthDate,
       },
-      { page: query.page - 1 },
+      { page: query.page },
       { token: getAuthToken() },
     );
 

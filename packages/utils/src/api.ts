@@ -68,10 +68,10 @@ function dispatchWindowEvent(name: string): void {
 }
 
 /**
- * 백엔드는 권한이 없는 요청에도 403 이 아니라 401 을 준다(민원인 토큰으로 담당자용 API 호출 등).
- * 저장된 토큰이 아직 유효하면 세션 만료가 아니므로 로그아웃시키지 않는다.
- * 그렇지 않으면 권한 밖 API 한 번에 로그인 화면으로 튕기고, 로그인 → 같은 API 재호출 → 401 로
- * 다시 튕기는 루프에 갇힌다.
+ * 백엔드는 미인증이면 401, 권한 부족이면 403 을 준다(예전 배포본은 권한 부족에도 401 이었다).
+ * 그래도 저장된 토큰이 아직 유효하면 세션 만료가 아니므로 로그아웃시키지 않는다.
+ * 예전 배포본처럼 권한 밖 API 가 401 을 주면 로그인 → 같은 API 재호출 → 401 로
+ * 다시 튕기는 루프에 갇히기 때문이다.
  */
 function notifyUnauthorized(): void {
   if (hasValidAuthToken()) {
@@ -92,20 +92,28 @@ export function isInitialPasswordNotChangedError(
 }
 
 /**
- * 목록 응답을 `{content, totalCount, <totalPagesKey>}` 로 정규화한다.
- * 백엔드가 배열만 내려주는 경우(현재 /api/admins, /api/issuance-histories)도 받는다.
+ * 목록 응답을 `{content, totalCount, totalPages, hasNext}` 로 정규화한다.
+ * 백엔드 `PageResponse` 는 `{content, page, size, totalElements, totalPages, hasNext}`(page 는 1부터)다.
+ * 예전 배포본처럼 배열만 내려주거나, 명세의 `totalCount`·`totalPage` 이름으로 오는 경우도 받는다.
  */
 export function normalizePageEnvelope(
   response: unknown,
   invalidMessage: string,
   totalPagesKey: "totalPages" | "totalPage" = "totalPages",
-): { content: unknown[]; totalCount: unknown; totalPages: unknown; totalPage: unknown } {
+): {
+  content: unknown[];
+  totalCount: unknown;
+  totalPages: unknown;
+  totalPage: unknown;
+  hasNext: unknown;
+} {
   if (Array.isArray(response)) {
     return {
       content: response,
       totalCount: undefined,
       totalPages: undefined,
       totalPage: undefined,
+      hasNext: undefined,
     };
   }
 
@@ -119,11 +127,16 @@ export function normalizePageEnvelope(
     throw new ApiError(200, invalidMessage);
   }
 
+  // 키 이름이 엔드포인트·버전마다 달라 둘 다 본다(PageResponse 는 totalElements·totalPages).
+  const totalPages =
+    record[totalPagesKey] ?? record.totalPages ?? record.totalPage;
+
   return {
     content: record.content,
-    totalCount: record.totalCount,
-    totalPages: record[totalPagesKey],
-    totalPage: record[totalPagesKey],
+    totalCount: record.totalCount ?? record.totalElements,
+    totalPages,
+    totalPage: totalPages,
+    hasNext: record.hasNext,
   };
 }
 

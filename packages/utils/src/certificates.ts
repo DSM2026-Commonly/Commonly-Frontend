@@ -43,11 +43,11 @@ export const CERTIFICATE_ISSUE_CONFLICT_MESSAGE =
 /**
  * 본인 발급 경로(GET·POST /self, POST /self/preview)는 백엔드 스위치
  * (CERTIFICATE_SELF_ISSUE_ENABLED, 기본 false)가 꺼져 있으면 막히고, 켜져도 PETITIONER 권한이 있어야 열린다.
- * 막히면 본문 없는 401 또는 403 이 온다. 세션 만료가 아니므로 "다시 로그인" 안내를 쓰지 않는다.
+ * 막히면 403 이 온다. 401 은 미인증(로그인 만료)일 때만 온다.
  */
-export const CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE =
-  "본인 증명서 발급 권한이 없습니다. 042-611-2114로 문의해 주세요.";
-/** SELF_ISSUE_DISABLED(403) 문구. 본문 없는 403 에도 같은 안내를 쓴다. */
+export const CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE =
+  "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+/** 403. 스위치가 꺼져 있거나(SELF_ISSUE_DISABLED) 민원인 권한이 아닌 경우 모두 같은 안내를 쓴다. */
 export const CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE =
   "본인 발급은 현재 사용할 수 없습니다.";
 /** CERTIFICATE_LIMIT_EXCEEDED(400). 고르지 않고 전체를 발급하려는데 재직 이력이 10건을 넘는 경우. */
@@ -298,7 +298,7 @@ export async function fetchMyCertificates({
     token,
     signal,
     errorMessages: {
-      401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
+      401: CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE,
       403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
       404: PETITIONER_HUMAN_NOT_MATCHED_MESSAGE,
     },
@@ -477,7 +477,7 @@ export async function issueCertificate(
  */
 const SELF_CERTIFICATE_ERROR_MESSAGES = {
   400: CERTIFICATE_LIMIT_EXCEEDED_MESSAGE,
-  401: CERTIFICATE_SELF_ISSUE_UNAVAILABLE_MESSAGE,
+  401: CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE,
   403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
 };
 

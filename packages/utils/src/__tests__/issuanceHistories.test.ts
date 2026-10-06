@@ -128,6 +128,29 @@ describe("fetchIssuanceHistories", () => {
     });
   });
 
+  test("reads the backend PageResponse meta (totalElements, totalPages, hasNext)", async () => {
+    // 백엔드 PageResponse: page 1부터, 총 건수는 totalElements, 다음 페이지 여부는 hasNext.
+    mockFetch(200, {
+      content: [history],
+      page: 1,
+      size: 10,
+      totalElements: 25,
+      totalPages: 3,
+      hasNext: true,
+    });
+    expect(await fetchIssuanceHistories()).toEqual({
+      content: [history],
+      totalCount: 25,
+      totalPage: 3,
+      hasNextPage: true,
+    });
+  });
+
+  test("trusts hasNext over the row-count guess on a full last page", async () => {
+    mockFetch(200, { content: [history], page: 3, size: 1, totalElements: 3, totalPages: 3, hasNext: false });
+    expect((await fetchIssuanceHistories({ page: 3, size: 1 })).hasNextPage).toBe(false);
+  });
+
   test("missing totals fall back", async () => {
     mockFetch(200, { content: [history] });
     expect(await fetchIssuanceHistories()).toEqual({

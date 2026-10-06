@@ -225,9 +225,9 @@ export async function fetchIssuanceHistories(
     throw error;
   }
 
-  // 백엔드(GET /api/issuance-histories)는 페이지 메타 없이 배열만 내려준다.
-  // 명세의 {content, totalCount, totalPage} 형태도 함께 받는다.
-  const { content, totalCount, totalPage } = normalizePageEnvelope(
+  // 백엔드는 PageResponse(page 1부터, totalPages·hasNext 포함)를 내려준다.
+  // 예전 배포본의 배열 응답과 명세의 {content, totalCount, totalPage} 형태도 함께 받는다.
+  const { content, totalCount, totalPage, hasNext } = normalizePageEnvelope(
     response,
     ISSUANCE_HISTORY_INVALID_RESPONSE_MESSAGE,
     "totalPage",
@@ -263,9 +263,12 @@ export async function fetchIssuanceHistories(
     content: histories,
     totalCount: normalizedTotalCount,
     totalPage: normalizedTotalPage,
+    // 서버가 다음 페이지 여부를 알려주면 그대로 쓰고, 없을 때만 메타나 행 수로 추정한다.
     hasNextPage:
-      normalizedTotalPage === null
-        ? histories.length >= requestedSize
-        : requestedPage < normalizedTotalPage,
+      typeof hasNext === "boolean"
+        ? hasNext
+        : normalizedTotalPage === null
+          ? histories.length >= requestedSize
+          : requestedPage < normalizedTotalPage,
   };
 }

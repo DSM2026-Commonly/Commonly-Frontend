@@ -63,7 +63,7 @@ export interface SearchHumansQuery {
   address?: string;
 }
 
-/** 대상자 검색 페이지 요청. page 는 0부터 시작한다(백엔드와 동일). */
+/** 대상자 검색 페이지 요청. page 는 1부터 시작한다(백엔드와 동일). */
 export interface SearchHumansPageParams {
   page?: number;
   size?: number;
@@ -72,7 +72,7 @@ export interface SearchHumansPageParams {
 /** 대상자 검색 페이지 응답. 서버 메타가 없으면 안전한 기본값으로 채운다. */
 export interface HumanPage {
   items: HumanSummary[];
-  /** 0부터 시작하는 현재 페이지 번호 */
+  /** 1부터 시작하는 현재 페이지 번호 */
   page: number;
   size: number;
   totalElements: number;
@@ -203,19 +203,20 @@ export async function searchHumans(
 }
 
 /**
- * 대상자 검색을 페이지 단위로 조회한다. 요청 본문에 page(0부터)·size 를 실어 보내고
+ * 대상자 검색을 페이지 단위로 조회한다. 요청 본문에 page(1부터)·size 를 실어 보내고
  * 응답의 {content, page, size, totalElements, totalPages} 메타까지 돌려준다.
  * 메타가 없으면 요청값과 결과 건수로 안전하게 채운다.
  */
 export async function searchHumansPaged(
   query: SearchHumansQuery = {},
   {
-    page = 0,
+    page = 1,
     size = HUMAN_SEARCH_DEFAULT_PAGE_SIZE,
   }: SearchHumansPageParams = {},
   { token, signal }: HumanRequestOptions = {},
 ): Promise<HumanPage> {
-  const requestedPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0;
+  // 백엔드는 page 를 1부터 센다(@Positive). 0 이하를 보내면 400 이다.
+  const requestedPage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
   // size 는 1~100 사이여야 한다. 상한을 넘기면 백엔드가 400 을 낸다.
   const requestedSize = Math.min(
     HUMAN_SEARCH_MAX_PAGE_SIZE,
@@ -250,13 +251,13 @@ export async function searchHumansPaged(
     items.length,
     0,
   );
-  // 응답도 0-based page 다. 빈 결과(totalElements 0)는 totalPages 0 이 정상이므로
+  // 응답 page 도 1부터다. 빈 결과(totalElements 0)는 totalPages 0 이 정상이므로
   // 서버가 준 값은 그대로 두고(min 0), 메타가 없을 때만 건수로 계산한다.
   const computedTotalPages = Math.ceil(totalElements / resolvedSize);
 
   return {
     items,
-    page: normalizeMetaInteger(record.page, requestedPage, 0),
+    page: normalizeMetaInteger(record.page, requestedPage, 1),
     size: resolvedSize,
     totalElements,
     totalPages: normalizeMetaInteger(record.totalPages, computedTotalPages, 0),

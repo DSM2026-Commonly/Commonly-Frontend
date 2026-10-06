@@ -100,9 +100,9 @@ export async function fetchAdminUsers(
     },
   });
 
-  // 백엔드(GET /api/admins)는 페이지 메타 없이 배열만 내려준다.
-  // 명세의 {content, totalCount, totalPages} 형태도 함께 받는다.
-  const { content, totalCount, totalPages } = normalizePageEnvelope(
+  // 백엔드는 PageResponse(page 1부터, totalPages·hasNext 포함)를 내려준다.
+  // 예전 배포본의 배열 응답과 명세의 {content, totalCount, totalPages} 형태도 함께 받는다.
+  const { content, totalCount, totalPages, hasNext } = normalizePageEnvelope(
     response,
     ADMIN_USERS_INVALID_RESPONSE_MESSAGE,
   );
@@ -135,11 +135,14 @@ export async function fetchAdminUsers(
         ? Math.max(0, Math.floor(totalCount))
         : users.length,
     totalPages: knownTotalPages,
+    // 서버가 다음 페이지 여부를 알려주면 그대로 쓰고, 없을 때만 메타나 행 수로 추정한다.
     hasNextPage:
-      knownTotalPages === null
-        ? // 형식이 맞지 않아 걸러낸 행도 서버가 내려준 한 페이지 분량이므로
-          // 다음 페이지 존재 여부는 원본 응답 행 수로 판단한다.
-          content.length >= requestedSize
-        : requestedPage < knownTotalPages,
+      typeof hasNext === "boolean"
+        ? hasNext
+        : knownTotalPages === null
+          ? // 형식이 맞지 않아 걸러낸 행도 서버가 내려준 한 페이지 분량이므로
+            // 다음 페이지 존재 여부는 원본 응답 행 수로 판단한다.
+            content.length >= requestedSize
+          : requestedPage < knownTotalPages,
   };
 }
