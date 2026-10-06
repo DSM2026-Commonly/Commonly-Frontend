@@ -104,6 +104,8 @@ export interface IssueCertificateRequest {
   certificateIds: number[];
   purpose: string;
   otherMatters: string;
+  /** 발급 사유(2단계). 증명서에는 찍히지 않고 발급 이력에만 남는다. 용도(purpose)와 다른 값이다. */
+  issueReason?: string;
 }
 
 // 민원인 본인 발급 — 대상자는 로그인 토큰에서 정해지므로 humanId 를 보내지 않는다.

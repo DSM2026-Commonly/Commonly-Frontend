@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { HumanCertificate } from "@commonly/utils";
 import type { CareerCertificateApplicationData } from "../src/career-certificate/CareerCertificateIssue.types";
-import { toIssueCertificateRequest } from "../src/pages/issueCertificateRequest";
+import {
+  formatIssueReason,
+  toIssueCertificateRequest,
+} from "../src/pages/issueCertificateRequest";
 import { toCareerRow } from "../src/pages/careerRow";
 
 const certificate: HumanCertificate = {
@@ -67,7 +70,19 @@ describe("toIssueCertificateRequest", () => {
       certificateIds: [10, 12],
       purpose: "은행 제출용",
       otherMatters: "기타사항 없음",
+      issueReason: "민원인 발급 신청 (방문)",
     });
+  });
+
+  test("sends the step-2 reason with its detail as the issue reason", () => {
+    expect(
+      toIssueCertificateRequest({
+        ...applicationData,
+        reason: "other",
+        note: "  법원 제출 요청  ",
+      }).issueReason,
+    ).toBe("기타 사유 - 법원 제출 요청");
+    expect(formatIssueReason("unknown", "")).toBe("");
   });
 
   test("rejects an invalid applicant or career id", () => {

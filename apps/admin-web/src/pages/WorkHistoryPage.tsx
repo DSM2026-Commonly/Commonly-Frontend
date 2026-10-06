@@ -61,13 +61,14 @@ function formatOperator(history: IssuanceHistory): string {
   return parts.length > 0 ? parts.join(" / ") : "-";
 }
 
-/** 예: "유성구-2026-000001 · 홍길동 · 은행 제출" */
+/** 예: "유성구-2026-000001 · 홍길동 · 은행 제출 · 사유: 민원인 발급 신청 (방문)" */
 function formatDetails(history: IssuanceHistory): string {
   return (
     [
       history.documentNo,
       history.targetName,
-      history.certificate.purpose || history.reason,
+      history.certificate.purpose,
+      history.reason && `사유: ${history.reason}`,
     ]
       .filter(Boolean)
       .join(" · ") || "-"

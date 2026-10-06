@@ -141,6 +141,7 @@ function normalizeIssuanceHistory(value: unknown): IssuanceHistory | null {
     issuedAt,
     issuerName,
     issuerDepartment,
+    issueReason,
     reason,
   } = value as Record<string, unknown>;
 
@@ -186,7 +187,13 @@ function normalizeIssuanceHistory(value: unknown): IssuanceHistory | null {
     issuerName: typeof issuerName === "string" ? issuerName : "",
     issuerDepartment:
       typeof issuerDepartment === "string" ? issuerDepartment : "",
-    reason: typeof reason === "string" ? reason : "",
+    // 백엔드는 발급 사유를 issueReason 으로 준다. 그 전에 발급된 건은 null 이다.
+    reason:
+      typeof issueReason === "string"
+        ? issueReason
+        : typeof reason === "string"
+          ? reason
+          : "",
   };
 }
 
