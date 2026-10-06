@@ -31,6 +31,19 @@ export interface CertificateCareerRow {
  * idle 은 onPreview 가 없어 요청하지 않은 상태, failed 는 요청이 실패한 상태로
  * 둘 다 입력값으로 그린 미리보기를 대신 보여준다.
  */
+/**
+ * 민원인 본인 경력 목록 조회 결과. 목록이 비어 있을 때 안내 문구를 고르는 데 쓴다.
+ * - unavailable: 서버가 거부(401/403). 본인 발급 경로가 닫혀 있다는 뜻이다.
+ * - failed: 그 밖의 실패(네트워크, 5xx).
+ * - loaded: 조회 성공. 0건일 수 있다.
+ */
+export type OwnCareerLoadStatus =
+  | "idle"
+  | "loading"
+  | "loaded"
+  | "unavailable"
+  | "failed";
+
 export type CertificatePreviewPdfState =
   | { status: "idle" }
   | { status: "loading" }

@@ -18,6 +18,7 @@ import type {
   CertificateIssueType,
   CertificatePreviewPdfState,
   IssuedCertificateSummary,
+  OwnCareerLoadStatus,
 } from "./CareerCertificateIssue.types";
 import {
   isCareerSelectionWithinLimit,
@@ -56,6 +57,17 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error && error.message
     ? error.message
     : UNEXPECTED_ERROR_MESSAGE;
+}
+
+/** API 오류의 HTTP 상태. utils 의 ApiError 에 기대지 않도록 status 필드만 본다. */
+function getErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return undefined;
+  }
+
+  const { status } = error as { status: unknown };
+
+  return typeof status === "number" ? status : undefined;
 }
 
 /** 처음 고를 경력. 한 번에 10건까지만 발급되므로 넘치면 앞의 10건만 고른다. */
@@ -103,6 +115,12 @@ function CareerCertificateIssue({
     [],
   );
   const [isLoadingCareerRows, setIsLoadingCareerRows] = useState(false);
+  // 민원인 목록이 비었을 때 "닫힘/실패/0건"을 구분해 안내하려고 조회 결과를 따로 둔다.
+  // 들어오자마자 불러오므로 첫 화면에 다른 안내가 잠깐 비치지 않게 loading 으로 시작한다.
+  const [ownCareerLoadStatus, setOwnCareerLoadStatus] =
+    useState<OwnCareerLoadStatus>(
+      variant === "civil" && onLoadCareerRows ? "loading" : "idle",
+    );
   const [stepError, setStepError] = useState("");
   const [selectedCareerIds, setSelectedCareerIds] = useState<string[]>([]);
   const [additionalNote, setAdditionalNote] = useState("");
@@ -214,6 +232,7 @@ function CareerCertificateIssue({
     const requestId = ++careerLoadRequestIdRef.current;
 
     setIsLoadingCareerRows(true);
+    setOwnCareerLoadStatus("loading");
 
     try {
       const rows = await onLoadCareerRows("");
@@ -224,9 +243,18 @@ function CareerCertificateIssue({
 
       setCareerRows(rows);
       setSelectedCareerIds(selectCareerIdsWithinLimit(rows));
-    } catch {
-      // 목록 조회가 막혀 있으면(현재 운영은 본인 발급 비활성) 빈 목록 안내를 그대로 두고
-      // 전체 발급으로 진행한다.
+      setOwnCareerLoadStatus("loaded");
+    } catch (error) {
+      if (requestId !== careerLoadRequestIdRef.current) {
+        return;
+      }
+
+      // 에러를 띄우지 않고 빈 목록으로 둔다. 다만 안내 문구는 이유에 맞게 고른다.
+      // 백엔드는 권한 부족에도 401 을 주므로 401·403 모두 "본인 발급 경로가 닫힘"으로 본다.
+      const status = getErrorStatus(error);
+      setOwnCareerLoadStatus(
+        status === 401 || status === 403 ? "unavailable" : "failed",
+      );
     } finally {
       if (requestId === careerLoadRequestIdRef.current) {
         setIsLoadingCareerRows(false);
@@ -701,6 +729,7 @@ function CareerCertificateIssue({
           careerRows={careerRows}
           selectedCareerIds={selectedCareerIds}
           isLoadingCareerRows={isLoadingCareerRows}
+          ownCareerLoadStatus={ownCareerLoadStatus}
           loadError={stepError}
           canContinue={canContinue && !isLoadingCareerRows}
           purpose={purpose}
