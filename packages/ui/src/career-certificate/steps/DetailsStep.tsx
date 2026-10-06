@@ -16,7 +16,10 @@ import {
 } from "./DetailsStep.styles";
 import { MAX_ISSUE_CAREER_COUNT } from "../CareerCertificateIssue.constants";
 import { FlowError } from "../CareerCertificateIssue.styles";
-import { getMissingCertificateDetailsFields } from "../CareerCertificateIssue.validation";
+import {
+  getCareerSelectionHint,
+  getMissingCertificateDetailsFields,
+} from "../CareerCertificateIssue.validation";
 import { FormHint } from "../../form/requiredFields.styles";
 import { getRequiredFieldsMessage } from "../../form/requiredFields.utils";
 import type {
@@ -120,7 +123,16 @@ function DetailsStep({
   const isCivil = variant === "civil";
   const exceedsIssueLimit = careerRows.length > MAX_ISSUE_CAREER_COUNT;
   const isSelectionFull = selectedCareerIds.length >= MAX_ISSUE_CAREER_COUNT;
-  // 신청 버튼이 비활성인 이유 중 아직 입력하지 않은 필수 항목을 버튼 바로 위에서 알린다.
+  // 신청 버튼이 비활성인 이유(고를 경력, 빠진 필수 항목)를 버튼 바로 위에서 알린다.
+  const careerSelectionHint =
+    isLoadingCareerRows || ownCareerLoadStatus === "loading"
+      ? ""
+      : getCareerSelectionHint({
+          variant,
+          issueType,
+          careerRowCount: careerRows.length,
+          selectedCount: selectedCareerIds.length,
+        });
   const requiredFieldsHint = getRequiredFieldsMessage(
     getMissingCertificateDetailsFields(purpose),
   );
@@ -279,6 +291,9 @@ function DetailsStep({
             onPurposeChange={onPurposeChange}
           />
         </FormCard>
+      )}
+      {careerSelectionHint && (
+        <FormHint role="status">{careerSelectionHint}</FormHint>
       )}
       {requiredFieldsHint && (
         <FormHint role="status">{requiredFieldsHint}</FormHint>

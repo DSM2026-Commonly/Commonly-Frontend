@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { CertificateCareerRow } from "../src/career-certificate/CareerCertificateIssue.types";
 import {
+  getCareerSelectionHint,
   isCareerSelectionWithinLimit,
   resolveIssuedIssueType,
   retainAvailableCareerIds,
@@ -134,5 +135,54 @@ describe("retainAvailableCareerIds", () => {
 
   test("does not add careers the user had not selected", () => {
     expect(retainAvailableCareerIds(["2"], ["1", "2", "3"])).toEqual(["2"]);
+  });
+});
+
+describe("career selection hint", () => {
+  test("tells staff there is nothing to issue when no careers are loaded", () => {
+    expect(
+      getCareerSelectionHint({
+        variant: "staff",
+        issueType: "all",
+        careerRowCount: 0,
+        selectedCount: 0,
+      }),
+    ).toBe("발급할 경력 사항이 없습니다. 경력 사항을 먼저 등록해 주세요.");
+  });
+
+  test("does not block civil applicants without a career list", () => {
+    expect(
+      getCareerSelectionHint({
+        variant: "civil",
+        issueType: "all",
+        careerRowCount: 0,
+        selectedCount: 0,
+      }),
+    ).toBe("");
+  });
+
+  test("asks to pick at least one career in selected issuance", () => {
+    expect(
+      getCareerSelectionHint({
+        variant: "staff",
+        issueType: "selected",
+        careerRowCount: 3,
+        selectedCount: 0,
+      }),
+    ).toBe("발급할 경력을 1건 이상 선택해 주세요.");
+    expect(
+      getCareerSelectionHint({
+        variant: "civil",
+        issueType: "selected",
+        careerRowCount: 3,
+        selectedCount: 1,
+      }),
+    ).toBe("");
+  });
+
+  test("shows the hint above the action in the details step", () => {
+    const markup = renderDetails("selected", careerRows(2), []);
+
+    expect(markup).toContain("발급할 경력을 1건 이상 선택해 주세요.");
   });
 });

@@ -51,6 +51,35 @@ export const isValidBirthDay = (
   );
 };
 
+/**
+ * 발급 4단계 신청 버튼이 막힌 이유 중 경력 선택에 관한 안내. 없으면 빈 문자열이다.
+ * 10건 초과는 발급유형 아래 오류 문구로 따로 알린다.
+ * 민원인은 본인 목록을 못 불러와도 서버가 본인 전체로 발급하므로 0건이어도 막히지 않는다.
+ */
+export const getCareerSelectionHint = ({
+  variant,
+  issueType,
+  careerRowCount,
+  selectedCount,
+}: {
+  variant: "staff" | "civil";
+  issueType: "all" | "selected";
+  careerRowCount: number;
+  selectedCount: number;
+}): string => {
+  if (careerRowCount === 0) {
+    return variant === "staff"
+      ? "발급할 경력 사항이 없습니다. 경력 사항을 먼저 등록해 주세요."
+      : "";
+  }
+
+  if (issueType === "selected" && selectedCount === 0) {
+    return "발급할 경력을 1건 이상 선택해 주세요.";
+  }
+
+  return "";
+};
+
 /** 발급 4단계에서 아직 입력하지 않은 필수 항목의 라벨. 발급 용도는 증명서에 기재된다. */
 export const getMissingCertificateDetailsFields = (purpose: string): string[] =>
   purpose.trim().length > 0 ? [] : ["용도"];

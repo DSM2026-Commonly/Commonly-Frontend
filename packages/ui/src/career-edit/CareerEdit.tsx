@@ -1108,6 +1108,11 @@ function CareerEdit({
   );
   const canSavePersonalInfo = isPersonalInfoSavable(personalInfo);
   const canSaveCareerInfo = isCareerRecordSavable(draftRecord);
+  // 2단계 다음 버튼이 비활성인 이유. 기타 사유는 상세 내용이 있어야 넘어간다.
+  const reasonHint =
+    reason === "other" && !reasonDetail.trim()
+      ? "기타 사유를 선택하면 상세 내용을 입력해 주세요."
+      : "";
   // 5단계 저장 버튼이 비활성인 이유. 형식 오류는 입력란 아래에서 따로 알린다.
   const saveHint =
     editTarget === "personal"
@@ -1645,6 +1650,9 @@ function CareerEdit({
             )}
             {currentStep === 4 && submissionError && (
               <FlowError role="alert">{submissionError}</FlowError>
+            )}
+            {currentStep === 1 && reasonHint && (
+              <FormHint role="status">{reasonHint}</FormHint>
             )}
             {currentStep === 4 && saveHint && (
               <FormHint role="status">{saveHint}</FormHint>
