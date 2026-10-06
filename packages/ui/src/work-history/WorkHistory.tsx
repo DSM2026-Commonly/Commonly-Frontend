@@ -280,7 +280,9 @@ function WorkHistory({
                   <Table.Td>{record.id}</Table.Td>
                   <Table.Td>{record.category}</Table.Td>
                   <Table.Td>{record.occurredAt}</Table.Td>
-                  <Table.Td>{record.details}</Table.Td>
+                  <Table.Td className="work-history-details">
+                    {record.details}
+                  </Table.Td>
                   <Table.Td>{record.operator}</Table.Td>
                 </Table.Tr>
               ))

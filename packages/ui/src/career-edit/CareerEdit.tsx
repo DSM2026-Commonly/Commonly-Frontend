@@ -52,6 +52,7 @@ import {
   isPartialEditableDate,
   isPersonalInfoSavable,
 } from "./CareerEdit.validation";
+import { getSelectClassName } from "../form/formControls.styles";
 import { FormHint, RequiredMark } from "../form/requiredFields.styles";
 import { getRequiredFieldsMessage } from "../form/requiredFields.utils";
 import {
@@ -394,6 +395,7 @@ function ApplicantStep({
           </ApplicantFieldLabel>
           <ApplicantDateFields>
             <Select
+              className={getSelectClassName(birthYear)}
               aria-label="생년"
               options={YEAR_OPTIONS}
               value={birthYear}
@@ -721,6 +723,7 @@ function PersonalDetailsStep({
         </ApplicantFieldLabel>
         <ApplicantDateFields>
           <Select
+            className={getSelectClassName(personalInfo.birthYear)}
             aria-label="수정할 생년"
             aria-required
             options={YEAR_OPTIONS}
@@ -826,6 +829,7 @@ function CareerDateInput({
       </ApplicantFieldLabel>
       <ApplicantDateFields>
         <Select
+          className={getSelectClassName(year)}
           aria-label={`${label} 연도`}
           aria-required={required}
           options={YEAR_OPTIONS}

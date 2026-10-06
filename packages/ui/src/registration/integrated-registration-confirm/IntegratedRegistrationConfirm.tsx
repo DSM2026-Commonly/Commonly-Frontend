@@ -23,6 +23,7 @@ import {
   StyledStepIndicator,
   StyledSelect,
 } from "./integratedRegistrationConfirm.styles";
+import { getSelectClassName } from "../../form/formControls.styles";
 
 export interface IntegratedRegistrationConfirmStep {
   id: string;
@@ -71,9 +72,15 @@ const defaultSteps = [
   { id: "confirm", title: "데이터 확인" },
 ] as const satisfies readonly IntegratedRegistrationConfirmStep[];
 
-// 성명·생년월일·채용일은 경력 데이터 식별에 필요한 최소 필드라 매핑을 강제하고,
+// 성명·생년월일·성별은 백엔드가 매핑을 강제하는 필드라(빠지면 400 REQUIRED_FIELD_NOT_MAPPED) 같이 강제한다.
+// 채용일은 백엔드는 선택이지만, 채용일이 없는 경력은 발급·수정 화면에 나오지 않아 여기서 강제한다.
 // 나머지는 파일에 해당 열이 없어도 등록할 수 있도록 선택 필드로 둔다.
-const REQUIRED_FIELD_IDS = new Set<string>(["name", "birthDate", "hireDate"]);
+const REQUIRED_FIELD_IDS = new Set<string>([
+  "name",
+  "birthDate",
+  "gender",
+  "hireDate",
+]);
 
 // 좁은 라벨 칸에 맞추기 위해 긴 라벨은 줄바꿈해서 표시한다.
 const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
@@ -221,6 +228,7 @@ function IntegratedRegistrationConfirm({
                   </FieldLabel>
                   <StyledSelect>
                     <Select
+                      className={getSelectClassName(selectedRows[field.id] ?? "")}
                       id={`${titleId}-${field.id}`}
                       size="large"
                       options={getAvailableOptions(field.id)}

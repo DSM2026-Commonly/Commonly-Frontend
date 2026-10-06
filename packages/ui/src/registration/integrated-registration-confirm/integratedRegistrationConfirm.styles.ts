@@ -1,6 +1,9 @@
 import styled from "@emotion/styled";
+import { completedSelectStyles } from "../../form/formControls.styles";
 
 export const ConfirmRoot = styled.section`
+  ${completedSelectStyles}
+
   display: flex;
   width: min(792px, calc(100% - 40px));
   margin: 0 auto;
