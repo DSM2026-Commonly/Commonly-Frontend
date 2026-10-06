@@ -23,16 +23,16 @@ function AdminLayout({
   footerProps,
 }: AdminLayoutProps) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useScrollToTopOnChange(pathname);
   useSessionGuard(
     useCallback(() => {
       void navigate(
-        `/login?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
+        `/login?redirectTo=${encodeURIComponent(`${pathname}${search}`)}`,
         { replace: true },
       );
-    }, [navigate, pathname]),
+    }, [navigate, pathname, search]),
   );
   usePasswordChangeGuard(
     useCallback(() => {
@@ -42,10 +42,10 @@ function AdminLayout({
       }
 
       void navigate(
-        `${INITIAL_PASSWORD_CHANGE_PATH}?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
+        `${INITIAL_PASSWORD_CHANGE_PATH}?redirectTo=${encodeURIComponent(`${pathname}${search}`)}`,
         { replace: true },
       );
-    }, [navigate, pathname]),
+    }, [navigate, pathname, search]),
   );
 
   const handleNavigate =
