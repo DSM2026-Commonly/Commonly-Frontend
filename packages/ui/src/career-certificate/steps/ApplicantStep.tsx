@@ -198,7 +198,7 @@ function ApplicantStep({
               일치하는 대상자가 없습니다.
             </EmptyResult>
           )}
-          {applicants.length > 0 && applicantsTotalPages > 1 && (
+          {applicantsTotalPages > 1 && (
             <Pagination
               currentPage={applicantsPage}
               totalPages={applicantsTotalPages}

@@ -50,6 +50,7 @@ import {
 } from "../career-certificate/steps/ReasonStep.styles";
 import CareerEditNoticeStep from "./CareerEditNoticeStep";
 import Pagination from "../pagination/Pagination";
+import { getEmptyPageRetryPage } from "../pagination/pagination.utils";
 import AddressSearchModal, {
   type AddressSearchItem,
 } from "../registration/address-search/AddressSearchModal";
@@ -536,7 +537,7 @@ function ApplicantStep({
               </EmptyState>
             </TableFrame>
           )}
-          {searchResults.length > 0 && searchTotalPages > 1 && (
+          {searchTotalPages > 1 && (
             <Pagination
               currentPage={searchPage}
               totalPages={searchTotalPages}
@@ -1173,6 +1174,18 @@ function CareerEdit({
         return;
       }
 
+      // 조회 사이 데이터가 줄어 빈 페이지가 오면 마지막 유효 페이지를 다시 조회한다.
+      const retryPage = getEmptyPageRetryPage(
+        page,
+        result.items.length,
+        result.totalPages,
+      );
+
+      if (retryPage !== null) {
+        void runSearch(retryPage);
+        return;
+      }
+
       // 페이지가 바뀌면 이전 선택은 목록에 없을 수 있어 단건일 때만 자동 선택한다.
       const onlyMatch =
         result.items.length === 1 ? result.items[0] : undefined;
@@ -1199,7 +1212,10 @@ function CareerEdit({
         ),
       );
     } finally {
-      setIsSearching(false);
+      // 다음 조회(재조회 포함)가 이미 시작됐다면 그 조회가 로딩 상태를 관리한다.
+      if (requestId === searchRequestIdRef.current) {
+        setIsSearching(false);
+      }
     }
   };
 

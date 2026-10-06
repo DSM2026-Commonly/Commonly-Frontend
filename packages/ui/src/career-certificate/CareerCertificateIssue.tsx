@@ -28,6 +28,7 @@ import {
   sanitizeApplicantName,
   sanitizeDatePart,
 } from "./CareerCertificateIssue.validation";
+import { getEmptyPageRetryPage } from "../pagination/pagination.utils";
 import ApplicantStep from "./steps/ApplicantStep";
 import DetailsStep from "./steps/DetailsStep";
 import NoticeStep from "./steps/NoticeStep";
@@ -486,6 +487,18 @@ function CareerCertificateIssue({
         return;
       }
 
+      // 조회 사이 데이터가 줄어 빈 페이지가 오면 마지막 유효 페이지를 다시 조회한다.
+      const retryPage = getEmptyPageRetryPage(
+        page,
+        result.items.length,
+        result.totalPages,
+      );
+
+      if (retryPage !== null) {
+        void runApplicantSearch(retryPage);
+        return;
+      }
+
       setApplicants(result.items);
       setApplicantsPage(page);
       setApplicantsTotalPages(Math.max(1, result.totalPages));
@@ -503,7 +516,10 @@ function CareerCertificateIssue({
       setSelectedPerson("");
       setSearchError(getErrorMessage(error));
     } finally {
-      setIsSearchingApplicants(false);
+      // 다음 조회(재조회 포함)가 이미 시작됐다면 그 조회가 로딩 상태를 관리한다.
+      if (requestId === searchRequestIdRef.current) {
+        setIsSearchingApplicants(false);
+      }
     }
   };
 
