@@ -3,6 +3,7 @@ import { ApiError } from "../api";
 import {
   CERTIFICATE_TARGET_FIELDS,
   FILE_UPLOAD_ENDPOINT,
+  FILE_UPLOAD_NOT_EXCEL_MESSAGE,
   confirmFileMapping,
   getFileMappingEndpoint,
   getMappedRowValues,
@@ -82,6 +83,18 @@ describe("uploadFile", () => {
     expect(getUploadErrorMessage(error)).toContain("3행");
   });
 
+  // 확장자만 .xlsx 로 바꾼 한글 파일 등은 400 NOT_AN_EXCEL_FILE 이다(백엔드 #80).
+  // 일반 400 문구("지원하지 않는 형식")가 아니라 변환 방법을 알려준다.
+  test("explains how to convert a renamed non-Excel file", async () => {
+    mockFetch(400, { code: "NOT_AN_EXCEL_FILE", status: 400, message: "백엔드 문구" });
+
+    const error = await uploadFile(new File(["x"], "서식.hwpx.xlsx")).catch(
+      (e: unknown) => e,
+    );
+
+    expect((error as ApiError).message).toBe(FILE_UPLOAD_NOT_EXCEL_MESSAGE);
+  });
+
   test("falls back to status mapping when body has no code", async () => {
     mockFetch(413, undefined);
     const error = await uploadFile(new File([""], "a.xlsx")).catch((e: unknown) => e);
@@ -111,7 +124,28 @@ describe("confirmFileMapping", () => {
 
     expect(await confirmFileMapping(1, mappings)).toEqual({
       insertedCount: 2,
+      createdHumanCount: 0,
       failedRows: [],
+    });
+  });
+
+  // 엑셀에만 있던 대상자는 백엔드가 인적사항을 새로 만들고 그 수를 내려준다(#82).
+  test("reads how many people were newly created", async () => {
+    mockFetch(200, { saved: true, insertedCount: 3, createdHumanCount: 2, failedRows: [] });
+
+    expect(await confirmFileMapping(1, mappings)).toEqual({
+      insertedCount: 3,
+      createdHumanCount: 2,
+      failedRows: [],
+    });
+  });
+
+  test("offers the address as an optional mapping field", () => {
+    expect(CERTIFICATE_TARGET_FIELDS.map((field) => field.id)).toContain("address");
+    expect(suggestFileMappings(["성명", "주소", "근무부서"])).toMatchObject({
+      name: "성명",
+      address: "주소",
+      department: "근무부서",
     });
   });
 

@@ -1,6 +1,5 @@
 import { IntegratedRegistrationUpload } from "@commonly/ui";
 import {
-  clearRegistrationSession,
   getAuthToken,
   getRegistrationSession,
   getUploadErrorMessage,
@@ -8,16 +7,44 @@ import {
   uploadFile,
 } from "@commonly/utils";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 
 function IntegratedRegistrationUploadPage() {
   const navigate = useNavigate();
   // 새로고침/뒤로가기로 돌아온 경우 세션의 업로드 결과를 복원해 재업로드를 요구하지 않는다.
-  const [initialSession] = useState(getRegistrationSession);
+  // 단, 이미 등록을 끝낸 세션(결과가 남아 있음)이면 확정한 파일을 다시 보여주지 않고 새로 시작한다.
+  // 남겨 두면 파일 칸이 차 있어 새 파일 선택이 무시되고, 그대로 진행하면 같은 파일을 다시 확정하게 된다.
+  const [initialSession] = useState(() => {
+    const session = getRegistrationSession();
+
+    if (!session.result) {
+      return session;
+    }
+
+    const freshUpload = {
+      uploadedFile: undefined,
+      uploadedFileSize: undefined,
+      mappings: undefined,
+      result: undefined,
+    };
+
+    updateRegistrationSession(freshUpload);
+
+    return { ...session, ...freshUpload };
+  });
   const [errorMessage, setErrorMessage] = useState("");
   // 진행 중인 업로드 요청. 삭제/새 업로드/페이지 이탈 시 이전 요청을 무효화해
   // 늦게 완료된 요청이 새 등록 세션을 덮어쓰지 못하게 한다.
   const uploadControllerRef = useRef<AbortController | null>(null);
+
+  // 업로드 결과만 비운다. 유의사항 동의 플래그는 유지해야 같은 화면에 머무를 수 있다.
+  const resetUploadSession = () =>
+    updateRegistrationSession({
+      uploadedFile: undefined,
+      uploadedFileSize: undefined,
+      mappings: undefined,
+      result: undefined,
+    });
 
   const abortPendingUpload = () => {
     uploadControllerRef.current?.abort();
@@ -32,7 +59,7 @@ function IntegratedRegistrationUploadPage() {
     uploadControllerRef.current = controller;
 
     setErrorMessage("");
-    clearRegistrationSession();
+    resetUploadSession();
 
     try {
       const uploadedFile = await uploadFile(file, {
@@ -46,7 +73,7 @@ function IntegratedRegistrationUploadPage() {
         throw new DOMException("업로드 요청이 취소되었습니다.", "AbortError");
       }
 
-      if (!updateRegistrationSession({ uploadedFile })) {
+      if (!updateRegistrationSession({ uploadedFile, uploadedFileSize: file.size })) {
         throw new Error(
           "브라우저 저장소를 사용할 수 없어 업로드한 파일 정보를 저장할 수 없습니다.",
         );
@@ -64,10 +91,15 @@ function IntegratedRegistrationUploadPage() {
     }
   };
 
+  if (!initialSession.noticeAgreed) {
+    return <Navigate to="/career/register/bulk" replace />;
+  }
+
   return (
     <IntegratedRegistrationUpload
       errorMessage={errorMessage}
       initialFileName={initialSession.uploadedFile?.fileName}
+      initialFileSize={initialSession.uploadedFileSize}
       onFileUpload={handleFileUpload}
       onFileDelete={(_fileId, remainingFiles) => {
         abortPendingUpload();
@@ -81,7 +113,7 @@ function IntegratedRegistrationUploadPage() {
         );
 
         if (!hasRemainingUpload) {
-          clearRegistrationSession();
+          resetUploadSession();
         }
       }}
       onPrevious={() => void navigate("/career/register/bulk")}

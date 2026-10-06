@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { requiredLabelStyles } from "../../form/requiredFields.styles";
 
 export {
   CardStack,
@@ -34,6 +35,13 @@ export const SelectionCount = styled.p`
   }
 `;
 
+export const SelectionLimitNotice = styled.p`
+  margin: 8px 0 0;
+  color: var(--career-color-text-subtle);
+  font-size: 15px;
+  line-height: 1.5;
+`;
+
 export const SelectAllButton = styled.button`
   min-height: 24px;
   padding: 0 2px;
@@ -64,9 +72,16 @@ export const ExtraFields = styled.div`
   gap: 16px;
   margin-top: 24px;
 
+  ${requiredLabelStyles}
+
   .form-group,
   .form-conts,
   .krds-input {
     width: 100%;
   }
+`;
+
+/** 날짜처럼 중간에서 끊기면 읽기 어려운 값을 한 덩어리로 둔다. */
+export const NoWrap = styled.span`
+  white-space: nowrap;
 `;

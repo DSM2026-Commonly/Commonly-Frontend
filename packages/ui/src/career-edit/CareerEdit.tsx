@@ -42,6 +42,20 @@ import {
   CAREER_EDIT_TARGET_OPTIONS,
 } from "./CareerEdit.constants";
 import {
+  type BirthDateParts,
+  getBirthDateParts,
+  getEditableDateParts,
+  getMissingCareerRecordFields,
+  getMissingPersonalInfoFields,
+  isCareerRecordSavable,
+  isEmptyEditableDate,
+  isPartialEditableDate,
+  isPersonalInfoSavable,
+} from "./CareerEdit.validation";
+import { getSelectClassName } from "../form/formControls.styles";
+import { FormHint, RequiredMark } from "../form/requiredFields.styles";
+import { getRequiredFieldsMessage } from "../form/requiredFields.utils";
+import {
   CardSubheading as ReasonCardTitle,
   Fieldset as ReasonFieldset,
   FormCard as ReasonFormCard,
@@ -49,6 +63,8 @@ import {
   TextareaFrame as ReasonTextareaFrame,
 } from "../career-certificate/steps/ReasonStep.styles";
 import CareerEditNoticeStep from "./CareerEditNoticeStep";
+import Pagination from "../pagination/Pagination";
+import { getEmptyPageRetryPage } from "../pagination/pagination.utils";
 import AddressSearchModal, {
   type AddressSearchItem,
 } from "../registration/address-search/AddressSearchModal";
@@ -119,14 +135,20 @@ interface ApplicantStepProps {
   canSearch: boolean;
   hasSearchResult: boolean;
   isSearching: boolean;
+  /** 선택한 대상자의 경력을 불러오는 중. 대상자 조건·선택·페이지 이동을 잠근다. */
+  isLoadingRecords: boolean;
   searchError: string;
   searchResults: readonly CareerEditApplicant[];
+  /** 현재 페이지(1부터 시작). */
+  searchPage: number;
+  searchTotalPages: number;
   selectedApplicantId: string;
   onApplicantNameChange: (value: string) => void;
   onBirthYearChange: (value: string) => void;
   onBirthMonthChange: (value: string) => void;
   onBirthDayChange: (value: string) => void;
   onSearch: () => void;
+  onSearchPageChange: (page: number) => void;
   onSelectApplicant: (applicantId: string) => void;
   /** 없으면 삭제 열 자체를 그리지 않는다. */
   onDeleteApplicant?: (applicant: CareerEditApplicant) => void;
@@ -153,6 +175,7 @@ interface CareerDateInputProps {
   label: string;
   /** 라벨 옆 괄호 안내 문구. 생략하면 숫자 입력 안내를 보여준다. */
   hint?: string;
+  required?: boolean;
   value: string;
   onChange: (value: string) => void;
 }
@@ -173,28 +196,6 @@ interface SuccessViewProps {
   onHome?: () => void;
 }
 
-interface BirthDateParts {
-  year: string;
-  month: string;
-  day: string;
-}
-
-function getBirthDateParts(value: string | undefined): BirthDateParts {
-  const [year = "", month = "", day = ""] = value?.match(/\d+/g) ?? [];
-
-  return { year, month, day };
-}
-
-function getEditableDateParts(value: string): BirthDateParts {
-  if (!value.includes(".")) {
-    return getBirthDateParts(value);
-  }
-
-  const [year = "", month = "", day = ""] = value.split(".");
-
-  return { year, month, day };
-}
-
 function updateEditableDatePart(
   value: string,
   part: keyof BirthDateParts,
@@ -210,19 +211,6 @@ function updateEditableDatePart(
 
 function serializeEditableDate(dateParts: BirthDateParts) {
   return `${dateParts.year}.${dateParts.month}.${dateParts.day}`;
-}
-
-function isValidEditableDate(value: string) {
-  const { year, month, day } = getEditableDateParts(value);
-
-  return isValidBirthDate(year, month, day);
-}
-
-// 재직 중 경력은 종료일이 비어 있으므로 "모든 부분이 빈 날짜"를 구분한다.
-function isEmptyEditableDate(value: string) {
-  const { year, month, day } = getEditableDateParts(value);
-
-  return !year && !month && !day;
 }
 
 function normalizeEditableDate(value: string) {
@@ -362,14 +350,18 @@ function ApplicantStep({
   canSearch,
   hasSearchResult,
   isSearching,
+  isLoadingRecords,
   searchError,
   searchResults,
+  searchPage,
+  searchTotalPages,
   selectedApplicantId,
   onApplicantNameChange,
   onBirthYearChange,
   onBirthMonthChange,
   onBirthDayChange,
   onSearch,
+  onSearchPageChange,
   onSelectApplicant,
   onDeleteApplicant,
   deletingApplicantId,
@@ -392,6 +384,7 @@ function ApplicantStep({
             label="이름"
             placeholder="이름을 입력해주세요"
             value={applicantName}
+            disabled={isLoadingRecords}
             onChange={onApplicantNameChange}
             autoComplete="name"
           />
@@ -402,9 +395,11 @@ function ApplicantStep({
           </ApplicantFieldLabel>
           <ApplicantDateFields>
             <Select
+              className={getSelectClassName(birthYear)}
               aria-label="생년"
               options={YEAR_OPTIONS}
               value={birthYear}
+              disabled={isLoadingRecords}
               onChange={onBirthYearChange}
             />
             <TextInput
@@ -420,6 +415,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="월"
               value={birthMonth}
+              disabled={isLoadingRecords}
               onChange={onBirthMonthChange}
             />
             <TextInput
@@ -435,6 +431,7 @@ function ApplicantStep({
               pattern="[0-9]*"
               placeholder="일"
               value={birthDay}
+              disabled={isLoadingRecords}
               onChange={onBirthDayChange}
             />
           </ApplicantDateFields>
@@ -444,7 +441,7 @@ function ApplicantStep({
             variant="secondary"
             size="large"
             type="button"
-            disabled={!canSearch || isSearching}
+            disabled={!canSearch || isSearching || isLoadingRecords}
             onClick={onSearch}
           >
             {isSearching ? "조회 중..." : "대상자 조회"}
@@ -489,6 +486,7 @@ function ApplicantStep({
                           name="career-edit-applicant"
                           value={applicant.id}
                           checked={selectedApplicantId === applicant.id}
+                          disabled={isLoadingRecords}
                           onChange={() => onSelectApplicant(applicant.id)}
                         >
                           <span className="sr-only">
@@ -506,7 +504,9 @@ function ApplicantStep({
                           <Button
                             variant="tertiary"
                             size="small"
-                            disabled={deletingApplicantId !== ""}
+                            disabled={
+                              deletingApplicantId !== "" || isLoadingRecords
+                            }
                             onClick={() => onDeleteApplicant(applicant)}
                           >
                             {deletingApplicantId === applicant.id
@@ -527,6 +527,15 @@ function ApplicantStep({
                 확인해 주세요.
               </EmptyState>
             </TableFrame>
+          )}
+          {searchTotalPages > 1 && (
+            <Pagination
+              currentPage={searchPage}
+              totalPages={searchTotalPages}
+              isLoading={isSearching || isLoadingRecords}
+              navLabel="대상자 목록 페이지"
+              onPageChange={onSearchPageChange}
+            />
           )}
           {deleteError && <FlowError role="alert">{deleteError}</FlowError>}
         </FormCard>
@@ -670,6 +679,7 @@ function PersonalDetailsStep({
             id="career-edit-personal-name"
             label="이름"
             placeholder="이름을 입력해주세요"
+            aria-required
             value={personalInfo.name}
             onChange={(value) =>
               onChange("name", sanitizeApplicantName(value))
@@ -677,16 +687,27 @@ function PersonalDetailsStep({
             autoComplete="name"
           />
           <GenderField>
-            <ApplicantFieldLabel>성별</ApplicantFieldLabel>
+            <ApplicantFieldLabel>
+              성별
+              <RequiredMark aria-hidden="true">*</RequiredMark>
+            </ApplicantFieldLabel>
             <RadioGroup
               name="career-edit-personal-gender"
               value={personalInfo.gender}
               onChange={handleGenderChange}
             >
-              <Radio id="career-edit-personal-gender-male" value="male">
+              <Radio
+                id="career-edit-personal-gender-male"
+                value="male"
+                required
+              >
                 남
               </Radio>
-              <Radio id="career-edit-personal-gender-female" value="female">
+              <Radio
+                id="career-edit-personal-gender-female"
+                value="female"
+                required
+              >
                 여
               </Radio>
             </RadioGroup>
@@ -696,17 +717,22 @@ function PersonalDetailsStep({
 
       <ApplicantFieldGroup>
         <ApplicantFieldLabel>
-          생년월일 (숫자만 입력해주세요)
+          생년월일
+          <RequiredMark aria-hidden="true">*</RequiredMark>
+          {" (숫자만 입력해주세요)"}
         </ApplicantFieldLabel>
         <ApplicantDateFields>
           <Select
+            className={getSelectClassName(personalInfo.birthYear)}
             aria-label="수정할 생년"
+            aria-required
             options={YEAR_OPTIONS}
             value={personalInfo.birthYear}
             onChange={(value) => onChange("birthYear", value)}
           />
           <TextInput
             aria-label="수정할 생월"
+            aria-required
             aria-invalid={isBirthMonthInvalid}
             error={
               isBirthMonthInvalid
@@ -724,6 +750,7 @@ function PersonalDetailsStep({
           />
           <TextInput
             aria-label="수정할 생일"
+            aria-required
             aria-invalid={isBirthDayInvalid}
             error={
               isBirthDayInvalid
@@ -743,10 +770,14 @@ function PersonalDetailsStep({
       </ApplicantFieldGroup>
 
       <ApplicantFieldGroup>
-        <ApplicantFieldLabel>주소지</ApplicantFieldLabel>
+        <ApplicantFieldLabel>
+          주소지
+          <RequiredMark aria-hidden="true">*</RequiredMark>
+        </ApplicantFieldLabel>
         <AddressFields>
           <TextInput
             aria-label="주소지"
+            aria-required
             placeholder="검색 버튼을 눌러주세요"
             value={personalInfo.address}
             onChange={(value) => onChange("address", value)}
@@ -770,6 +801,7 @@ function CareerDateInput({
   idPrefix,
   label,
   hint = "숫자만 입력해주세요",
+  required = false,
   value,
   onChange,
 }: CareerDateInputProps) {
@@ -791,11 +823,15 @@ function CareerDateInput({
   return (
     <div>
       <ApplicantFieldLabel>
-        {label} ({hint})
+        {label}
+        {required && <RequiredMark aria-hidden="true">*</RequiredMark>}
+        {` (${hint})`}
       </ApplicantFieldLabel>
       <ApplicantDateFields>
         <Select
+          className={getSelectClassName(year)}
           aria-label={`${label} 연도`}
+          aria-required={required}
           options={YEAR_OPTIONS}
           value={year}
           onChange={(nextYear) =>
@@ -805,6 +841,7 @@ function CareerDateInput({
         <TextInput
           id={`${idPrefix}-month`}
           aria-label={`${label} 월`}
+          aria-required={required}
           aria-invalid={isMonthInvalid}
           error={
             isMonthInvalid
@@ -823,6 +860,7 @@ function CareerDateInput({
         <TextInput
           id={`${idPrefix}-day`}
           aria-label={`${label} 일`}
+          aria-required={required}
           aria-invalid={isDayInvalid}
           error={
             isDayInvalid
@@ -852,8 +890,9 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
           <FormFields>
             <TextInput
               id="career-edit-position"
-              label="직급명"
-              placeholder="직급을 입력해주세요"
+              label="직종명"
+              placeholder="직종을 입력해주세요"
+              aria-required
               value={record.position}
               onChange={(value) => onChange("position", value)}
             />
@@ -861,6 +900,7 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
               id="career-edit-duties"
               label="담당업무"
               placeholder="업무 내용을 입력해주세요"
+              aria-required
               value={record.duties}
               onChange={(value) => onChange("duties", value)}
             />
@@ -868,12 +908,14 @@ function EditDetailsStep({ record, onChange }: EditDetailsStepProps) {
               id="career-edit-department"
               label="근무부서"
               placeholder="부서를 입력해주세요"
+              aria-required
               value={record.department}
               onChange={(value) => onChange("department", value)}
             />
             <CareerDateInput
               idPrefix="career-edit-start-date"
               label="근무 시작일"
+              required
               value={record.startDate}
               onChange={(value) => onChange("startDate", value)}
             />
@@ -1020,11 +1062,17 @@ function CareerEdit({
   >(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  // 대상자 검색 결과는 서버가 페이지 단위로 내려준다(기본 20건).
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchTotalPages, setSearchTotalPages] = useState(1);
   const [deletingApplicantId, setDeletingApplicantId] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [fetchedRecords, setFetchedRecords] = useState<
     readonly CareerEditRecord[] | null
   >(null);
+  // 불러온 경력이 어느 대상자의 것인지. 저장 직전에 선택한 대상자와 같은지 확인한다.
+  const [fetchedRecordsApplicantId, setFetchedRecordsApplicantId] =
+    useState("");
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
   const [recordsError, setRecordsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1062,23 +1110,21 @@ function CareerEdit({
   const selectedApplicant = availableApplicants.find(
     (applicant) => applicant.id === selectedApplicantId,
   );
-  const canSavePersonalInfo =
-    personalInfo.name.trim().length > 0 &&
-    Boolean(personalInfo.gender) &&
-    isValidBirthDate(
-      personalInfo.birthYear,
-      personalInfo.birthMonth,
-      personalInfo.birthDay,
-    ) &&
-    personalInfo.address.trim().length > 0;
-  const canSaveCareerInfo =
-    draftRecord.position.trim().length > 0 &&
-    draftRecord.duties.trim().length > 0 &&
-    draftRecord.department.trim().length > 0 &&
-    isValidEditableDate(draftRecord.startDate) &&
-    // 재직 중(퇴직일 없음) 경력은 종료일을 비워둔 채 저장할 수 있어야 한다.
-    (isEmptyEditableDate(draftRecord.endDate) ||
-      isValidEditableDate(draftRecord.endDate));
+  const canSavePersonalInfo = isPersonalInfoSavable(personalInfo);
+  const canSaveCareerInfo = isCareerRecordSavable(draftRecord);
+  // 2단계 다음 버튼이 비활성인 이유. 기타 사유는 상세 내용이 있어야 넘어간다.
+  const reasonHint =
+    reason === "other" && !reasonDetail.trim()
+      ? "기타 사유를 선택하면 상세 내용을 입력해 주세요."
+      : "";
+  // 5단계 저장 버튼이 비활성인 이유. 형식 오류는 입력란 아래에서 따로 알린다.
+  const saveHint =
+    editTarget === "personal"
+      ? getRequiredFieldsMessage(getMissingPersonalInfoFields(personalInfo))
+      : getRequiredFieldsMessage(getMissingCareerRecordFields(draftRecord)) ||
+        (isPartialEditableDate(draftRecord.endDate)
+          ? "근무 종료일은 모두 입력하거나, 재직 중이면 모두 비워 주세요."
+          : "");
   const canContinue =
     (currentStep === 0 && noticeAccepted) ||
     (currentStep === 1 &&
@@ -1097,9 +1143,12 @@ function CareerEdit({
     setSelectedApplicantId("");
     setPersonalInfo(createPersonalInfo(undefined));
     setFetchedApplicants(null);
+    setSearchPage(1);
+    setSearchTotalPages(1);
     setSearchError("");
     setDeleteError("");
     setFetchedRecords(null);
+    setFetchedRecordsApplicantId("");
     setRecordsError("");
   };
 
@@ -1129,7 +1178,74 @@ function CareerEdit({
     resetSearchResult();
   };
 
-  const handleSearch = async () => {
+  const runSearch = async (page: number) => {
+    if (!onSearch) {
+      return;
+    }
+
+    const requestId = ++searchRequestIdRef.current;
+
+    setIsSearching(true);
+    setSearchError("");
+
+    try {
+      const result = await onSearch({
+        name: applicantName.trim(),
+        birthDate: `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
+        page,
+      });
+
+      // 응답 대기 중 입력이 바뀌어 리셋됐다면 이전 응답으로 화면을 덮어쓰지 않는다.
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      // 조회 사이 데이터가 줄어 빈 페이지가 오면 마지막 유효 페이지를 다시 조회한다.
+      const retryPage = getEmptyPageRetryPage(
+        page,
+        result.items.length,
+        result.totalPages,
+      );
+
+      if (retryPage !== null) {
+        void runSearch(retryPage);
+        return;
+      }
+
+      // 페이지가 바뀌면 이전 선택은 목록에 없을 수 있어 단건일 때만 자동 선택한다.
+      const onlyMatch =
+        result.items.length === 1 ? result.items[0] : undefined;
+
+      setFetchedApplicants(result.items);
+      setSearchPage(page);
+      setSearchTotalPages(Math.max(1, result.totalPages));
+      setHasSearchResult(true);
+      setSelectedApplicantId(onlyMatch?.id ?? "");
+      setPersonalInfo(createPersonalInfo(onlyMatch));
+    } catch (error) {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      setFetchedApplicants(null);
+      setSearchTotalPages(1);
+      setHasSearchResult(false);
+      setSelectedApplicantId("");
+      setSearchError(
+        getErrorMessage(
+          error,
+          "대상자 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+      );
+    } finally {
+      // 다음 조회(재조회 포함)가 이미 시작됐다면 그 조회가 로딩 상태를 관리한다.
+      if (requestId === searchRequestIdRef.current) {
+        setIsSearching(false);
+      }
+    }
+  };
+
+  const handleSearch = () => {
     if (!canSearch || isSearching) {
       return;
     }
@@ -1147,45 +1263,15 @@ function CareerEdit({
       return;
     }
 
-    const requestId = ++searchRequestIdRef.current;
+    void runSearch(1);
+  };
 
-    setIsSearching(true);
-    setSearchError("");
-
-    try {
-      const results = await onSearch({
-        name: applicantName.trim(),
-        birthDate: `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`,
-      });
-
-      // 응답 대기 중 입력이 바뀌어 리셋됐다면 이전 응답으로 화면을 덮어쓰지 않는다.
-      if (requestId !== searchRequestIdRef.current) {
-        return;
-      }
-
-      const onlyMatch = results.length === 1 ? results[0] : undefined;
-
-      setFetchedApplicants(results);
-      setHasSearchResult(true);
-      setSelectedApplicantId(onlyMatch?.id ?? "");
-      setPersonalInfo(createPersonalInfo(onlyMatch));
-    } catch (error) {
-      if (requestId !== searchRequestIdRef.current) {
-        return;
-      }
-
-      setFetchedApplicants(null);
-      setHasSearchResult(false);
-      setSelectedApplicantId("");
-      setSearchError(
-        getErrorMessage(
-          error,
-          "대상자 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-        ),
-      );
-    } finally {
-      setIsSearching(false);
+  const handleSearchPageChange = (nextPage: number) => {
+    if (!onSearch || isSearching || nextPage === searchPage) {
+      return;
     }
+
+    void runSearch(nextPage);
   };
 
   const handleDeleteApplicant = async (applicant: CareerEditApplicant) => {
@@ -1193,10 +1279,10 @@ function CareerEdit({
       return;
     }
 
-    // 되돌릴 수 없는 삭제라 확인을 받는다. 경력 사항은 백엔드가 함께 지우지 않는다.
+    // 되돌릴 수 없는 삭제라 확인을 받는다. 경력 사항이 있으면 페이지가 삭제를 거절한다.
     if (
       !window.confirm(
-        `${applicant.name}(${getBirthDateLabel(applicant.birthDate)}) 대상자를 삭제하시겠습니까?\n등록된 경력 사항은 함께 삭제되지 않습니다.`,
+        `${applicant.name}(${getBirthDateLabel(applicant.birthDate)}) 대상자를 삭제하시겠습니까?\n경력 사항이 등록된 대상자는 삭제할 수 없습니다.`,
       )
     ) {
       return;
@@ -1318,8 +1404,11 @@ function CareerEdit({
     setCurrentStep(3);
   };
 
+  // 대상자 조회 응답이 오면 선택이 바뀔 수 있어, 조회 중에는 다음 단계로 넘어가지 않는다.
+  const isWaitingForSearch = currentStep === 2 && isSearching;
+
   const handleNext = async () => {
-    if (!canContinue || isLoadingRecords || isSubmitting) {
+    if (!canContinue || isLoadingRecords || isSubmitting || isWaitingForSearch) {
       return;
     }
 
@@ -1342,6 +1431,7 @@ function CareerEdit({
           const records = await onLoadCareerRecords(selectedApplicant.id);
 
           setFetchedRecords(records);
+          setFetchedRecordsApplicantId(selectedApplicant.id);
           setSelectedCareerId(records[0]?.id ?? "");
           setDraftRecord(cloneRecord(records[0]));
         } catch (error) {
@@ -1367,6 +1457,18 @@ function CareerEdit({
     }
 
     if (!selectedApplicant) {
+      return;
+    }
+
+    // 다른 대상자의 경력 id 와 인적 사항이 섞여 저장되지 않게 막는다.
+    if (
+      editTarget === "career" &&
+      onLoadCareerRecords &&
+      fetchedRecordsApplicantId !== selectedApplicant.id
+    ) {
+      setSubmissionError(
+        "선택한 대상자와 불러온 경력이 일치하지 않습니다. 대상자 조회부터 다시 진행해 주세요.",
+      );
       return;
     }
 
@@ -1421,6 +1523,7 @@ function CareerEdit({
     setSearchError("");
     setDeleteError("");
     setFetchedRecords(null);
+    setFetchedRecordsApplicantId("");
     setIsLoadingRecords(false);
     setRecordsError("");
     setIsSubmitting(false);
@@ -1500,14 +1603,18 @@ function CareerEdit({
                   canSearch={canSearch}
                   hasSearchResult={hasSearchResult}
                   isSearching={isSearching}
+                  isLoadingRecords={isLoadingRecords}
                   searchError={searchError}
                   searchResults={searchResults}
+                  searchPage={searchPage}
+                  searchTotalPages={searchTotalPages}
                   selectedApplicantId={selectedApplicantId}
                   onApplicantNameChange={handleApplicantNameChange}
                   onBirthYearChange={handleBirthYearChange}
                   onBirthMonthChange={handleBirthMonthChange}
                   onBirthDayChange={handleBirthDayChange}
-                  onSearch={() => void handleSearch()}
+                  onSearch={() => handleSearch()}
+                  onSearchPageChange={handleSearchPageChange}
                   onSelectApplicant={handleSelectApplicant}
                   onDeleteApplicant={
                     onDeleteApplicant
@@ -1548,6 +1655,12 @@ function CareerEdit({
             {currentStep === 4 && submissionError && (
               <FlowError role="alert">{submissionError}</FlowError>
             )}
+            {currentStep === 1 && reasonHint && (
+              <FormHint role="status">{reasonHint}</FormHint>
+            )}
+            {currentStep === 4 && saveHint && (
+              <FormHint role="status">{saveHint}</FormHint>
+            )}
             <ActionRow>
               <Button
                 variant="tertiary"
@@ -1562,7 +1675,12 @@ function CareerEdit({
                 variant="primary"
                 size="xlarge"
                 type="button"
-                disabled={!canContinue || isLoadingRecords || isSubmitting}
+                disabled={
+                  !canContinue ||
+                  isLoadingRecords ||
+                  isSubmitting ||
+                  isWaitingForSearch
+                }
                 onClick={() => void handleNext()}
               >
                 {currentStep === 4

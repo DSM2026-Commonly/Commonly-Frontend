@@ -1,6 +1,9 @@
 import styled from "@emotion/styled";
+import { completedSelectStyles } from "../../form/formControls.styles";
 
 export const ConfirmRoot = styled.section`
+  ${completedSelectStyles}
+
   display: flex;
   width: min(792px, calc(100% - 40px));
   margin: 0 auto;
@@ -126,10 +129,10 @@ export const ConfirmCard = styled.form`
 
 export const FieldGrid = styled.div`
   display: grid;
-  width: min(548px, 100%);
-  grid-template-columns: repeat(2, minmax(214px, 1fr));
-  column-gap: 120px;
-  row-gap: 19px;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 20px;
 
   @media (max-width: 767px) {
     grid-template-columns: minmax(0, 1fr);
@@ -137,34 +140,29 @@ export const FieldGrid = styled.div`
   }
 `;
 
+/** 라벨을 선택칸 위에 둔다. 옆에 두면 좁은 칸에서 "직종/명"처럼 단어 중간에서 줄이 꺾인다. */
 export const FieldRow = styled.div`
-  display: grid;
-  grid-template-columns: 33px 156px;
-  min-height: 56px;
-  column-gap: 25px;
-  align-items: center;
-
-  @media (max-width: 767px) {
-    grid-template-columns: 64px minmax(0, 1fr);
-    column-gap: 16px;
-  }
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
 `;
 
 export const FieldLabel = styled.label`
   display: block;
   color: var(--krds-light-color-text-basic, #1e2124);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.5;
-  white-space: pre-line;
+  white-space: nowrap;
 `;
 
 export const StyledSelect = styled.div`
-  width: 156px;
+  width: 100%;
   min-width: 0;
 
   .krds-form-select {
-    width: 156px;
+    width: 100%;
     height: 56px;
     min-height: 56px;
     padding: 0 44px 0 16px;
@@ -173,14 +171,6 @@ export const StyledSelect = styled.div`
     color: var(--krds-light-color-text-subtle, #464c53);
     font-size: 19px;
     line-height: 1.5;
-  }
-
-  @media (max-width: 767px) {
-    width: 100%;
-
-    .krds-form-select {
-      width: 100%;
-    }
   }
 `;
 

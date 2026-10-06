@@ -11,15 +11,28 @@ import {
   CERTIFICATE_CREATE_HUMAN_NOT_FOUND_MESSAGE,
   createCertificate,
   CERTIFICATE_ISSUE_INVALID_RESPONSE_MESSAGE,
+  CERTIFICATE_LIMIT_EXCEEDED_MESSAGE,
+  CERTIFICATE_PREVIEW_ENDPOINT,
+  CERTIFICATE_PREVIEW_INVALID_RESPONSE_MESSAGE,
   CERTIFICATE_SELF_ENDPOINT,
+  CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
+  CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE,
+  CERTIFICATE_SELF_PREVIEW_ENDPOINT,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+  HUMAN_DELETE_HAS_CAREERS_MESSAGE,
+  assertHumanDeletable,
+  PETITIONER_HUMAN_NOT_MATCHED_MESSAGE,
+  SELF_CERTIFICATE_NOT_FOUND_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
+  fetchMyCertificates,
   getCertificateDownloadEndpoint,
   getCertificateUpdateEndpoint,
   getHumanCertificatesEndpoint,
   issueCertificate,
   issueSelfCertificate,
+  previewCertificate,
+  previewSelfCertificate,
   updateCertificate,
 } from "../certificates";
 
@@ -77,6 +90,18 @@ function mockFetch(
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status,
       headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+}
+
+const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
+function mockPdfFetch(assertInit?: (url: string, init?: RequestInit) => void) {
+  globalThis.fetch = (async (url: unknown, init?: RequestInit) => {
+    assertInit?.(String(url), init);
+    return new Response(new Blob([PDF_BYTES], { type: "application/pdf" }), {
+      status: 200,
+      headers: { "Content-Disposition": "inline" },
     });
   }) as typeof fetch;
 }
@@ -154,6 +179,41 @@ describe("fetchCertificateDetail", () => {
     await expect(fetchCertificateDetail(5)).rejects.toThrow(
       CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
     );
+  });
+});
+
+describe("assertHumanDeletable", () => {
+  test("passes when the human has no career rows", async () => {
+    mockFetch(200, [], (url) => {
+      expect(url).toBe(getHumanCertificatesEndpoint(3));
+    });
+
+    await expect(assertHumanDeletable(3, { token: "token-1" })).resolves.toBeUndefined();
+  });
+
+  test("refuses when the human has career rows", async () => {
+    mockFetch(200, [humanCertificate]);
+
+    await expect(assertHumanDeletable(3)).rejects.toThrow(
+      HUMAN_DELETE_HAS_CAREERS_MESSAGE,
+    );
+  });
+
+  // 채용일이 없는 행처럼 화면에 못 그리는 행도 경력이므로 삭제를 막아야 한다.
+  test("counts rows the screen cannot render", async () => {
+    mockFetch(200, [{ ...humanCertificate, hireDate: null }]);
+
+    await expect(assertHumanDeletable(3)).rejects.toThrow(
+      HUMAN_DELETE_HAS_CAREERS_MESSAGE,
+    );
+  });
+
+  test("rejects a non-array response", async () => {
+    mockFetch(200, { content: [] });
+
+    await expect(assertHumanDeletable(3)).rejects.toMatchObject({
+      message: HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    });
   });
 });
 
@@ -318,7 +378,7 @@ describe("issueSelfCertificate", () => {
     otherMatters: "",
   };
 
-  test("POSTs purpose/otherMatters to the self endpoint", async () => {
+  test("POSTs purpose/otherMatters without certificateIds for 전체 발급", async () => {
     mockFetch(201, issuedResponse, (url, init) => {
       expect(url).toBe(CERTIFICATE_SELF_ENDPOINT);
       expect(url).toBe("/api/certificates/self");
@@ -333,6 +393,17 @@ describe("issueSelfCertificate", () => {
 
     expect(
       await issueSelfCertificate(selfRequest, { token: "token-1" }),
+    ).toEqual(issuedResponse);
+  });
+
+  test("sends the chosen certificateIds for 선택 발급", async () => {
+    mockFetch(201, issuedResponse, (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body).toEqual({ ...selfRequest, certificateIds: [10, 12] });
+    });
+
+    expect(
+      await issueSelfCertificate({ ...selfRequest, certificateIds: [10, 12] }),
     ).toEqual(issuedResponse);
   });
 
@@ -352,21 +423,215 @@ describe("issueSelfCertificate", () => {
 
   test("maps error statuses to Korean messages", async () => {
     const cases = [
-      // 본인 발급은 권한 부족도 401 로 오므로 "다시 로그인" 안내를 쓰지 않는다.
-      [401, "본인 증명서 발급 권한이 없습니다"],
-      [403, "본인 경력만 발급할 수 있습니다"],
-      [404, "발급할 경력 사항이 없습니다"],
-      [500, "일시적인 오류"],
+      // 전체 발급인데 재직 이력이 10건을 넘으면 400 CERTIFICATE_LIMIT_EXCEEDED 다.
+      [400, "CERTIFICATE_LIMIT_EXCEEDED", CERTIFICATE_LIMIT_EXCEEDED_MESSAGE],
+      [401, "UNAUTHORIZED", CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
+      // 본인 발급 스위치가 꺼져 있으면 403 SELF_ISSUE_DISABLED 다.
+      [403, "SELF_ISSUE_DISABLED", CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
+      [500, "INTERNAL_SERVER_ERROR", "일시적인 오류"],
     ] as const;
 
-    for (const [status, message] of cases) {
-      mockFetch(status, undefined);
+    for (const [status, code, message] of cases) {
+      mockFetch(status, { code, status });
       const error = await issueSelfCertificate(selfRequest).catch(
         (e: unknown) => e,
       );
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
+    }
+  });
+
+  test("tells the two 404s apart by code (human mismatch vs. missing career)", async () => {
+    const cases = [
+      ["PETITIONER_HUMAN_NOT_MATCHED", PETITIONER_HUMAN_NOT_MATCHED_MESSAGE],
+      ["CERTIFICATE_NOT_FOUND", SELF_CERTIFICATE_NOT_FOUND_MESSAGE],
+    ] as const;
+
+    for (const [code, message] of cases) {
+      mockFetch(404, { code, status: 404, message: "백엔드 문구" });
+
+      await expect(issueSelfCertificate(selfRequest)).rejects.toMatchObject({
+        status: 404,
+        message,
+      });
+    }
+  });
+
+  test("shows the field message for a validation 400 instead of the limit message", async () => {
+    mockFetch(400, {
+      code: "VALIDATION_FAILED",
+      status: 400,
+      error: { purpose: "255자 이하로 입력해 주세요." },
+    });
+
+    await expect(issueSelfCertificate(selfRequest)).rejects.toMatchObject({
+      status: 400,
+      message: "255자 이하로 입력해 주세요.",
+    });
+  });
+});
+
+describe("fetchMyCertificates", () => {
+  test("GETs the petitioner's own certificates with the bearer token", async () => {
+    mockFetch(200, [humanCertificate], (url, init) => {
+      expect(url).toBe(CERTIFICATE_SELF_ENDPOINT);
+      expect(init?.method).toBe("GET");
+      expect(init?.body).toBeUndefined();
+      const headers = init?.headers as Record<string, string>;
+      expect(headers.Authorization).toBe("Bearer token-1");
+    });
+
+    expect(await fetchMyCertificates({ token: "token-1" })).toEqual([
+      humanCertificate,
+    ]);
+  });
+
+  test("normalizes rows the same way as fetchHumanCertificates", async () => {
+    mockFetch(200, [
+      { ...humanCertificate, retirementDate: null, note: null },
+      { ...humanCertificate, certificateId: "11" },
+    ]);
+
+    expect(await fetchMyCertificates()).toEqual([
+      { ...humanCertificate, retirementDate: "", note: "" },
+    ]);
+  });
+
+  test("rejects non-array 200 bodies", async () => {
+    mockFetch(200, {});
+
+    await expect(fetchMyCertificates()).rejects.toMatchObject({
+      status: 200,
+      message: HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    });
+  });
+
+  test("maps the closed self-issue gate and unmatched account to messages", async () => {
+    const cases = [
+      [401, CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
+      [403, CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
+      [404, PETITIONER_HUMAN_NOT_MATCHED_MESSAGE],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+
+      await expect(fetchMyCertificates()).rejects.toMatchObject({
+        status,
+        message,
+      });
+    }
+  });
+});
+
+describe("previewCertificate", () => {
+  test("POSTs the same body as issuing and returns the PDF blob", async () => {
+    mockPdfFetch((url, init) => {
+      expect(url).toBe(CERTIFICATE_PREVIEW_ENDPOINT);
+      expect(url).toBe("/api/certificates/preview");
+      expect(init?.method).toBe("POST");
+      const headers = init?.headers as Record<string, string>;
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers.Authorization).toBe("Bearer token-1");
+      expect(JSON.parse(String(init?.body))).toEqual(issueRequest);
+    });
+
+    const blob = await previewCertificate(issueRequest, { token: "token-1" });
+
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toBe("application/pdf");
+    expect(blob.size).toBe(PDF_BYTES.length);
+  });
+
+  test("rejects a 200 that is not a PDF so the caller can fall back", async () => {
+    for (const response of [
+      new Response("<!doctype html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+      new Response(new Blob([], { type: "application/pdf" }), { status: 200 }),
+    ]) {
+      globalThis.fetch = (async () => response) as unknown as typeof fetch;
+
+      await expect(previewCertificate(issueRequest)).rejects.toMatchObject({
+        status: 200,
+        message: CERTIFICATE_PREVIEW_INVALID_RESPONSE_MESSAGE,
+      });
+    }
+  });
+
+  test("surfaces the size validation message when more than 10 ids are sent", async () => {
+    mockFetch(400, {
+      status: 400,
+      error: { certificateIds: "크기가 0에서 10 사이여야 합니다" },
+    });
+
+    await expect(
+      previewCertificate({
+        ...issueRequest,
+        certificateIds: Array.from({ length: 11 }, (_, index) => index + 1),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "크기가 0에서 10 사이여야 합니다",
+    });
+  });
+
+  test("maps error statuses to Korean messages", async () => {
+    const cases = [
+      [401, "로그인이 만료되었습니다"],
+      [404, "찾을 수 없습니다"],
+      [500, "일시적인 오류"],
+    ] as const;
+
+    for (const [status, message] of cases) {
+      mockFetch(status, undefined);
+      const error = await previewCertificate(issueRequest).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(status);
+      expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("previewSelfCertificate", () => {
+  test("POSTs the self body to the self preview endpoint", async () => {
+    mockPdfFetch((url, init) => {
+      expect(url).toBe(CERTIFICATE_SELF_PREVIEW_ENDPOINT);
+      expect(url).toBe("/api/certificates/self/preview");
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual({
+        purpose: "은행 제출용",
+        otherMatters: "",
+        certificateIds: [10],
+      });
+    });
+
+    const blob = await previewSelfCertificate({
+      purpose: "은행 제출용",
+      otherMatters: "",
+      certificateIds: [10],
+    });
+
+    expect(blob.type).toBe("application/pdf");
+  });
+
+  test("uses the same messages as self issuing", async () => {
+    const cases = [
+      [400, "CERTIFICATE_LIMIT_EXCEEDED", CERTIFICATE_LIMIT_EXCEEDED_MESSAGE],
+      [401, "UNAUTHORIZED", CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
+      [403, "SELF_ISSUE_DISABLED", CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
+    ] as const;
+
+    for (const [status, code, message] of cases) {
+      mockFetch(status, { code, status });
+
+      await expect(
+        previewSelfCertificate({ purpose: "은행 제출용", otherMatters: "" }),
+      ).rejects.toMatchObject({ status, message });
     }
   });
 });

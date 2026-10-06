@@ -21,9 +21,10 @@ export interface SignupRequest {
   birthDate: string;
 }
 
-// 로그인과 동일하게 accessToken 만 발급된다. refreshToken 이 와도 무시한다.
+// 로그인과 같이 액세스 토큰과 리프레시 토큰을 받는다(예전 배포본은 리프레시 토큰이 없다).
 export interface SignupResponse {
   accessToken: string;
+  refreshToken: string | null;
 }
 
 export async function signup(
@@ -46,5 +47,5 @@ export async function signup(
     throw new ApiError(200, SIGNUP_INVALID_RESPONSE_MESSAGE);
   }
 
-  return { accessToken };
+  return { accessToken, refreshToken: normalizeToken(response?.refreshToken) };
 }

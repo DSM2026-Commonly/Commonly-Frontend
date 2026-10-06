@@ -10,6 +10,9 @@ export const FILE_UPLOAD_INVALID_RESPONSE_MESSAGE =
   "파일 업로드 응답이 올바르지 않습니다.";
 export const FILE_UPLOAD_UNSUPPORTED_TYPE_MESSAGE =
   "지원하지 않는 파일 형식입니다. 제공된 표준 서식(.xlsx)을 사용해 주세요.";
+/** NOT_AN_EXCEL_FILE(400). 확장자만 .xlsx 로 바꾼 파일(한글 .hwpx 등)이라 엑셀로 열리지 않는다. */
+export const FILE_UPLOAD_NOT_EXCEL_MESSAGE =
+  "엑셀 파일이 아닙니다. 확장자만 .xlsx로 바꾼 파일(한글 .hwpx 등)은 올릴 수 없습니다. 엑셀에서 「다른 이름으로 저장 → Excel 통합 문서(.xlsx)」로 변환해 주세요.";
 export const FILE_UPLOAD_SIZE_EXCEEDED_MESSAGE =
   "파일 크기가 너무 큽니다. 20MB 이하의 파일만 업로드할 수 있습니다.";
 export const FILE_UPLOAD_INVALID_HEADER_MESSAGE =
@@ -62,6 +65,11 @@ export interface FileMappingFailedRow {
 
 export interface FileMappingResult {
   insertedCount: number;
+  /**
+   * 엑셀에만 있던 대상자를 새로 만든 수. 성명 오타 한 글자가 별개 인물을 만들 수 있어
+   * 담당자가 확인할 수 있게 보여준다. 예전 배포본처럼 값이 없으면 0 이다.
+   */
+  createdHumanCount: number;
   failedRows: FileMappingFailedRow[];
 }
 
@@ -69,12 +77,16 @@ export const CERTIFICATE_TARGET_FIELDS = [
   { id: "name", label: "성명" },
   { id: "birthDate", label: "생년월일" },
   { id: "gender", label: "성별" },
+  // 주소는 경력 행이 아니라 인적사항으로 들어간다. 엑셀로 처음 등장한 대상자를 만들 때 쓴다.
+  { id: "address", label: "주소" },
   { id: "jobTitle", label: "직종명" },
   { id: "keyResponsibilities", label: "담당업무" },
   { id: "hireDate", label: "채용일" },
   { id: "expirationDate", label: "만료예정일" },
   { id: "retirementDate", label: "퇴직일" },
   { id: "division", label: "구분" },
+  // 근무부서는 선택 필드다. 구분(division: 채용/전보/해지/퇴직)과 다른 값이다.
+  { id: "department", label: "근무부서" },
   { id: "reason", label: "사유" },
   { id: "employmentType", label: "근무형태" },
   { id: "note", label: "비고" },
@@ -205,6 +217,7 @@ export async function uploadFile(
       INVALID_HEADER_ROW: FILE_UPLOAD_INVALID_HEADER_MESSAGE,
       UNPROCESSABLE_FILE: FILE_UPLOAD_UNPROCESSABLE_MESSAGE,
       STORAGE_FAILURE: FILE_UPLOAD_STORAGE_FAILURE_MESSAGE,
+      NOT_AN_EXCEL_FILE: FILE_UPLOAD_NOT_EXCEL_MESSAGE,
       400: FILE_UPLOAD_UNSUPPORTED_TYPE_MESSAGE,
       413: FILE_UPLOAD_SIZE_EXCEEDED_MESSAGE,
       422: FILE_UPLOAD_UNPROCESSABLE_MESSAGE,
@@ -249,7 +262,10 @@ function normalizeFileMappingResult(value: unknown): FileMappingResult | null {
     return null;
   }
 
-  const { insertedCount, failedRows } = value as Record<string, unknown>;
+  const { insertedCount, createdHumanCount, failedRows } = value as Record<
+    string,
+    unknown
+  >;
 
   if (typeof insertedCount !== "number") {
     return null;
@@ -270,7 +286,12 @@ function normalizeFileMappingResult(value: unknown): FileMappingResult | null {
     });
   }
 
-  return { insertedCount, failedRows: normalizedFailedRows };
+  return {
+    insertedCount,
+    createdHumanCount:
+      typeof createdHumanCount === "number" ? createdHumanCount : 0,
+    failedRows: normalizedFailedRows,
+  };
 }
 
 export async function confirmFileMapping(

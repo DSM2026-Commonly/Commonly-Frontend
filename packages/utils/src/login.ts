@@ -18,9 +18,11 @@ export interface LoginRequest {
   password: string;
 }
 
-// 백엔드는 refreshToken 없이 accessToken(JWT, 1시간) 만 발급한다.
+// 액세스 토큰(JWT, 1시간)과 재발급용 리프레시 토큰(14일)을 함께 받는다.
+// 예전 배포본은 리프레시 토큰을 주지 않아 null 일 수 있다.
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string | null;
 }
 
 export function isValidAccountId(accountId: string): boolean {
@@ -51,7 +53,7 @@ export async function login(
     throw new ApiError(200, "로그인 응답이 올바르지 않습니다.");
   }
 
-  return { accessToken };
+  return { accessToken, refreshToken: normalizeToken(response?.refreshToken) };
 }
 
 export function normalizeToken(value: unknown): string | null {

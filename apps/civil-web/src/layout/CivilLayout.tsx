@@ -21,17 +21,17 @@ function CivilLayout({
   footerProps,
 }: CivilLayoutProps) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [issueFlowKey, setIssueFlowKey] = useState(0);
 
   useScrollToTopOnChange(pathname);
   useSessionGuard(
     useCallback(() => {
       void navigate(
-        `/login?redirectTo=${encodeURIComponent(`${pathname}${window.location.search}`)}`,
+        `/login?redirectTo=${encodeURIComponent(`${pathname}${search}`)}`,
         { replace: true },
       );
-    }, [navigate, pathname]),
+    }, [navigate, pathname, search]),
   );
   const handleNavigate = (href: string) => {
     if (href === "/") {

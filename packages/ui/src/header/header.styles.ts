@@ -73,6 +73,15 @@ export const UtilityText = styled.span<UtilityTextProps>`
   white-space: nowrap;
 `;
 
+// 연장 실패처럼 사용자가 다시 로그인해야 하는 상황을 짧게 알린다.
+export const UtilityNotice = styled.span`
+  flex: 0 0 auto;
+  color: var(--krds-light-color-text-danger, #bd2c0f);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: nowrap;
+`;
+
 export const UtilityDivider = styled.span`
   width: 1px;
   height: 16px;
@@ -143,6 +152,70 @@ export const UtilityButton = styled(Button, {
     font-weight: 400;
     line-height: 1.5;
     white-space: nowrap;
+  }
+`;
+
+// 연장·로그아웃 버튼과 같은 모양이지만 화면 이동이라 링크로 둔다.
+export const UtilityLink = styled(Link, {
+  shouldForwardProp: (prop) => prop !== "$width",
+})<FixedWidthProps>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: ${({ $width }) => `${$width}px`};
+  height: 24px;
+  flex: 0 0 ${({ $width }) => `${$width}px`};
+  padding: 0 2px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #1e2124;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-position: from-font;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background: #f4f5f6;
+    color: #0b50d0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #246beb;
+    outline-offset: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+
+  &.krds-btn.link {
+    display: inline-flex;
+    width: ${({ $width }) => `${$width}px`};
+    min-width: 0;
+    height: 24px !important;
+    min-height: 0;
+    padding: 0 2px !important;
+    aspect-ratio: auto;
+    flex: 0 0 ${({ $width }) => `${$width}px`};
+    color: #1e2124;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-decoration: underline;
+    white-space: nowrap;
+  }
+
+  &.krds-btn.link:hover {
+    background: #f4f5f6;
+    color: #0b50d0;
   }
 `;
 

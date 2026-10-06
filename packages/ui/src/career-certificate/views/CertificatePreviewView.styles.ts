@@ -99,6 +99,34 @@ export const DocumentViewer = styled.div<CivilLayoutProps>`
   }
 `;
 
+export const PdfFrame = styled.iframe<CivilLayoutProps>`
+  display: block;
+  width: 100%;
+  height: ${({ $civil }) =>
+    $civil ? "clamp(640px, 85vh, 1492px)" : "clamp(520px, 68vh, 760px)"};
+  border: 0;
+  background: #878079;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    height: min(68vh, 620px);
+    min-height: 420px;
+  }
+`;
+
+export const PreviewLoading = styled.p`
+  margin: 0;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.5;
+`;
+
+export const PreviewFallbackNotice = styled.p`
+  margin: 16px 0;
+  color: var(--career-color-text-subtle);
+  font-size: 15px;
+  line-height: 1.5;
+`;
+
 export const DocumentSheet = styled.article<CivilLayoutProps>`
   display: flex;
   width: min(${({ $civil }) => ($civil ? "842px" : "640px")}, 100%);
@@ -119,56 +147,84 @@ export const DocumentSheet = styled.article<CivilLayoutProps>`
 
 export const DocumentTitle = styled.h2`
   margin: 0;
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: 8px;
+  letter-spacing: 12px;
   text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 6px;
 
   @media (max-width: ${MOBILE_BREAKPOINT}) {
-    font-size: 24px;
-    letter-spacing: 4px;
+    font-size: 22px;
+    letter-spacing: 6px;
   }
 `;
 
 export const DocumentBody = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 `;
 
-export const DocumentTable = styled.table`
+/** 서식 상단: 왼쪽 문서번호, 오른쪽 담당자·연락처. */
+export const DocumentHeader = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 30%;
+  row-gap: 2px;
+  font-size: 14px;
+  line-height: 1.5;
+
+  p {
+    margin: 0;
+  }
+`;
+
+/** 서식 본문 표. 열 비율은 서버 PDF 와 같다(13·15·16·15·41%). */
+export const CertificateTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.4;
   table-layout: fixed;
 
-  th,
   td {
-    padding: 10px 12px;
+    padding: 6px 4px;
     border: 1px solid #1e1e1e;
-    text-align: left;
-    vertical-align: top;
+    text-align: center;
+    vertical-align: middle;
     word-break: break-word;
   }
 
-  th {
-    width: 22%;
-    background: #f2f2f2;
-    font-weight: 600;
-    text-align: center;
+  .label {
+    white-space: nowrap;
   }
 
-  thead th {
-    width: auto;
+  .left {
+    text-align: left;
+  }
+
+  .date {
+    white-space: nowrap;
+  }
+
+  .total {
+    font-weight: 700;
+  }
+
+  .work td {
+    height: 30px;
   }
 
   @media (max-width: ${MOBILE_BREAKPOINT}) {
-    font-size: 13px;
+    font-size: 11px;
 
-    th,
     td {
-      padding: 8px;
+      padding: 4px 2px;
+    }
+
+    .label,
+    .date {
+      white-space: normal;
     }
   }
 `;
@@ -176,22 +232,27 @@ export const DocumentTable = styled.table`
 export const DocumentFooter = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 20px;
+  margin-top: 8px;
   font-size: 16px;
-  text-align: center;
 
   p {
     margin: 0;
   }
 `;
 
-export const DocumentIssuer = styled.p`
-  margin: 16px 0 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 6px;
+export const DocumentStatement = styled.p`
+  text-align: left;
+`;
+
+export const DocumentIssuedDate = styled.p`
   text-align: center;
+`;
+
+export const DocumentIssuer = styled.p`
+  padding-right: 30px;
+  font-size: 18px;
+  text-align: right;
 `;
 
 export const PreviewActions = styled.div`

@@ -1,8 +1,12 @@
 import styled from "@emotion/styled";
+import { requiredLabelStyles } from "../form/requiredFields.styles";
+import { completedSelectStyles } from "../form/formControls.styles";
 
 const MOBILE_BREAKPOINT = "767px";
 
 export const CareerEditRoot = styled.section`
+  ${completedSelectStyles}
+
   --career-edit-text: var(--krds-light-color-text-basic, #1e2124);
   --career-edit-text-subtle: var(--krds-light-color-text-subtle, #464c53);
   --career-edit-primary: var(--krds-light-color-text-primary, #256ef4);
@@ -32,6 +36,8 @@ export const CareerEditRoot = styled.section`
   & * {
     box-sizing: border-box;
   }
+
+  ${requiredLabelStyles}
 
   @keyframes career-edit-view-enter {
     from {

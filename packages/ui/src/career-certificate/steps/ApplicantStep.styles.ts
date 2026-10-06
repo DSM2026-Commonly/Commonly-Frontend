@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { completedSelectStyles } from "../../form/formControls.styles";
 
 export {
   CardStack,
@@ -19,6 +20,8 @@ export const FieldLabel = styled.p`
 `;
 
 export const DateFields = styled.div`
+  ${completedSelectStyles}
+
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;

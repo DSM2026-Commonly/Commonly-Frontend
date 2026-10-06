@@ -6,13 +6,15 @@ import {
   getAuthToken,
   getIssuedCertificateSession,
   issueCertificate,
+  previewCertificate,
   saveBlobAsFile,
-  searchHumans,
+  searchHumansPaged,
   setIssuedCertificateSession,
 } from "@commonly/utils";
 import { useRef } from "react";
 import { useNavigate } from "react-router";
 import CareerCertificateIssue from "../career-certificate/CareerCertificateIssue";
+import { toCareerRow } from "./careerRow";
 import type {
   CareerCertificateApplicationData,
   CertificateApplicant,
@@ -20,6 +22,7 @@ import type {
   IssuedCertificateSummary,
   RestoredIssuedCertificate,
 } from "../career-certificate/CareerCertificateIssue.types";
+import { toIssueCertificateRequest } from "./issueCertificateRequest";
 
 interface IssuedCertificateRef {
   certificateId: number;
@@ -37,25 +40,32 @@ function StaffCareerCertificateIssuePage() {
   const handleSearchApplicants = async ({
     name,
     birthDate,
+    page,
   }: {
     name: string;
     birthDate: string;
-  }): Promise<readonly CertificateApplicant[]> => {
-    const humans = await searchHumans(
+    page: number;
+  }): Promise<{ items: CertificateApplicant[]; totalPages: number }> => {
+    // 화면과 서버 모두 페이지를 1부터 센다.
+    const result = await searchHumansPaged(
       { name, birthDateFrom: birthDate, birthDateTo: birthDate },
+      { page: page },
       { token: getAuthToken() },
     );
 
     humanNamesRef.current = new Map(
-      humans.map((human) => [String(human.humanId), human.name]),
+      result.items.map((human) => [String(human.humanId), human.name]),
     );
 
-    return humans.map((human) => ({
-      id: String(human.humanId),
-      name: human.name,
-      birthDate: human.birthDate,
-      address: human.address,
-    }));
+    return {
+      items: result.items.map((human) => ({
+        id: String(human.humanId),
+        name: human.name,
+        birthDate: human.birthDate,
+        address: human.address,
+      })),
+      totalPages: result.totalPages,
+    };
   };
 
   const handleLoadCareerRows = async (
@@ -75,40 +85,20 @@ function StaffCareerCertificateIssuePage() {
       throw new Error("대상자의 경력 사항이 없습니다. 대상자를 확인해 주세요.");
     }
 
-    return certificates.map((certificate) => ({
-      id: String(certificate.certificateId),
-      job: certificate.keyResponsibilities,
-      department: certificate.division,
-      period: `${certificate.hireDate} ~ ${certificate.retirementDate || certificate.expirationDate}`,
-    }));
+    return certificates.map(toCareerRow);
   };
+
+  const handlePreview = async (data: CareerCertificateApplicationData) =>
+    previewCertificate(toIssueCertificateRequest(data), {
+      token: getAuthToken(),
+    });
 
   const handleComplete = async (
     data: CareerCertificateApplicationData,
   ): Promise<IssuedCertificateSummary> => {
-    const humanId = Number(data.applicantId);
-    const certificateIds = data.selectedCareerIds.map(Number);
-
-    if (
-      !Number.isInteger(humanId) ||
-      humanId <= 0 ||
-      certificateIds.length === 0 ||
-      certificateIds.some((id) => !Number.isInteger(id) || id <= 0)
-    ) {
-      throw new Error(
-        "발급 대상 정보가 올바르지 않습니다. 대상자를 다시 조회해 주세요.",
-      );
-    }
-
-    const issued = await issueCertificate(
-      {
-        humanId,
-        certificateIds,
-        purpose: data.purpose,
-        otherMatters: data.additionalNote,
-      },
-      { token: getAuthToken() },
-    );
+    const issued = await issueCertificate(toIssueCertificateRequest(data), {
+      token: getAuthToken(),
+    });
 
     issuedRef.current = {
       certificateId: issued.certificateId,
@@ -189,6 +179,7 @@ function StaffCareerCertificateIssuePage() {
       onCancel={() => void navigate("/")}
       onSearchApplicants={handleSearchApplicants}
       onLoadCareerRows={handleLoadCareerRows}
+      onPreview={handlePreview}
       onComplete={handleComplete}
       onDownload={handleDownload}
       onRestoreIssued={handleRestoreIssued}

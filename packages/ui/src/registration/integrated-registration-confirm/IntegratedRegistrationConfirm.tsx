@@ -23,6 +23,8 @@ import {
   StyledStepIndicator,
   StyledSelect,
 } from "./integratedRegistrationConfirm.styles";
+import { getSelectClassName } from "../../form/formControls.styles";
+import { RequiredMark } from "../../form/requiredFields.styles";
 
 export interface IntegratedRegistrationConfirmStep {
   id: string;
@@ -71,23 +73,23 @@ const defaultSteps = [
   { id: "confirm", title: "데이터 확인" },
 ] as const satisfies readonly IntegratedRegistrationConfirmStep[];
 
-// 성명·생년월일·채용일은 경력 데이터 식별에 필요한 최소 필드라 매핑을 강제하고,
+// 성명·생년월일·성별은 백엔드가 매핑을 강제하는 필드라(빠지면 400 REQUIRED_FIELD_NOT_MAPPED) 같이 강제한다.
+// 채용일은 백엔드는 선택이지만, 채용일이 없는 경력은 발급·수정 화면에 나오지 않아 여기서 강제한다.
 // 나머지는 파일에 해당 열이 없어도 등록할 수 있도록 선택 필드로 둔다.
-const REQUIRED_FIELD_IDS = new Set<string>(["name", "birthDate", "hireDate"]);
+const REQUIRED_FIELD_IDS = new Set<string>([
+  "name",
+  "birthDate",
+  "gender",
+  "hireDate",
+]);
 
-// 좁은 라벨 칸에 맞추기 위해 긴 라벨은 줄바꿈해서 표시한다.
-const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
-  birthDate: "생년\n월일",
-  keyResponsibilities: "담당\n업무",
-  expirationDate: "만료\n예정일",
-  employmentType: "근무\n형태",
-};
+
 
 // 매핑 대상 필드 목록은 @commonly/utils 의 CERTIFICATE_TARGET_FIELDS 를 단일 소스로 쓴다.
 const defaultFields: readonly IntegratedRegistrationConfirmField[] =
   CERTIFICATE_TARGET_FIELDS.map((field) => ({
     id: field.id,
-    label: LABEL_OVERRIDES[field.id] ?? field.label,
+    label: field.label,
     required: REQUIRED_FIELD_IDS.has(field.id),
   }));
 
@@ -214,19 +216,20 @@ function IntegratedRegistrationConfirm({
                   <FieldLabel htmlFor={`${titleId}-${field.id}`}>
                     {field.label}
                     {field.required && (
-                      <span aria-hidden="true" title="필수 매핑 항목">
-                        {" *"}
-                      </span>
+                      <RequiredMark aria-hidden="true" title="필수 매핑 항목">
+                        *
+                      </RequiredMark>
                     )}
                   </FieldLabel>
                   <StyledSelect>
                     <Select
+                      className={getSelectClassName(selectedRows[field.id] ?? "")}
                       id={`${titleId}-${field.id}`}
                       size="large"
                       options={getAvailableOptions(field.id)}
                       value={selectedRows[field.id] ?? ""}
                       onChange={(value) => handleSelect(field.id, value)}
-                      aria-label={`${field.label.replace("\n", " ")} 행 선택${field.required ? " (필수)" : ""}`}
+                      aria-label={`${field.label} 행 선택${field.required ? " (필수)" : ""}`}
                       aria-required={field.required ?? false}
                     />
                   </StyledSelect>

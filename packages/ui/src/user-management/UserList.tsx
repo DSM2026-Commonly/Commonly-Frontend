@@ -10,7 +10,7 @@ import {
   PageNumberList,
   PaginationFrame,
   PaginationNav,
-} from "../work-history/WorkHistory.styles";
+} from "../pagination/Pagination.styles";
 import type { UserAccountRecord } from "./UserDeletion";
 import {
   UserListCard,

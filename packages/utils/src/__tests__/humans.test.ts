@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { ApiError } from "../api";
 import {
   HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
+  HUMAN_DELETE_CONFLICT_MESSAGE,
+  HUMAN_DELETE_HAS_CAREER_MESSAGE,
+  HUMAN_DELETE_HAS_ISSUED_MESSAGE,
   HUMAN_DELETE_NOT_FOUND_MESSAGE,
   HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
   HUMAN_ENDPOINT,
@@ -12,6 +15,7 @@ import {
   getHumanDeleteEndpoint,
   getHumanUpdateEndpoint,
   searchHumans,
+  searchHumansPaged,
   updateHuman,
 } from "../humans";
 
@@ -56,7 +60,7 @@ describe("searchHumans", () => {
 
     mockFetch(
       200,
-      { content: [hongHuman], page: 0, size: 20, totalElements: 1, totalPages: 1 },
+      { content: [hongHuman], page: 1, size: 20, totalElements: 1, totalPages: 1 },
       (url, init) => {
         expect(url).toBe(HUMAN_SEARCH_ENDPOINT);
         expect(init?.method).toBe("POST");
@@ -71,7 +75,7 @@ describe("searchHumans", () => {
   });
 
   test("returns an empty list when content is empty", async () => {
-    mockFetch(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 });
+    mockFetch(200, { content: [], page: 1, size: 20, totalElements: 0, totalPages: 0 });
     expect(await searchHumans({ name: "없는사람" })).toEqual([]);
   });
 
@@ -134,6 +138,140 @@ describe("searchHumans", () => {
       expect(error).toBeInstanceOf(ApiError);
       expect((error as ApiError).status).toBe(status);
       expect((error as ApiError).message).toContain(message);
+    }
+  });
+});
+
+describe("searchHumansPaged", () => {
+  test("sends page(1부터)/size in the body and returns the page meta", async () => {
+    const query = {
+      name: "홍길동",
+      birthDateFrom: "1990-01-01",
+      birthDateTo: "1990-01-01",
+    };
+
+    mockFetch(
+      200,
+      {
+        content: [hongHuman],
+        page: 2,
+        size: 20,
+        totalElements: 45,
+        totalPages: 3,
+      },
+      (url, init) => {
+        expect(url).toBe(HUMAN_SEARCH_ENDPOINT);
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          ...query,
+          page: 2,
+          size: 20,
+        });
+      },
+    );
+
+    expect(await searchHumansPaged(query, { page: 2 })).toEqual({
+      items: [hongHuman],
+      page: 2,
+      size: 20,
+      totalElements: 45,
+      totalPages: 3,
+    });
+  });
+
+  test("defaults to page 1 / size 20 and clamps a page below 1 (backend counts from 1)", async () => {
+    mockFetch(200, { content: [], page: 1, size: 20, totalElements: 0, totalPages: 0 }, (_url, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({ page: 1, size: 20 });
+    });
+    await searchHumansPaged();
+
+    mockFetch(200, { content: [] }, (_url, init) => {
+      expect(JSON.parse(String(init?.body)).page).toBe(1);
+    });
+    await searchHumansPaged({}, { page: -5 });
+  });
+
+  test("fills missing meta: totalPages from totalElements/size, falling back to the request", async () => {
+    mockFetch(200, { content: [hongHuman], totalElements: 41 });
+    expect(await searchHumansPaged({}, { page: 1, size: 20 })).toEqual({
+      items: [hongHuman],
+      page: 1,
+      size: 20,
+      totalElements: 41,
+      totalPages: 3,
+    });
+  });
+
+  test("defaults totalElements to the row count and totalPages to at least 1", async () => {
+    mockFetch(200, { content: [hongHuman] });
+    expect(await searchHumansPaged()).toEqual({
+      items: [hongHuman],
+      page: 1,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+  });
+
+  test("preserves totalPages 0 for an empty result (totalElements 0)", async () => {
+    mockFetch(200, {
+      content: [],
+      page: 1,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+    });
+    expect(await searchHumansPaged()).toEqual({
+      items: [],
+      page: 1,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+    });
+  });
+
+  test("reads the last page meta as the server reports it", async () => {
+    // 45건 / size 20 → 마지막 페이지는 3(1부터 센다).
+    mockFetch(200, {
+      content: [hongHuman],
+      page: 3,
+      size: 20,
+      totalElements: 45,
+      totalPages: 3,
+    });
+    const result = await searchHumansPaged({}, { page: 3 });
+    expect(result.page).toBe(3);
+    expect(result.totalPages).toBe(3);
+  });
+
+  test("clamps size to the backend max of 100", async () => {
+    mockFetch(200, { content: [] }, (_url, init) => {
+      expect(JSON.parse(String(init?.body)).size).toBe(100);
+    });
+    await searchHumansPaged({}, { page: 1, size: 500 });
+  });
+
+  test("skips malformed rows but keeps the meta", async () => {
+    mockFetch(200, {
+      content: [hongHuman, { ...hongHuman, humanId: "2" }, null],
+      page: 1,
+      size: 20,
+      totalElements: 3,
+      totalPages: 1,
+    });
+    const result = await searchHumansPaged();
+    expect(result.items).toEqual([hongHuman]);
+    expect(result.totalElements).toBe(3);
+  });
+
+  test("rejects a bare array or a body without a content array", async () => {
+    for (const body of [[hongHuman], {}, { content: "oops" }, "oops"]) {
+      mockFetch(200, body);
+      const error = await searchHumansPaged().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).message).toBe(
+        HUMAN_SEARCH_INVALID_RESPONSE_MESSAGE,
+      );
     }
   });
 });
@@ -265,10 +403,25 @@ describe("deleteHuman", () => {
     await deleteHuman(1, { token: "token-1" });
   });
 
+  test("tells the two 409 reasons apart by code", async () => {
+    const cases = [
+      ["HUMAN_HAS_ISSUED_CERTIFICATE", HUMAN_DELETE_HAS_ISSUED_MESSAGE],
+      ["HUMAN_HAS_CERTIFICATE", HUMAN_DELETE_HAS_CAREER_MESSAGE],
+    ] as const;
+
+    for (const [code, message] of cases) {
+      mockFetch(409, { code, status: 409, message: "백엔드 문구" });
+
+      await expect(deleteHuman(3)).rejects.toMatchObject({ status: 409, message });
+    }
+  });
+
   test("maps error statuses to Korean messages", async () => {
     const cases = [
       [401, HUMAN_DELETE_UNAUTHORIZED_MESSAGE],
       [404, HUMAN_DELETE_NOT_FOUND_MESSAGE],
+      // 재직 이력·발급 기록이 연결된 대상자는 백엔드가 409 로 거절한다(#64).
+      [409, HUMAN_DELETE_CONFLICT_MESSAGE],
     ] as const;
 
     for (const [status, message] of cases) {

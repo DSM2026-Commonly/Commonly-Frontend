@@ -2,6 +2,7 @@ import type {
   AddressSearchQuery,
   AddressSearchResult,
 } from "../registration/address-search/AddressSearchModal";
+import type { PagedResult } from "../pagination/Pagination";
 
 export type CareerEditReason = "visit" | "phone" | "email" | "other";
 export type CareerEditTarget = "personal" | "career";
@@ -66,7 +67,9 @@ export interface CareerEditProps {
   onSearch?: (query: {
     name: string;
     birthDate: string;
-  }) => Promise<readonly CareerEditApplicant[]>;
+    /** 조회할 페이지(1부터 시작). */
+    page: number;
+  }) => Promise<PagedResult<CareerEditApplicant>>;
   onLoadCareerRecords?: (
     applicantId: string,
   ) => Promise<readonly CareerEditRecord[]>;
