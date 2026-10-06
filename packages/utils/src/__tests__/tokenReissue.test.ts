@@ -14,6 +14,22 @@ import {
 
 const originalFetch = globalThis.fetch;
 
+/** 계정(sub)이 담긴 JWT 모양의 토큰. 서명은 검증하지 않으므로 아무 값이나 둔다. */
+function jwt(subject: string, label: string): string {
+  const encode = (value: unknown) =>
+    btoa(JSON.stringify(value))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+  return `${encode({ alg: "HS256" })}.${encode({ sub: subject, jti: label })}.sig`;
+}
+
+const OLD_ACCESS = jwt("staff01", "old");
+const NEW_ACCESS = jwt("staff01", "new");
+const OTHER_TAB_ACCESS = jwt("staff01", "other-tab");
+const OTHER_ACCOUNT_ACCESS = jwt("staff02", "other-account");
+
 let storage: Map<string, string>;
 let events: string[];
 
@@ -87,18 +103,18 @@ const expiredToken = () =>
 
 describe("reissueAuthToken", () => {
   test("stores the rotated token pair and announces the change", async () => {
-    storage.set(AUTH_TOKEN_STORAGE_KEY, "old-access");
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OLD_ACCESS);
     storage.set(REFRESH_TOKEN_STORAGE_KEY, "old-refresh");
     const calls = mockRoutes({
       [REISSUE_ENDPOINT]: [
-        () => json(200, { accessToken: "new-access", refreshToken: "new-refresh" }),
+        () => json(200, { accessToken: NEW_ACCESS, refreshToken: "new-refresh" }),
       ],
     });
 
-    expect(await reissueAuthToken()).toBe("new-access");
+    expect(await reissueAuthToken()).toBe(NEW_ACCESS);
     expect(calls[0].body).toEqual({ refreshToken: "old-refresh" });
     expect(calls[0].authorization).toBeUndefined();
-    expect(storage.get(AUTH_TOKEN_STORAGE_KEY)).toBe("new-access");
+    expect(storage.get(AUTH_TOKEN_STORAGE_KEY)).toBe(NEW_ACCESS);
     expect(storage.get(REFRESH_TOKEN_STORAGE_KEY)).toBe("new-refresh");
     expect(events).toContain("token-changed");
   });
@@ -122,7 +138,7 @@ describe("reissueAuthToken", () => {
   });
 
   test("fails without ending the session and drops a rejected refresh token", async () => {
-    storage.set(AUTH_TOKEN_STORAGE_KEY, "still-valid-access");
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OLD_ACCESS);
     storage.set(REFRESH_TOKEN_STORAGE_KEY, "used-refresh");
     mockRoutes({
       [REISSUE_ENDPOINT]: [
@@ -139,7 +155,7 @@ describe("reissueAuthToken", () => {
       status: 401,
       message: SESSION_EXTEND_FAILED_MESSAGE,
     });
-    expect(storage.get(AUTH_TOKEN_STORAGE_KEY)).toBe("still-valid-access");
+    expect(storage.get(AUTH_TOKEN_STORAGE_KEY)).toBe(OLD_ACCESS);
     expect(storage.has(REFRESH_TOKEN_STORAGE_KEY)).toBe(false);
     expect(events).not.toContain("unauthorized");
   });
@@ -160,6 +176,25 @@ describe("reissueAuthToken", () => {
     expect(storage.get(REFRESH_TOKEN_STORAGE_KEY)).toBe("other-tab-refresh");
   });
 
+  test("does not restore the session when the user logged out meanwhile", async () => {
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OLD_ACCESS);
+    storage.set(REFRESH_TOKEN_STORAGE_KEY, "refresh");
+    mockRoutes({
+      [REISSUE_ENDPOINT]: [
+        () => {
+          // 응답을 기다리는 사이 로그아웃했다.
+          storage.clear();
+          return json(200, { accessToken: NEW_ACCESS, refreshToken: "new-refresh" });
+        },
+      ],
+    });
+
+    await expect(reissueAuthToken()).rejects.toMatchObject({
+      message: SESSION_EXTEND_FAILED_MESSAGE,
+    });
+    expect(storage.size).toBe(0);
+  });
+
   test("fails fast when no refresh token is stored", async () => {
     const calls = mockRoutes({});
 
@@ -172,47 +207,62 @@ describe("reissueAuthToken", () => {
 
 describe("request retry on an expired access token", () => {
   test("reissues once and resends with the new token", async () => {
-    storage.set(AUTH_TOKEN_STORAGE_KEY, "old-access");
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OLD_ACCESS);
     storage.set(REFRESH_TOKEN_STORAGE_KEY, "refresh");
     const calls = mockRoutes({
       "/x": [expiredToken, () => json(200, { ok: true })],
       [REISSUE_ENDPOINT]: [
-        () => json(200, { accessToken: "new-access", refreshToken: "new-refresh" }),
+        () => json(200, { accessToken: NEW_ACCESS, refreshToken: "new-refresh" }),
       ],
     });
 
-    expect(await request("/x", { token: "old-access" })).toEqual({ ok: true });
+    expect(await request("/x", { token: OLD_ACCESS })).toEqual({ ok: true });
     expect(calls.map((call) => [call.url, call.authorization])).toEqual([
-      ["/x", "Bearer old-access"],
+      ["/x", `Bearer ${OLD_ACCESS}`],
       [REISSUE_ENDPOINT, undefined],
-      ["/x", "Bearer new-access"],
+      ["/x", `Bearer ${NEW_ACCESS}`],
     ]);
     expect(events).not.toContain("unauthorized");
   });
 
   test("uses a token another tab already refreshed instead of reissuing", async () => {
-    storage.set(AUTH_TOKEN_STORAGE_KEY, "fresh-from-other-tab");
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OTHER_TAB_ACCESS);
     storage.set(REFRESH_TOKEN_STORAGE_KEY, "refresh");
     const calls = mockRoutes({
       "/x": [expiredToken, () => json(200, { ok: true })],
     });
 
-    expect(await request("/x", { token: "old-access" })).toEqual({ ok: true });
+    expect(await request("/x", { token: OLD_ACCESS })).toEqual({ ok: true });
     expect(calls.map((call) => call.authorization)).toEqual([
-      "Bearer old-access",
-      "Bearer fresh-from-other-tab",
+      `Bearer ${OLD_ACCESS}`,
+      `Bearer ${OTHER_TAB_ACCESS}`,
     ]);
   });
 
   test("ends the session when the token cannot be reissued", async () => {
-    storage.set(AUTH_TOKEN_STORAGE_KEY, "old-access");
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OLD_ACCESS);
     const calls = mockRoutes({ "/x": [expiredToken] });
 
-    await expect(request("/x", { token: "old-access" })).rejects.toMatchObject({
+    await expect(request("/x", { token: OLD_ACCESS })).rejects.toMatchObject({
       status: 401,
     });
     expect(calls).toHaveLength(1);
     expect(events).toContain("unauthorized");
+  });
+
+  test("does not resend with another account's token", async () => {
+    // 이전 계정으로 보낸 요청이 만료되는 사이 다른 계정으로 로그인했다.
+    storage.set(AUTH_TOKEN_STORAGE_KEY, OTHER_ACCOUNT_ACCESS);
+    storage.set(REFRESH_TOKEN_STORAGE_KEY, "other-account-refresh");
+    const calls = mockRoutes({ "/x": [expiredToken] });
+
+    await expect(request("/x", { token: OLD_ACCESS })).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(calls).toHaveLength(1);
+    // 지금 로그인한 계정의 세션은 끝내지 않는다.
+    expect(events).not.toContain("unauthorized");
+    expect(storage.get(AUTH_TOKEN_STORAGE_KEY)).toBe(OTHER_ACCOUNT_ACCESS);
   });
 
   test("does not retry other 401s", async () => {

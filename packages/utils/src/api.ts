@@ -4,7 +4,7 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from "./auth";
-import { hasValidAuthToken } from "./authSession";
+import { decodeJwtPayload, hasValidAuthToken } from "./authSession";
 
 const DEFAULT_API_BASE_URL = "";
 
@@ -332,6 +332,12 @@ async function performReissue(): Promise<string> {
     throw new ApiError(200, SESSION_EXTEND_FAILED_MESSAGE);
   }
 
+  // 응답을 기다리는 사이 로그아웃했거나 다른 계정으로 로그인했으면 받은 토큰을 저장하지 않는다.
+  // 저장하면 로그아웃이 풀리거나 다른 계정의 세션을 덮어쓴다.
+  if (getRefreshToken() !== refreshToken) {
+    throw new ApiError(401, SESSION_EXTEND_FAILED_MESSAGE);
+  }
+
   setAuthTokens({ accessToken, refreshToken: nextRefreshToken });
 
   return accessToken;
@@ -349,6 +355,19 @@ export function reissueAuthToken(): Promise<string> {
   return pendingReissue;
 }
 
+function getTokenSubject(token: string): string | null {
+  const subject = decodeJwtPayload(token)?.sub;
+
+  return typeof subject === "string" && subject ? subject : null;
+}
+
+/** 두 토큰이 같은 계정의 것인지. 계정을 읽을 수 없으면 다른 계정으로 본다. */
+function isSameAccountToken(left: string, right: string): boolean {
+  const subject = getTokenSubject(left);
+
+  return subject !== null && subject === getTokenSubject(right);
+}
+
 async function isExpiredTokenResponse(response: Response): Promise<boolean> {
   if (response.status !== 401) {
     return false;
@@ -361,30 +380,49 @@ async function isExpiredTokenResponse(response: Response): Promise<boolean> {
 
 /**
  * 서버에서 액세스 토큰이 만료돼 401 이 오면(시계 차이 등) 한 번만 새 토큰으로 다시 보낸다.
- * 다른 탭이 이미 새 토큰을 저장했으면 그것을 쓰고, 아니면 재발급한다.
+ * 다른 탭이 같은 계정으로 이미 새 토큰을 저장했으면 그것을 쓰고, 아니면 재발급한다.
+ * 그 사이 로그아웃했거나 다른 계정으로 바뀌었으면 다시 보내지 않는다(다른 계정 권한으로 요청이 나가지 않게).
  * 재발급할 수 없으면 처음 응답을 그대로 돌려줘 평소처럼 세션 종료로 처리된다.
  */
 async function sendWithTokenRetry(
   token: string | null | undefined,
   send: (token: string | null | undefined) => Promise<Response>,
-): Promise<Response> {
+): Promise<{ response: Response; token: string | null | undefined }> {
   const response = await send(token);
 
   if (!token || !(await isExpiredTokenResponse(response))) {
-    return response;
+    return { response, token };
   }
 
   const storedToken = getAuthToken();
 
-  if (storedToken && storedToken !== token) {
-    return send(storedToken);
+  if (storedToken !== token) {
+    return storedToken && isSameAccountToken(storedToken, token)
+      ? { response: await send(storedToken), token: storedToken }
+      : { response, token };
   }
 
+  let reissuedToken: string;
+
   try {
-    return send(await reissueAuthToken());
+    reissuedToken = await reissueAuthToken();
   } catch {
-    return response;
+    return { response, token };
   }
+
+  return isSameAccountToken(reissuedToken, token)
+    ? { response: await send(reissuedToken), token: reissuedToken }
+    : { response, token };
+}
+
+/**
+ * 실패한 요청이 지금 세션의 것인지. 로그아웃 뒤 다른 계정으로 로그인한 상태에서
+ * 이전 계정의 요청이 401 을 받아도 지금 세션을 끝내지 않는다.
+ */
+function isCurrentSessionRequest(token: string | null | undefined): boolean {
+  const storedToken = getAuthToken();
+
+  return !token || !storedToken || storedToken === token;
 }
 
 export async function request<TResponse>(
@@ -406,10 +444,10 @@ export async function request<TResponse>(
     headers["Content-Type"] = "application/json";
   }
 
-  let response: Response;
+  let result: Awaited<ReturnType<typeof sendWithTokenRetry>>;
 
   try {
-    response = await sendWithTokenRetry(token, (requestToken) =>
+    result = await sendWithTokenRetry(token, (requestToken) =>
       fetch(`${getApiBaseUrl()}${path}`, {
         method,
         headers: requestToken
@@ -432,8 +470,12 @@ export async function request<TResponse>(
     throw new ApiError(0, NETWORK_ERROR_MESSAGE);
   }
 
+  const { response } = result;
+
   if (!response.ok) {
-    await throwErrorResponse(response, errorMessages);
+    await throwErrorResponse(response, errorMessages, {
+      notifySession: isCurrentSessionRequest(result.token),
+    });
   }
 
   if (response.status === 204) {
@@ -479,10 +521,10 @@ export async function requestBlob(
     headers["Content-Type"] = "application/json";
   }
 
-  let response: Response;
+  let result: Awaited<ReturnType<typeof sendWithTokenRetry>>;
 
   try {
-    response = await sendWithTokenRetry(token, (requestToken) =>
+    result = await sendWithTokenRetry(token, (requestToken) =>
       fetch(`${getApiBaseUrl()}${path}`, {
         method,
         headers: requestToken
@@ -500,8 +542,12 @@ export async function requestBlob(
     throw new ApiError(0, NETWORK_ERROR_MESSAGE);
   }
 
+  const { response } = result;
+
   if (!response.ok) {
-    await throwErrorResponse(response, errorMessages);
+    await throwErrorResponse(response, errorMessages, {
+      notifySession: isCurrentSessionRequest(result.token),
+    });
   }
 
   return response.blob();
