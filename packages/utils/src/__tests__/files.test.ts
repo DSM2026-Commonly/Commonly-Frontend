@@ -124,7 +124,28 @@ describe("confirmFileMapping", () => {
 
     expect(await confirmFileMapping(1, mappings)).toEqual({
       insertedCount: 2,
+      createdHumanCount: 0,
       failedRows: [],
+    });
+  });
+
+  // 엑셀에만 있던 대상자는 백엔드가 인적사항을 새로 만들고 그 수를 내려준다(#82).
+  test("reads how many people were newly created", async () => {
+    mockFetch(200, { saved: true, insertedCount: 3, createdHumanCount: 2, failedRows: [] });
+
+    expect(await confirmFileMapping(1, mappings)).toEqual({
+      insertedCount: 3,
+      createdHumanCount: 2,
+      failedRows: [],
+    });
+  });
+
+  test("offers the address as an optional mapping field", () => {
+    expect(CERTIFICATE_TARGET_FIELDS.map((field) => field.id)).toContain("address");
+    expect(suggestFileMappings(["성명", "주소", "근무부서"])).toMatchObject({
+      name: "성명",
+      address: "주소",
+      department: "근무부서",
     });
   });
 

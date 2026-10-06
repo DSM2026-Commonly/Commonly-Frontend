@@ -65,6 +65,11 @@ export interface FileMappingFailedRow {
 
 export interface FileMappingResult {
   insertedCount: number;
+  /**
+   * 엑셀에만 있던 대상자를 새로 만든 수. 성명 오타 한 글자가 별개 인물을 만들 수 있어
+   * 담당자가 확인할 수 있게 보여준다. 예전 배포본처럼 값이 없으면 0 이다.
+   */
+  createdHumanCount: number;
   failedRows: FileMappingFailedRow[];
 }
 
@@ -72,6 +77,8 @@ export const CERTIFICATE_TARGET_FIELDS = [
   { id: "name", label: "성명" },
   { id: "birthDate", label: "생년월일" },
   { id: "gender", label: "성별" },
+  // 주소는 경력 행이 아니라 인적사항으로 들어간다. 엑셀로 처음 등장한 대상자를 만들 때 쓴다.
+  { id: "address", label: "주소" },
   { id: "jobTitle", label: "직종명" },
   { id: "keyResponsibilities", label: "담당업무" },
   { id: "hireDate", label: "채용일" },
@@ -255,7 +262,10 @@ function normalizeFileMappingResult(value: unknown): FileMappingResult | null {
     return null;
   }
 
-  const { insertedCount, failedRows } = value as Record<string, unknown>;
+  const { insertedCount, createdHumanCount, failedRows } = value as Record<
+    string,
+    unknown
+  >;
 
   if (typeof insertedCount !== "number") {
     return null;
@@ -276,7 +286,12 @@ function normalizeFileMappingResult(value: unknown): FileMappingResult | null {
     });
   }
 
-  return { insertedCount, failedRows: normalizedFailedRows };
+  return {
+    insertedCount,
+    createdHumanCount:
+      typeof createdHumanCount === "number" ? createdHumanCount : 0,
+    failedRows: normalizedFailedRows,
+  };
 }
 
 export async function confirmFileMapping(
