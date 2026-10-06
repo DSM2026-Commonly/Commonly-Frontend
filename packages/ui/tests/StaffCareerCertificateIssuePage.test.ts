@@ -29,6 +29,10 @@ describe("toCareerRow", () => {
       job: "민원 응대",
       department: "총무과",
       period: "2020-03-01 ~ 2023-02-28",
+      // 대체 미리보기 서식의 부터·까지·퇴직사유 칸에 쓴다.
+      startDate: "2020-03-01",
+      endDate: "2023-02-28",
+      reason: "계약 기간 만료",
     });
   });
 

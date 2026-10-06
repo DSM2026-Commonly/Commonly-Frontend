@@ -7,11 +7,21 @@ import type {
   CertificatePreviewPdfState,
 } from "../CareerCertificateIssue.types";
 import {
+  CERTIFICATE_WORK_ROWS,
+  calculateTotalWorkPeriod,
+  formatDocumentDate,
+  formatIssuedDate,
+  getLastRetirementReason,
+} from "../certificateDocument";
+import {
+  CertificateTable,
   DocumentBody,
   DocumentFooter,
+  DocumentHeader,
+  DocumentIssuedDate,
   DocumentIssuer,
   DocumentSheet,
-  DocumentTable,
+  DocumentStatement,
   DocumentTitle,
   DocumentViewer,
   FilenameBar,
@@ -27,7 +37,10 @@ import {
 interface CertificatePreviewViewProps {
   variant?: CareerCertificateIssueVariant;
   applicantName?: string;
+  /** 서식 표기(YYYY.MM.DD.)로 찍을 생년월일. */
   birthDate?: string;
+  /** 대상자 주소. 민원인은 내 정보에 주소가 없어 비어 있다. */
+  address?: string;
   careerRows?: readonly CertificateCareerRow[];
   purpose?: string;
   additionalNote?: string;
@@ -40,6 +53,8 @@ interface CertificatePreviewViewProps {
 }
 
 const ISSUER_NAME = "유성구청";
+/** 서버 PDF 와 같은 발급자 표기. */
+const DOCUMENT_ISSUER = "대전광역시 유성구청장 (인)";
 
 /** 서버가 만든 미리보기 PDF. Blob URL 은 PDF 가 바뀌거나 화면을 떠날 때 해제한다. */
 function PdfPreviewFrame({ pdf, civil }: { pdf: Blob; civil: boolean }) {
@@ -61,10 +76,6 @@ function PdfPreviewFrame({ pdf, civil }: { pdf: Blob; civil: boolean }) {
   );
 }
 
-function formatIssueDate(date: Date): string {
-  return `${date.getFullYear()}년 ${String(date.getMonth() + 1).padStart(2, "0")}월 ${String(date.getDate()).padStart(2, "0")}일`;
-}
-
 /** 파일명에 쓸 수 없는 문자를 제거한다. 문서번호는 발급 후 부여되므로 파일명에 넣지 않는다. */
 function buildPreviewFilename(applicantName: string): string {
   const safeName = applicantName.trim().replace(/[\\/:*?"<>|]/g, "");
@@ -78,6 +89,7 @@ function CertificatePreviewView({
   variant = "staff",
   applicantName = "",
   birthDate = "",
+  address = "",
   careerRows = [],
   purpose = "",
   additionalNote = "",
@@ -89,7 +101,12 @@ function CertificatePreviewView({
 }: CertificatePreviewViewProps) {
   const isCivil = variant === "civil";
   const nextLabel = isSubmitting ? "발급 중..." : "다음으로";
-  const issueDate = formatIssueDate(new Date());
+  const issueDate = formatIssuedDate(new Date());
+  const totalWorkPeriod = calculateTotalWorkPeriod(careerRows);
+  const workRows = Array.from(
+    { length: Math.max(CERTIFICATE_WORK_ROWS, careerRows.length) },
+    (_, index) => careerRows[index],
+  );
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   // 문서 미리보기가 화면 몇 배 높이라, 어느 '다음으로'를 눌렀든 에러가 화면 밖에 있을 수 있다.
@@ -138,65 +155,112 @@ function CertificatePreviewView({
             $civil={isCivil}
             aria-label="열람용 경력증명서 미리보기"
           >
-            <DocumentTitle>경 력 증 명 서</DocumentTitle>
+            {/* 서버 PDF(CertificatePdfRenderer)와 같은 「경력증명서 서식」 배치. */}
+            <DocumentTitle>경력증명서</DocumentTitle>
             <DocumentBody>
-              <DocumentTable>
-                <caption className="sr-only">인적사항</caption>
-                <tbody>
-                  <tr>
-                    <th scope="row">성명</th>
-                    <td>{applicantName || "-"}</td>
-                    <th scope="row">생년월일</th>
-                    <td>{birthDate || "-"}</td>
-                  </tr>
-                </tbody>
-              </DocumentTable>
+              <DocumentHeader>
+                <span />
+                <p>담 당 자 :</p>
+                <p>제 미리보기 호</p>
+                <p>연 락 처 :</p>
+              </DocumentHeader>
 
-              <DocumentTable>
-                <caption className="sr-only">경력사항</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">근무부서</th>
-                    <th scope="col">담당업무</th>
-                    <th scope="col">근무기간</th>
-                  </tr>
-                </thead>
+              <CertificateTable>
+                <caption className="sr-only">경력증명서 서식</caption>
+                <colgroup>
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "41%" }} />
+                </colgroup>
                 <tbody>
-                  {careerRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>경력 사항이 없습니다.</td>
+                  <tr>
+                    <td className="label" rowSpan={3}>
+                      인적사항
+                    </td>
+                    <td className="label" rowSpan={2}>
+                      성 명
+                    </td>
+                    <td className="left">(한글) {applicantName}</td>
+                    <td className="label" rowSpan={2}>
+                      생년월일
+                    </td>
+                    <td rowSpan={2}>{birthDate}</td>
+                  </tr>
+                  <tr>
+                    <td className="left">(영문)</td>
+                  </tr>
+                  <tr>
+                    <td className="label">주 소</td>
+                    <td className="left" colSpan={3}>
+                      {address}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label" rowSpan={workRows.length + 2}>
+                      재직사항
+                    </td>
+                    <td className="label" colSpan={2}>
+                      근무기간
+                    </td>
+                    <td className="label" rowSpan={2}>
+                      근무부서
+                    </td>
+                    <td className="label" rowSpan={2}>
+                      담당업무
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label">부터</td>
+                    <td className="label">까지</td>
+                  </tr>
+                  {workRows.map((row, index) => (
+                    <tr className="work" key={row?.id ?? `empty-${index}`}>
+                      <td className="date">{formatDocumentDate(row?.startDate)}</td>
+                      <td className="date">{formatDocumentDate(row?.endDate)}</td>
+                      <td>{row?.department}</td>
+                      <td>{row?.job}</td>
                     </tr>
-                  ) : (
-                    careerRows.map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.department}</td>
-                        <td>{row.job}</td>
-                        <td>{row.period}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </DocumentTable>
-
-              <DocumentTable>
-                <caption className="sr-only">발급 정보</caption>
-                <tbody>
+                  ))}
                   <tr>
-                    <th scope="row">용도</th>
-                    <td colSpan={3}>{purpose || "-"}</td>
+                    <td className="label">
+                      총 근무
+                      <br />
+                      기간
+                    </td>
+                    <td className="total" colSpan={2}>
+                      총 {totalWorkPeriod.months} 개월 {totalWorkPeriod.days} 일
+                    </td>
+                    <td className="label">퇴직사유</td>
+                    <td>{getLastRetirementReason(careerRows)}</td>
                   </tr>
                   <tr>
-                    <th scope="row">그 밖의 사항</th>
-                    <td colSpan={3}>{additionalNote || "-"}</td>
+                    <td className="label">
+                      그 밖의
+                      <br />
+                      사항
+                    </td>
+                    <td className="left" colSpan={4}>
+                      {additionalNote}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label">용 도</td>
+                    <td className="left" colSpan={4}>
+                      {purpose}
+                    </td>
                   </tr>
                 </tbody>
-              </DocumentTable>
+              </CertificateTable>
 
               <DocumentFooter>
-                <p>위와 같이 근무하였음을 증명합니다.</p>
-                <p>{issueDate}</p>
+                <DocumentStatement>
+                  위와 같이 재직ㆍ경력을 증명합니다.
+                </DocumentStatement>
+                <DocumentIssuedDate>{issueDate}</DocumentIssuedDate>
+                <DocumentIssuer>{DOCUMENT_ISSUER}</DocumentIssuer>
               </DocumentFooter>
-              <DocumentIssuer>{ISSUER_NAME}장</DocumentIssuer>
             </DocumentBody>
           </DocumentSheet>
         </DocumentViewer>
