@@ -1,4 +1,5 @@
 import {
+  assertHumanDeletable,
   deleteHuman,
   fetchHumanCertificates,
   getAuthToken,
@@ -137,7 +138,11 @@ function StaffCareerEditPage() {
       throw new Error("대상자 정보가 올바르지 않습니다. 다시 조회해 주세요.");
     }
 
-    await deleteHuman(humanId, { token: getAuthToken() });
+    const token = getAuthToken();
+
+    // 경력이 있는 대상자를 지우면 백엔드가 500 을 내거나 발급 기록이 업무 이력에서 사라진다.
+    await assertHumanDeletable(humanId, { token });
+    await deleteHuman(humanId, { token });
     humanDepartmentsRef.current.delete(applicantId);
   };
 

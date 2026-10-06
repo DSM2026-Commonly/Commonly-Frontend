@@ -19,6 +19,8 @@ import {
   CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE,
   CERTIFICATE_SELF_PREVIEW_ENDPOINT,
   HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+  HUMAN_DELETE_HAS_CAREERS_MESSAGE,
+  assertHumanDeletable,
   PETITIONER_HUMAN_NOT_MATCHED_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
@@ -176,6 +178,41 @@ describe("fetchCertificateDetail", () => {
     await expect(fetchCertificateDetail(5)).rejects.toThrow(
       CERTIFICATE_DETAIL_NOT_FOUND_MESSAGE,
     );
+  });
+});
+
+describe("assertHumanDeletable", () => {
+  test("passes when the human has no career rows", async () => {
+    mockFetch(200, [], (url) => {
+      expect(url).toBe(getHumanCertificatesEndpoint(3));
+    });
+
+    await expect(assertHumanDeletable(3, { token: "token-1" })).resolves.toBeUndefined();
+  });
+
+  test("refuses when the human has career rows", async () => {
+    mockFetch(200, [humanCertificate]);
+
+    await expect(assertHumanDeletable(3)).rejects.toThrow(
+      HUMAN_DELETE_HAS_CAREERS_MESSAGE,
+    );
+  });
+
+  // 채용일이 없는 행처럼 화면에 못 그리는 행도 경력이므로 삭제를 막아야 한다.
+  test("counts rows the screen cannot render", async () => {
+    mockFetch(200, [{ ...humanCertificate, hireDate: null }]);
+
+    await expect(assertHumanDeletable(3)).rejects.toThrow(
+      HUMAN_DELETE_HAS_CAREERS_MESSAGE,
+    );
+  });
+
+  test("rejects a non-array response", async () => {
+    mockFetch(200, { content: [] });
+
+    await expect(assertHumanDeletable(3)).rejects.toMatchObject({
+      message: HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE,
+    });
   });
 });
 

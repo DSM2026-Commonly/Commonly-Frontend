@@ -1270,10 +1270,10 @@ function CareerEdit({
       return;
     }
 
-    // 되돌릴 수 없는 삭제라 확인을 받는다. 경력 사항은 백엔드가 함께 지우지 않는다.
+    // 되돌릴 수 없는 삭제라 확인을 받는다. 경력 사항이 있으면 페이지가 삭제를 거절한다.
     if (
       !window.confirm(
-        `${applicant.name}(${getBirthDateLabel(applicant.birthDate)}) 대상자를 삭제하시겠습니까?\n등록된 경력 사항은 함께 삭제되지 않습니다.`,
+        `${applicant.name}(${getBirthDateLabel(applicant.birthDate)}) 대상자를 삭제하시겠습니까?\n경력 사항이 등록된 대상자는 삭제할 수 없습니다.`,
       )
     ) {
       return;

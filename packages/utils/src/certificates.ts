@@ -289,6 +289,39 @@ export async function fetchHumanCertificates(
   return normalizeHumanCertificates(response);
 }
 
+export const HUMAN_DELETE_HAS_CAREERS_MESSAGE =
+  "경력 사항이 등록된 대상자는 삭제할 수 없습니다.";
+
+/**
+ * 대상자를 지워도 되는지 확인한다. 경력 사항이 하나라도 있으면 HUMAN_DELETE_HAS_CAREERS_MESSAGE 로 실패한다.
+ * 백엔드는 대상자 행만 지우고 연결된 경력·발급 기록을 처리하지 않아, 지우면 500 이 나거나
+ * 그 사람의 발급 기록이 업무 이력에서 사라진다. 발급에는 경력이 필요하고 경력 삭제 API 는 없으므로
+ * 경력이 없는 대상자는 발급 기록도 없다.
+ * 화면에 못 그리는 행(채용일 없음 등)도 경력이므로 정규화 전 개수로 판단한다.
+ */
+export async function assertHumanDeletable(
+  humanId: number,
+  { token, signal }: CertificateRequestOptions = {},
+): Promise<void> {
+  const response = await request<unknown>(getHumanCertificatesEndpoint(humanId), {
+    token,
+    signal,
+    errorMessages: {
+      400: HUMAN_CERTIFICATES_BAD_REQUEST_MESSAGE,
+      401: HUMAN_CERTIFICATES_UNAUTHORIZED_MESSAGE,
+      404: HUMAN_CERTIFICATES_NOT_FOUND_MESSAGE,
+    },
+  });
+
+  if (!Array.isArray(response)) {
+    throw new ApiError(200, HUMAN_CERTIFICATES_INVALID_RESPONSE_MESSAGE);
+  }
+
+  if (response.length > 0) {
+    throw new Error(HUMAN_DELETE_HAS_CAREERS_MESSAGE);
+  }
+}
+
 /** 민원인 본인 재직 이력 목록. 선택 발급 화면에서 고를 행을 보여준다. 응답 모양은 fetchHumanCertificates 와 같다. */
 export async function fetchMyCertificates({
   token,
