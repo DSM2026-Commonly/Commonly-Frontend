@@ -186,3 +186,13 @@ describe("career selection hint", () => {
     expect(markup).toContain("발급할 경력을 1건 이상 선택해 주세요.");
   });
 });
+
+describe("career period cell", () => {
+  // 칸이 좁아도 "2022-02-" / "28"처럼 날짜 중간이 아니라 "~" 뒤에서만 줄이 바뀌어야 한다.
+  test("keeps each date together so the line only breaks after the tilde", () => {
+    const markup = renderDetails("selected", careerRows(1), ["1"]);
+
+    expect(markup).toMatch(/<span[^>]*>2020-03-01 ~<\/span> <span[^>]*>2021-02-28<\/span>/);
+  });
+});
+

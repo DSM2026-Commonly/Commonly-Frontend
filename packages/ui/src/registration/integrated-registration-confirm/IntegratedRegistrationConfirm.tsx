@@ -23,6 +23,7 @@ import {
   StyledStepIndicator,
   StyledSelect,
 } from "./integratedRegistrationConfirm.styles";
+import { getSelectClassName } from "../../form/formControls.styles";
 
 export interface IntegratedRegistrationConfirmStep {
   id: string;
@@ -227,6 +228,7 @@ function IntegratedRegistrationConfirm({
                   </FieldLabel>
                   <StyledSelect>
                     <Select
+                      className={getSelectClassName(selectedRows[field.id] ?? "")}
                       id={`${titleId}-${field.id}`}
                       size="large"
                       options={getAvailableOptions(field.id)}

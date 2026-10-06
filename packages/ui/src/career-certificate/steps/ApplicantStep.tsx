@@ -19,6 +19,7 @@ import {
   SearchAction,
   TableFrame,
 } from "./ApplicantStep.styles";
+import { getSelectClassName } from "../../form/formControls.styles";
 
 interface ApplicantStepProps {
   applicantName: string;
@@ -91,6 +92,7 @@ function ApplicantStep({
           <FieldLabel>생년월일 (숫자만 입력해주세요)</FieldLabel>
           <DateFields>
             <Select
+              className={getSelectClassName(birthYear)}
               aria-label="생년"
               options={YEAR_OPTIONS}
               value={birthYear}

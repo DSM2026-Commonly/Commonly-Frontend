@@ -80,3 +80,8 @@ export const ExtraFields = styled.div`
     width: 100%;
   }
 `;
+
+/** 날짜처럼 중간에서 끊기면 읽기 어려운 값을 한 덩어리로 둔다. */
+export const NoWrap = styled.span`
+  white-space: nowrap;
+`;

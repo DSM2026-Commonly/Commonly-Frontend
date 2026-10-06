@@ -6,6 +6,7 @@ import {
   ExtraFields,
   Fieldset,
   FormCard,
+  NoWrap,
   RadioSection,
   SelectionCount,
   SelectionIntro,
@@ -97,6 +98,25 @@ function CertificateExtraFields({
         onChange={onPurposeChange}
       />
     </ExtraFields>
+  );
+}
+
+/**
+ * "2020-03-01 ~ 2022-02-28" 같은 근무 기간. 칸이 좁으면 날짜 중간("2022-02-" / "28")이 아니라
+ * "~" 뒤에서만 줄을 바꾸도록 날짜마다 줄바꿈을 막는다.
+ */
+function CareerPeriod({ period }: { period: string }) {
+  const separatorIndex = period.indexOf(" ~ ");
+
+  if (separatorIndex < 0) {
+    return <NoWrap>{period}</NoWrap>;
+  }
+
+  return (
+    <>
+      <NoWrap>{`${period.slice(0, separatorIndex)} ~`}</NoWrap>{" "}
+      <NoWrap>{period.slice(separatorIndex + 3)}</NoWrap>
+    </>
   );
 }
 
@@ -252,7 +272,9 @@ function DetailsStep({
                     </Table.Td>
                     <Table.Td>{row.job}</Table.Td>
                     <Table.Td>{row.department}</Table.Td>
-                    <Table.Td>{row.period}</Table.Td>
+                    <Table.Td>
+                      <CareerPeriod period={row.period} />
+                    </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
