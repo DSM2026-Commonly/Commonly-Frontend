@@ -7,7 +7,7 @@ import {
   changePassword,
   getAuthToken,
 } from "@commonly/utils";
-import { TextInput } from "krds-react";
+import { Button, TextInput } from "krds-react";
 import styled from "@emotion/styled";
 import type { FormEvent } from "react";
 import { useId, useState } from "react";
@@ -34,6 +34,13 @@ const GuidanceText = styled.p`
   line-height: 1.5;
 `;
 
+const MeErrorRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+`;
+
 interface PasswordChangeErrors {
   currentPassword?: string;
   newPassword?: string;
@@ -47,7 +54,7 @@ interface PasswordChangeErrors {
 function PasswordChangePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { me, isLoading: isMeLoading } = useMeState();
+  const { me, isLoading: isMeLoading, retry: retryLoadMe } = useMeState();
   const titleId = useId();
   const formId = useId();
   const currentPasswordId = useId();
@@ -213,10 +220,19 @@ function PasswordChangePage() {
           </GuidanceText>
         )}
         {!isMeLoading && !me && (
-          <SubmissionError role="alert">
-            계정 정보를 불러오지 못해 비밀번호를 변경할 수 없습니다. 페이지를
-            새로고침한 뒤 다시 시도해 주세요.
-          </SubmissionError>
+          <MeErrorRow>
+            <SubmissionError role="alert">
+              계정 정보를 불러오지 못해 비밀번호를 변경할 수 없습니다.
+            </SubmissionError>
+            <Button
+              variant="tertiary"
+              size="small"
+              type="button"
+              onClick={retryLoadMe}
+            >
+              다시 시도
+            </Button>
+          </MeErrorRow>
         )}
         {submissionError && (
           <SubmissionError role="alert">{submissionError}</SubmissionError>

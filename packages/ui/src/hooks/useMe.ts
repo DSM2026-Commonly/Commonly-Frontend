@@ -1,16 +1,57 @@
 import { fetchMe, getAuthToken, type Me } from "@commonly/utils";
 import { useEffect, useState } from "react";
 
-// 헤더와 화면이 같은 토큰으로 여러 번 부르지 않도록 토큰마다 한 번만 요청한다.
-// 실패(미배포 404, 네트워크 등)도 그 토큰 동안은 null 로 기억해 계속 재요청하지 않는다.
-let cachedRequest: { token: string; promise: Promise<Me | null> } | null = null;
+// 실패한 조회는 이 시간 동안 기억해, 화면이 여러 번 그려져도 같은 오류로 계속 재요청하지 않는다.
+const FAILED_REQUEST_COOLDOWN_MS = 30_000;
 
-function loadMe(token: string): Promise<Me | null> {
+interface MeRequest {
+  token: string;
+  promise: Promise<Me | null>;
+  /** 조회에 실패한 시각. 성공했거나 아직 응답 전이면 null 이다. */
+  failedAt: number | null;
+}
+
+// 헤더와 화면이 같은 토큰으로 여러 번 부르지 않도록 토큰마다 한 번만 요청한다.
+let cachedRequest: MeRequest | null = null;
+const listeners = new Set<() => void>();
+
+function shouldRequest(token: string, retryFailed: boolean) {
   if (cachedRequest?.token !== token) {
-    cachedRequest = {
+    return true;
+  }
+
+  const { failedAt } = cachedRequest;
+
+  return (
+    failedAt !== null &&
+    (retryFailed || Date.now() - failedAt >= FAILED_REQUEST_COOLDOWN_MS)
+  );
+}
+
+/**
+ * 토큰의 내 정보를 불러온다. 실패(네트워크, 5xx 등)하면 null 이다.
+ * retryFailed 는 사용자가 다시 시도를 누른 경우처럼, 실패한 조회를 기다리지 않고 바로 다시 요청한다.
+ */
+export function loadMe(
+  token: string,
+  { retryFailed = false }: { retryFailed?: boolean } = {},
+): Promise<Me | null> {
+  if (!cachedRequest || shouldRequest(token, retryFailed)) {
+    const request: MeRequest = {
       token,
-      promise: fetchMe({ token }).catch(() => null),
+      failedAt: null,
+      promise: Promise.resolve(null),
     };
+
+    request.promise = fetchMe({ token }).catch(() => {
+      request.failedAt = Date.now();
+      return null;
+    });
+    cachedRequest = request;
+    // 이미 화면에 있는 다른 소비자(헤더 등)도 새 결과를 받게 알린다.
+    void request.promise.then(() => {
+      listeners.forEach((listener) => listener());
+    });
   }
 
   return cachedRequest.promise;
@@ -20,6 +61,8 @@ export interface MeState {
   me: Me | null;
   /** 지금 토큰으로 조회가 아직 끝나지 않았다. 끝났는데 me 가 null 이면 조회에 실패한 것이다. */
   isLoading: boolean;
+  /** 실패한 조회를 다시 요청한다. */
+  retry: () => void;
 }
 
 /** useMe 와 같지만, 조회 중인지 실패했는지 구분해야 하는 화면을 위해 로딩 여부도 돌려준다. */
@@ -28,6 +71,19 @@ export function useMeState(): MeState {
   const [loaded, setLoaded] = useState<{ token: string; me: Me | null } | null>(
     null,
   );
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  useEffect(() => {
+    const handleRequestSettled = () => {
+      setRequestVersion((version) => version + 1);
+    };
+
+    listeners.add(handleRequestSettled);
+
+    return () => {
+      listeners.delete(handleRequestSettled);
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -45,12 +101,21 @@ export function useMeState(): MeState {
     return () => {
       isActive = false;
     };
-  }, [token]);
+  }, [token, requestVersion]);
+
+  const retry = () => {
+    if (!token) {
+      return;
+    }
+
+    setLoaded(null);
+    void loadMe(token, { retryFailed: true });
+  };
 
   // 토큰이 바뀌었는데 이전 사용자 정보가 남아 보이지 않게 지금 토큰의 결과만 돌려준다.
   return token && loaded?.token === token
-    ? { me: loaded.me, isLoading: false }
-    : { me: null, isLoading: Boolean(token) };
+    ? { me: loaded.me, isLoading: false, retry }
+    : { me: null, isLoading: Boolean(token), retry };
 }
 
 /**
