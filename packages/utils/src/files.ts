@@ -10,6 +10,9 @@ export const FILE_UPLOAD_INVALID_RESPONSE_MESSAGE =
   "파일 업로드 응답이 올바르지 않습니다.";
 export const FILE_UPLOAD_UNSUPPORTED_TYPE_MESSAGE =
   "지원하지 않는 파일 형식입니다. 제공된 표준 서식(.xlsx)을 사용해 주세요.";
+/** NOT_AN_EXCEL_FILE(400). 확장자만 .xlsx 로 바꾼 파일(한글 .hwpx 등)이라 엑셀로 열리지 않는다. */
+export const FILE_UPLOAD_NOT_EXCEL_MESSAGE =
+  "엑셀 파일이 아닙니다. 확장자만 .xlsx로 바꾼 파일(한글 .hwpx 등)은 올릴 수 없습니다. 엑셀에서 「다른 이름으로 저장 → Excel 통합 문서(.xlsx)」로 변환해 주세요.";
 export const FILE_UPLOAD_SIZE_EXCEEDED_MESSAGE =
   "파일 크기가 너무 큽니다. 20MB 이하의 파일만 업로드할 수 있습니다.";
 export const FILE_UPLOAD_INVALID_HEADER_MESSAGE =
@@ -207,6 +210,7 @@ export async function uploadFile(
       INVALID_HEADER_ROW: FILE_UPLOAD_INVALID_HEADER_MESSAGE,
       UNPROCESSABLE_FILE: FILE_UPLOAD_UNPROCESSABLE_MESSAGE,
       STORAGE_FAILURE: FILE_UPLOAD_STORAGE_FAILURE_MESSAGE,
+      NOT_AN_EXCEL_FILE: FILE_UPLOAD_NOT_EXCEL_MESSAGE,
       400: FILE_UPLOAD_UNSUPPORTED_TYPE_MESSAGE,
       413: FILE_UPLOAD_SIZE_EXCEEDED_MESSAGE,
       422: FILE_UPLOAD_UNPROCESSABLE_MESSAGE,
