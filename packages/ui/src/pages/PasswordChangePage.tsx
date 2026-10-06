@@ -1,11 +1,11 @@
 import "krds-react/dist/index.css";
 
 import {
-  ApiError,
   INITIAL_PASSWORD_MAX_LENGTH,
   INITIAL_PASSWORD_MIN_LENGTH,
   changePassword,
   getAuthToken,
+  isPasswordMismatchError,
 } from "@commonly/utils";
 import { Button, TextInput } from "krds-react";
 import styled from "@emotion/styled";
@@ -128,8 +128,8 @@ function PasswordChangePage() {
       setNewPasswordConfirm("");
       setIsChanged(true);
     } catch (error) {
-      // 현재 비밀번호가 틀린 401 은 그 칸에 바로 보여준다.
-      if (error instanceof ApiError && error.status === 401) {
+      // 현재 비밀번호가 틀린 경우는 그 칸에 바로 보여준다. 세션 만료 401 은 로그인 화면으로 보낸다.
+      if (isPasswordMismatchError(error) && error instanceof Error) {
         setErrors({ currentPassword: error.message });
         return;
       }

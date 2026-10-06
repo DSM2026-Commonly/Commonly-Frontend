@@ -3,8 +3,10 @@ import {
   AUTH_TOKEN_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
   clearAuthToken,
+  getRefreshToken,
   getSafeRedirectPath,
   setAuthToken,
+  setAuthTokens,
   type AuthStorage,
 } from "../auth";
 
@@ -56,17 +58,47 @@ describe("setAuthToken", () => {
   });
 });
 
-describe("clearAuthToken", () => {
-  test("removes the access token and any legacy refresh token", () => {
+describe("setAuthTokens", () => {
+  test("stores the access and refresh tokens", () => {
     const { storage, data } = createStorage();
-    setAuthToken("access", storage);
-    data.set(REFRESH_TOKEN_STORAGE_KEY, "legacy-refresh");
+
+    expect(
+      setAuthTokens({ accessToken: " access ", refreshToken: " refresh " }, storage),
+    ).toBe(true);
+    expect(data.get(AUTH_TOKEN_STORAGE_KEY)).toBe("access");
+    expect(getRefreshToken(storage)).toBe("refresh");
+  });
+
+  test("drops a stale refresh token when the response has none", () => {
+    const { storage, data } = createStorage();
+    data.set(REFRESH_TOKEN_STORAGE_KEY, "stale-refresh");
+
+    setAuthTokens({ accessToken: "access", refreshToken: null }, storage);
+
+    expect(getRefreshToken(storage)).toBeNull();
+  });
+
+  test("fails when the access token cannot be stored", () => {
+    const { storage } = createStorage({
+      failSetKeys: [AUTH_TOKEN_STORAGE_KEY],
+    });
+
+    expect(
+      setAuthTokens({ accessToken: "access", refreshToken: "refresh" }, storage),
+    ).toBe(false);
+  });
+});
+
+describe("clearAuthToken", () => {
+  test("removes the access token and the refresh token", () => {
+    const { storage, data } = createStorage();
+    setAuthTokens({ accessToken: "access", refreshToken: "refresh" }, storage);
 
     expect(clearAuthToken(storage)).toBe(true);
     expect(data.size).toBe(0);
   });
 
-  test("legacy refresh cleanup is best-effort and does not fail the logout", () => {
+  test("refresh token cleanup is best-effort and does not fail the logout", () => {
     const { storage, data } = createStorage({
       failRemoveKeys: [REFRESH_TOKEN_STORAGE_KEY],
     });

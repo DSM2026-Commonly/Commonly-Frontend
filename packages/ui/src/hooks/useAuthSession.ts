@@ -1,4 +1,5 @@
 import {
+  AUTH_TOKEN_CHANGED_EVENT,
   AUTH_TOKEN_STORAGE_KEY,
   formatRemainingSessionTime,
   getAuthSession,
@@ -15,7 +16,7 @@ export interface AuthSessionState {
 
 /**
  * 저장된 액세스 토큰에서 로그인 사용자와 세션 만료 시각을 읽어 1초 단위로 남은 시간을 계산한다.
- * 다른 탭에서 토큰이 바뀌면 storage 이벤트로 다시 읽는다.
+ * 다른 탭에서 토큰이 바뀌면 storage 이벤트로, 같은 탭에서 연장하면 토큰 변경 이벤트로 다시 읽는다.
  */
 function useAuthSession(): AuthSessionState {
   const [session, setSession] = useState<AuthSession | null>(getAuthSession);
@@ -28,9 +29,15 @@ function useAuthSession(): AuthSessionState {
       }
     };
 
-    window.addEventListener("storage", handleStorage);
+    const handleTokenChanged = () => setSession(getAuthSession());
 
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, handleTokenChanged);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, handleTokenChanged);
+    };
   }, []);
 
   const expiresAt = session?.expiresAt ?? null;

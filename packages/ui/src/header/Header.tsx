@@ -1,5 +1,6 @@
 import logo from "../assets/Logo/logo1.png";
-import type { MouseEvent } from "react";
+import { reissueAuthToken } from "@commonly/utils";
+import { useState, type MouseEvent } from "react";
 import useAuthSession from "../hooks/useAuthSession";
 import useMe from "../hooks/useMe";
 import { PASSWORD_CHANGE_PATH } from "../pages/PasswordChangePage";
@@ -21,6 +22,7 @@ import {
   UtilityButton,
   UtilityDivider,
   UtilityLink,
+  UtilityNotice,
   UtilityRow,
   UtilityText,
 } from "./header.styles";
@@ -31,6 +33,7 @@ export interface HeaderProps {
   variant?: HeaderVariant;
   /** 표시할 사용자명. 생략하면 저장된 로그인 토큰에서 읽는다. */
   userName?: string;
+  /** 생략하면 리프레시 토큰으로 액세스 토큰을 재발급해 로그인 시간을 연장한다. */
   onExtend?: () => void;
   onLogout?: () => void;
   onNavigate?: (href: string) => void;
@@ -86,8 +89,31 @@ const Header = ({
   const configuration = headerConfigurations[variant];
   const { session, remainingTime } = useAuthSession();
   const me = useMe();
+  const [extendStatus, setExtendStatus] = useState<
+    "idle" | "extending" | "failed"
+  >("idle");
   // 토큰에는 계정 id 만 있어, 내 정보 조회로 실명을 받으면 그걸 보여준다.
   const displayName = userName ?? (me?.name || session?.name || "");
+  // 새 토큰이 저장되면 남은 시간이 다시 계산된다. 실패해도 지금 토큰이 끝날 때까지는 계속 쓸 수 있다.
+  const handleExtend = async () => {
+    if (onExtend) {
+      onExtend();
+      return;
+    }
+
+    if (extendStatus === "extending") {
+      return;
+    }
+
+    setExtendStatus("extending");
+
+    try {
+      await reissueAuthToken();
+      setExtendStatus("idle");
+    } catch {
+      setExtendStatus("failed");
+    }
+  };
   const handleNavigation = (
     event: MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -123,10 +149,16 @@ const Header = ({
               size="small"
               type="button"
               $width={30}
-              onClick={onExtend}
+              disabled={extendStatus === "extending"}
+              onClick={() => void handleExtend()}
             >
               연장
             </UtilityButton>
+            {extendStatus === "failed" && (
+              <UtilityNotice role="status">
+                연장할 수 없습니다. 다시 로그인해 주세요.
+              </UtilityNotice>
+            )}
             <UtilityDivider aria-hidden="true" />
             <UtilityLink
               href={PASSWORD_CHANGE_PATH}

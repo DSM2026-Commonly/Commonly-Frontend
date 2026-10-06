@@ -13,6 +13,7 @@ import {
   PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
   changeInitialPassword,
   changePassword,
+  isPasswordMismatchError,
   requiresInitialPasswordChange,
 } from "../password";
 import { ME_ENDPOINT } from "../users";
@@ -123,8 +124,9 @@ describe("changePassword", () => {
     expect(authorization).toBe("Bearer t");
   });
 
-  test("401 (wrong current password) maps to the current-password message", async () => {
+  test("401 PASSWORD_MISMATCH (wrong current password) maps to the current-password message", async () => {
     mockFetch(401, {
+      code: "PASSWORD_MISMATCH",
       status: 401,
       timestamp: "t",
       message: "아이디 또는 비밀번호가 일치하지 않습니다.",
@@ -140,6 +142,24 @@ describe("changePassword", () => {
     expect((error as ApiError).message).toBe(
       PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
     );
+    expect(isPasswordMismatchError(error)).toBe(true);
+  });
+
+  test("401 from an ended session is not treated as a wrong current password", async () => {
+    mockFetch(401, {
+      code: "UNAUTHORIZED",
+      status: 401,
+      timestamp: "t",
+      message: "인증이 필요합니다.",
+    });
+
+    const error = await changePassword(7, {
+      password: "current",
+      newPassword: "newpass123",
+    }).catch((e: unknown) => e);
+
+    expect((error as ApiError).message).toBe("인증이 필요합니다.");
+    expect(isPasswordMismatchError(error)).toBe(false);
   });
 
   test("403 (not my account) maps to the own-account message", async () => {

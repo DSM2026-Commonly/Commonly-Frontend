@@ -73,6 +73,15 @@ export const UtilityText = styled.span<UtilityTextProps>`
   white-space: nowrap;
 `;
 
+// 연장 실패처럼 사용자가 다시 로그인해야 하는 상황을 짧게 알린다.
+export const UtilityNotice = styled.span`
+  flex: 0 0 auto;
+  color: var(--krds-light-color-text-danger, #bd2c0f);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: nowrap;
+`;
+
 export const UtilityDivider = styled.span`
   width: 1px;
   height: 16px;

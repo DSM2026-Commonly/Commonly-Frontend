@@ -17,6 +17,15 @@ function mockFetch(responses: Array<() => Response>) {
   return () => calls;
 }
 
+function createToken(subject: string, jti: string): string {
+  const payload = btoa(JSON.stringify({ sub: subject, jti }))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  return `header.${payload}.signature`;
+}
+
 const okResponse = () =>
   new Response(JSON.stringify(ME_BODY), {
     status: 200,
@@ -57,6 +66,25 @@ describe("loadMe", () => {
     const me = await loadMe("token-retry", { retryFailed: true });
 
     expect(me?.accountId).toBe("staff01");
+    expect(getCalls()).toBe(2);
+  });
+
+  test("reuses the result when only the token of the same account changes", async () => {
+    // 로그인 연장(재발급)은 같은 계정의 토큰만 바꾼다.
+    const getCalls = mockFetch([okResponse]);
+
+    await loadMe(createToken("same-account", "jti-1"));
+    await loadMe(createToken("same-account", "jti-2"));
+
+    expect(getCalls()).toBe(1);
+  });
+
+  test("fetches again for a different account", async () => {
+    const getCalls = mockFetch([okResponse]);
+
+    await loadMe(createToken("account-a", "jti-1"));
+    await loadMe(createToken("account-b", "jti-1"));
+
     expect(getCalls()).toBe(2);
   });
 

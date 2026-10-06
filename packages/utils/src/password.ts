@@ -21,8 +21,10 @@ export function getPasswordChangeEndpoint(userId: number): string {
 
 export const PASSWORD_CHANGE_BAD_REQUEST_MESSAGE =
   "비밀번호 형식이 올바르지 않습니다. 새 비밀번호는 8자 이상 72자 이하로 입력해 주세요.";
-// 백엔드는 현재 비밀번호가 틀려도 로그인 실패와 같은 401("아이디 또는 비밀번호가 일치하지 않습니다.")을
-// 준다. 이 화면에는 아이디 입력이 없어 현재 비밀번호 문구로 바꿔 보여준다.
+// 백엔드는 현재 비밀번호가 틀려도 로그인 실패와 같은 401 PASSWORD_MISMATCH
+// ("아이디 또는 비밀번호가 일치하지 않습니다.")를 준다. 이 화면에는 아이디 입력이 없어
+// 현재 비밀번호 문구로 바꿔 보여준다.
+export const PASSWORD_MISMATCH_CODE = "PASSWORD_MISMATCH";
 export const PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE =
   "현재 비밀번호가 일치하지 않습니다.";
 export const PASSWORD_CHANGE_FORBIDDEN_MESSAGE =
@@ -65,9 +67,21 @@ export async function changeInitialPassword(
 }
 
 /**
+ * 현재 비밀번호가 틀려 실패했는지. 같은 401 이라도 세션 만료(UNAUTHORIZED 등)와는 code 로 구분한다.
+ * code 가 없던 예전 배포본은 401 이면 비밀번호 불일치로 본다.
+ */
+export function isPasswordMismatchError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 401 &&
+    (error.code === undefined || error.code === PASSWORD_MISMATCH_CODE)
+  );
+}
+
+/**
  * 로그인한 본인의 비밀번호를 바꾼다 (PATCH /api/auths/password/{userId}).
  * 현재 비밀번호를 함께 보내야 하고, 성공 시 본문 없이 200 이 온다.
- * 현재 비밀번호가 틀리면 401 이지만 토큰은 유효하므로 로그아웃되지 않는다.
+ * 현재 비밀번호가 틀리면 401 PASSWORD_MISMATCH 지만 토큰은 유효하므로 로그아웃되지 않는다.
  */
 export async function changePassword(
   userId: number,
@@ -80,8 +94,9 @@ export async function changePassword(
     token,
     signal,
     errorMessages: {
+      // 401 을 상태 코드로 매핑하면 세션 만료 401 에도 비밀번호 불일치 문구가 나온다.
+      [PASSWORD_MISMATCH_CODE]: PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
       400: PASSWORD_CHANGE_BAD_REQUEST_MESSAGE,
-      401: PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
       403: PASSWORD_CHANGE_FORBIDDEN_MESSAGE,
     },
   });
@@ -126,6 +141,7 @@ export async function requiresInitialPasswordChange({
     return (
       error instanceof ApiError &&
       isInitialPasswordNotChangedError(error.status, {
+        code: error.code,
         message: error.message,
       })
     );

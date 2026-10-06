@@ -1,22 +1,32 @@
-import { fetchMe, getAuthToken, type Me } from "@commonly/utils";
+import { decodeJwtPayload, fetchMe, getAuthToken, type Me } from "@commonly/utils";
 import { useEffect, useState } from "react";
 
 // 실패한 조회는 이 시간 동안 기억해, 화면이 여러 번 그려져도 같은 오류로 계속 재요청하지 않는다.
 const FAILED_REQUEST_COOLDOWN_MS = 30_000;
 
 interface MeRequest {
-  token: string;
+  key: string;
   promise: Promise<Me | null>;
   /** 조회에 실패한 시각. 성공했거나 아직 응답 전이면 null 이다. */
   failedAt: number | null;
 }
 
-// 헤더와 화면이 같은 토큰으로 여러 번 부르지 않도록 토큰마다 한 번만 요청한다.
+// 헤더와 화면이 여러 번 부르지 않도록 계정마다 한 번만 요청한다.
 let cachedRequest: MeRequest | null = null;
 const listeners = new Set<() => void>();
 
-function shouldRequest(token: string, retryFailed: boolean) {
-  if (cachedRequest?.token !== token) {
+/**
+ * 결과를 묶는 기준. 연장(재발급)으로 토큰만 바뀐 같은 계정은 다시 조회하지 않고,
+ * 다른 계정으로 바뀌면 새로 조회한다. 계정 id 를 읽을 수 없는 토큰은 토큰 자체로 묶는다.
+ */
+function getMeCacheKey(token: string): string {
+  const subject = decodeJwtPayload(token)?.sub;
+
+  return typeof subject === "string" && subject ? `account:${subject}` : token;
+}
+
+function shouldRequest(key: string, retryFailed: boolean) {
+  if (cachedRequest?.key !== key) {
     return true;
   }
 
@@ -36,9 +46,11 @@ export function loadMe(
   token: string,
   { retryFailed = false }: { retryFailed?: boolean } = {},
 ): Promise<Me | null> {
-  if (!cachedRequest || shouldRequest(token, retryFailed)) {
+  const key = getMeCacheKey(token);
+
+  if (!cachedRequest || shouldRequest(key, retryFailed)) {
     const request: MeRequest = {
-      token,
+      key,
       failedAt: null,
       promise: Promise.resolve(null),
     };
@@ -68,7 +80,8 @@ export interface MeState {
 /** useMe 와 같지만, 조회 중인지 실패했는지 구분해야 하는 화면을 위해 로딩 여부도 돌려준다. */
 export function useMeState(): MeState {
   const token = getAuthToken();
-  const [loaded, setLoaded] = useState<{ token: string; me: Me | null } | null>(
+  const key = token ? getMeCacheKey(token) : null;
+  const [loaded, setLoaded] = useState<{ key: string; me: Me | null } | null>(
     null,
   );
   const [requestVersion, setRequestVersion] = useState(0);
@@ -86,7 +99,7 @@ export function useMeState(): MeState {
   }, []);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !key) {
       return;
     }
 
@@ -94,14 +107,16 @@ export function useMeState(): MeState {
 
     void loadMe(token).then((me) => {
       if (isActive) {
-        setLoaded({ token, me });
+        setLoaded({ key, me });
       }
     });
 
     return () => {
       isActive = false;
     };
-  }, [token, requestVersion]);
+    // 같은 계정의 토큰 교체(연장)로는 다시 조회하지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, requestVersion]);
 
   const retry = () => {
     if (!token) {
@@ -112,8 +127,8 @@ export function useMeState(): MeState {
     void loadMe(token, { retryFailed: true });
   };
 
-  // 토큰이 바뀌었는데 이전 사용자 정보가 남아 보이지 않게 지금 토큰의 결과만 돌려준다.
-  return token && loaded?.token === token
+  // 계정이 바뀌었는데 이전 사용자 정보가 남아 보이지 않게 지금 계정의 결과만 돌려준다.
+  return key && loaded?.key === key
     ? { me: loaded.me, isLoading: false, retry }
     : { me: null, isLoading: Boolean(token), retry };
 }

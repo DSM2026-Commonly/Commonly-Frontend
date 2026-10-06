@@ -1,27 +1,35 @@
 export {
+  AUTH_TOKEN_CHANGED_EVENT,
   AUTH_TOKEN_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
   REMEMBERED_LOGIN_ID_STORAGE_KEY,
   clearAuthToken,
   clearRememberedLoginId,
   getAuthToken,
+  getRefreshToken,
   getRememberedLoginId,
   getSafeRedirectPath,
   hasAuthToken,
   setAuthToken,
+  setAuthTokens,
   setRememberedLoginId,
 } from "./auth";
-export type { AuthStorage } from "./auth";
+export type { AuthStorage, AuthTokens } from "./auth";
 export {
   ApiError,
+  INITIAL_PASSWORD_NOT_CHANGED_CODE,
   INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
   NETWORK_ERROR_MESSAGE,
   PASSWORD_CHANGE_REQUIRED_EVENT,
+  REISSUE_ENDPOINT,
   SERVER_ERROR_MESSAGE,
+  SESSION_EXTEND_FAILED_MESSAGE,
   UNAUTHORIZED_EVENT,
   getApiBaseUrl,
   isInitialPasswordNotChangedError,
+  isSessionEndedError,
   normalizePageEnvelope,
+  reissueAuthToken,
   request,
   requestBlob,
 } from "./api";
@@ -35,9 +43,11 @@ export {
   PASSWORD_CHANGE_BAD_REQUEST_MESSAGE,
   PASSWORD_CHANGE_FORBIDDEN_MESSAGE,
   PASSWORD_CHANGE_UNAUTHORIZED_MESSAGE,
+  PASSWORD_MISMATCH_CODE,
   changeInitialPassword,
   changePassword,
   getPasswordChangeEndpoint,
+  isPasswordMismatchError,
   requiresInitialPasswordChange,
 } from "./password";
 export type {
