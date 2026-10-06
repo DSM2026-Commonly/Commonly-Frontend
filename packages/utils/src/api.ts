@@ -4,7 +4,7 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from "./auth";
-import { decodeJwtPayload, hasValidAuthToken } from "./authSession";
+import { decodeJwtPayload } from "./authSession";
 
 const DEFAULT_API_BASE_URL = "";
 
@@ -61,7 +61,7 @@ export const UNAUTHORIZED_EVENT = "commonly:unauthorized";
  * 레이아웃이 받아 비밀번호 변경 화면으로 보낸다.
  */
 export const PASSWORD_CHANGE_REQUIRED_EVENT = "commonly:password-change-required";
-/** 백엔드 InitialPasswordFilter 가 내려주는 메시지. code 가 없던 예전 배포본은 이 문구로 구분한다. */
+/** 백엔드 InitialPasswordFilter 가 내려주는 메시지. 화면 안내에 쓴다(판정은 code 로 한다). */
 export const INITIAL_PASSWORD_NOT_CHANGED_MESSAGE =
   "초기 비밀번호를 변경한 후 이용할 수 있습니다.";
 export const INITIAL_PASSWORD_NOT_CHANGED_CODE = "INITIAL_PASSWORD_NOT_CHANGED";
@@ -87,35 +87,22 @@ function dispatchWindowEvent(name: string): void {
 
 /**
  * 401 이 세션 종료(로그인 화면으로 보낼 상황)인지.
- * 백엔드는 미인증·만료·위조 토큰을 code 로 구분해 준다. 토큰 형식이 바뀐 배포 직후처럼
- * 만료 시각이 남은 토큰도 무효일 수 있으므로 code 가 있으면 그것만 본다.
- * code 가 없던 예전 배포본은 권한 부족에도 401 을 줘서, 저장된 토큰이 아직 유효하면
- * 세션 만료로 보지 않았다(로그인 → 같은 API → 401 로 튕기는 루프 방지).
+ * 백엔드는 권한 부족을 403 으로, 미인증·만료·위조 토큰을 401 + code 로 구분해 준다.
+ * 토큰 형식이 바뀐 배포 직후처럼 만료 시각이 남은 토큰도 무효일 수 있으므로 토큰 만료 시각은 보지 않는다.
+ * 비밀번호 불일치(PASSWORD_MISMATCH)처럼 토큰과 무관한 401 만 세션을 유지한다.
  */
 export function isSessionEndedError(
   status: number,
   body: ApiErrorBody,
 ): boolean {
-  if (status !== 401) {
-    return false;
-  }
-
-  if (body.code) {
-    return SESSION_ENDED_CODES.has(body.code);
-  }
-
-  return !hasValidAuthToken();
+  return status === 401 && (!body.code || SESSION_ENDED_CODES.has(body.code));
 }
 
 export function isInitialPasswordNotChangedError(
   status: number,
   body: ApiErrorBody,
 ): boolean {
-  return (
-    status === 403 &&
-    (body.code === INITIAL_PASSWORD_NOT_CHANGED_CODE ||
-      (body.message?.trim() ?? "") === INITIAL_PASSWORD_NOT_CHANGED_MESSAGE)
-  );
+  return status === 403 && body.code === INITIAL_PASSWORD_NOT_CHANGED_CODE;
 }
 
 /**

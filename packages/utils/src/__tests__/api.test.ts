@@ -154,15 +154,15 @@ describe("request error messages", () => {
     expect(dispatched).toBe(0);
   });
 
-  // 예전 배포본(code 없음)은 권한 부족에도 401 을 줬다. 토큰이 살아 있으면 로그아웃시키면 안 된다.
-  test("keeps the session when the stored token is still valid", async () => {
-    mockFetch(401, { status: 401, message: "권한 없음" });
+  // 권한 부족은 이제 403 이라, 401 이면 토큰 만료 시각이 남아 있어도 세션을 끝낸다.
+  test("ends the session on a 401 even when the stored token has not expired", async () => {
+    mockFetch(401, { code: "UNAUTHORIZED", status: 401, message: "인증이 필요합니다." });
 
     const dispatched = await countUnauthorizedEvents(
       createToken(Date.now() / 1000 + 600),
     );
 
-    expect(dispatched).toBe(0);
+    expect(dispatched).toBe(1);
   });
 });
 

@@ -56,6 +56,9 @@ export const CERTIFICATE_LIMIT_EXCEEDED_MESSAGE =
 /** PETITIONER_HUMAN_NOT_MATCHED(404). 민원인 계정의 성명·생년월일과 맞는 인적사항이 없다. */
 export const PETITIONER_HUMAN_NOT_MATCHED_MESSAGE =
   "계정 정보와 일치하는 인적사항이 없습니다.";
+/** 본인 발급의 CERTIFICATE_NOT_FOUND(404). 본인 재직 이력이 없거나 고른 이력이 본인 것이 아니다. */
+export const SELF_CERTIFICATE_NOT_FOUND_MESSAGE =
+  "발급할 본인 경력 사항을 찾을 수 없습니다. 민원 담당자에게 문의하세요.";
 export const CERTIFICATE_PREVIEW_INVALID_RESPONSE_MESSAGE =
   "증명서 미리보기 응답이 올바르지 않습니다.";
 export const CERTIFICATE_DOWNLOAD_UNAUTHORIZED_MESSAGE =
@@ -504,12 +507,14 @@ export async function issueCertificate(
 }
 
 /**
- * 본인 발급·본인 미리보기 공통 오류 문구. 백엔드 오류 본문에는 code 가 없어({status, timestamp, message})
- * 상태 코드로 고른다. 404 는 인적사항 불일치(PETITIONER_HUMAN_NOT_MATCHED)와 경력 없음·남의 id
- * (CERTIFICATE_NOT_FOUND) 두 갈래라 상태 코드로 하나를 고를 수 없어, 매핑하지 않고 백엔드 문구를 그대로 쓴다.
+ * 본인 발급·본인 미리보기 공통 오류 문구.
+ * 같은 404 라도 인적사항 불일치와 경력 없음·남의 id 를, 같은 400 이라도 10건 초과와 입력 검증 실패를
+ * 응답 code 로 구분한다. 입력 검증 실패는 백엔드가 짚어준 필드별 문구를 쓴다.
  */
 const SELF_CERTIFICATE_ERROR_MESSAGES = {
-  400: CERTIFICATE_LIMIT_EXCEEDED_MESSAGE,
+  CERTIFICATE_LIMIT_EXCEEDED: CERTIFICATE_LIMIT_EXCEEDED_MESSAGE,
+  PETITIONER_HUMAN_NOT_MATCHED: PETITIONER_HUMAN_NOT_MATCHED_MESSAGE,
+  CERTIFICATE_NOT_FOUND: SELF_CERTIFICATE_NOT_FOUND_MESSAGE,
   401: CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE,
   403: CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE,
 };

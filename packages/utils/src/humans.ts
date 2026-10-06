@@ -45,6 +45,8 @@ export const HUMAN_DELETE_FORBIDDEN_MESSAGE =
   "대상자를 삭제할 권한이 없습니다.";
 export const HUMAN_DELETE_NOT_FOUND_MESSAGE =
   "이미 삭제되었거나 찾을 수 없는 대상자입니다.";
+export const HUMAN_DELETE_CONFLICT_MESSAGE =
+  "연결된 경력 사항이나 발급 기록이 있어 삭제할 수 없습니다.";
 
 export interface HumanSummary {
   humanId: number;
@@ -331,6 +333,8 @@ export async function deleteHuman(
       401: HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
       403: HUMAN_DELETE_FORBIDDEN_MESSAGE,
       404: HUMAN_DELETE_NOT_FOUND_MESSAGE,
+      // 재직 이력이나 발급 기록이 연결돼 있으면 백엔드가 삭제를 거절한다(#64).
+      409: HUMAN_DELETE_CONFLICT_MESSAGE,
     },
   });
 }

@@ -22,6 +22,7 @@ import {
   HUMAN_DELETE_HAS_CAREERS_MESSAGE,
   assertHumanDeletable,
   PETITIONER_HUMAN_NOT_MATCHED_MESSAGE,
+  SELF_CERTIFICATE_NOT_FOUND_MESSAGE,
   downloadCertificate,
   fetchHumanCertificates,
   fetchMyCertificates,
@@ -422,16 +423,16 @@ describe("issueSelfCertificate", () => {
 
   test("maps error statuses to Korean messages", async () => {
     const cases = [
-      // 전체 발급인데 재직 이력이 10건을 넘으면 400(CERTIFICATE_LIMIT_EXCEEDED)이다.
-      [400, CERTIFICATE_LIMIT_EXCEEDED_MESSAGE],
-      // 본인 발급이 닫혀 있으면 본문 없는 401/403 이 온다. "다시 로그인" 안내를 쓰지 않는다.
-      [401, CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
-      [403, CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
-      [500, "일시적인 오류"],
+      // 전체 발급인데 재직 이력이 10건을 넘으면 400 CERTIFICATE_LIMIT_EXCEEDED 다.
+      [400, "CERTIFICATE_LIMIT_EXCEEDED", CERTIFICATE_LIMIT_EXCEEDED_MESSAGE],
+      [401, "UNAUTHORIZED", CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
+      // 본인 발급 스위치가 꺼져 있으면 403 SELF_ISSUE_DISABLED 다.
+      [403, "SELF_ISSUE_DISABLED", CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
+      [500, "INTERNAL_SERVER_ERROR", "일시적인 오류"],
     ] as const;
 
-    for (const [status, message] of cases) {
-      mockFetch(status, undefined);
+    for (const [status, code, message] of cases) {
+      mockFetch(status, { code, status });
       const error = await issueSelfCertificate(selfRequest).catch(
         (e: unknown) => e,
       );
@@ -441,19 +442,33 @@ describe("issueSelfCertificate", () => {
     }
   });
 
-  test("keeps the backend message for 404 (human mismatch vs. missing career)", async () => {
-    // 404 는 두 갈래라 상태 코드로 문구를 고르지 않는다.
-    for (const message of [
-      "계정 정보와 일치하는 인적사항이 없습니다.",
-      "해당 경력사항을 찾을 수 없습니다.",
-    ]) {
-      mockFetch(404, { status: 404, message });
+  test("tells the two 404s apart by code (human mismatch vs. missing career)", async () => {
+    const cases = [
+      ["PETITIONER_HUMAN_NOT_MATCHED", PETITIONER_HUMAN_NOT_MATCHED_MESSAGE],
+      ["CERTIFICATE_NOT_FOUND", SELF_CERTIFICATE_NOT_FOUND_MESSAGE],
+    ] as const;
+
+    for (const [code, message] of cases) {
+      mockFetch(404, { code, status: 404, message: "백엔드 문구" });
 
       await expect(issueSelfCertificate(selfRequest)).rejects.toMatchObject({
         status: 404,
         message,
       });
     }
+  });
+
+  test("shows the field message for a validation 400 instead of the limit message", async () => {
+    mockFetch(400, {
+      code: "VALIDATION_FAILED",
+      status: 400,
+      error: { purpose: "255자 이하로 입력해 주세요." },
+    });
+
+    await expect(issueSelfCertificate(selfRequest)).rejects.toMatchObject({
+      status: 400,
+      message: "255자 이하로 입력해 주세요.",
+    });
   });
 });
 
@@ -606,13 +621,13 @@ describe("previewSelfCertificate", () => {
 
   test("uses the same messages as self issuing", async () => {
     const cases = [
-      [400, CERTIFICATE_LIMIT_EXCEEDED_MESSAGE],
-      [401, CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
-      [403, CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
+      [400, "CERTIFICATE_LIMIT_EXCEEDED", CERTIFICATE_LIMIT_EXCEEDED_MESSAGE],
+      [401, "UNAUTHORIZED", CERTIFICATE_SELF_ISSUE_UNAUTHORIZED_MESSAGE],
+      [403, "SELF_ISSUE_DISABLED", CERTIFICATE_SELF_ISSUE_FORBIDDEN_MESSAGE],
     ] as const;
 
-    for (const [status, message] of cases) {
-      mockFetch(status, undefined);
+    for (const [status, code, message] of cases) {
+      mockFetch(status, { code, status });
 
       await expect(
         previewSelfCertificate({ purpose: "은행 제출용", otherMatters: "" }),

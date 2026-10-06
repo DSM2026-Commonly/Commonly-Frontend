@@ -221,6 +221,7 @@ describe("initial password 403 detection", () => {
 
     try {
       mockFetch(403, {
+        code: "INITIAL_PASSWORD_NOT_CHANGED",
         status: 403,
         timestamp: "t",
         message: INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
@@ -251,7 +252,7 @@ describe("initial password 403 detection", () => {
     };
 
     try {
-      mockFetch(403, { status: 403, message: "권한 없음" });
+      mockFetch(403, { code: "ACCESS_DENIED", status: 403, message: "권한이 없습니다." });
       await request("/api/admins").catch(() => undefined);
       expect(events).toEqual([]);
     } finally {
@@ -287,7 +288,11 @@ describe("requiresInitialPasswordChange", () => {
       [ME_ENDPOINT]: { status: 404, body: { status: 404, message: "없음" } },
       "/api/issuance-histories": {
         status: 403,
-        body: { status: 403, message: INITIAL_PASSWORD_NOT_CHANGED_MESSAGE },
+        body: {
+          code: "INITIAL_PASSWORD_NOT_CHANGED",
+          status: 403,
+          message: INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
+        },
       },
     });
     expect(await requiresInitialPasswordChange({ token: "t" })).toBe(true);
@@ -304,10 +309,14 @@ describe("requiresInitialPasswordChange", () => {
   });
 
   test("with me unavailable, true only for the initial-password 403", async () => {
-    mockFetch(403, { status: 403, message: INITIAL_PASSWORD_NOT_CHANGED_MESSAGE });
+    mockFetch(403, {
+      code: "INITIAL_PASSWORD_NOT_CHANGED",
+      status: 403,
+      message: INITIAL_PASSWORD_NOT_CHANGED_MESSAGE,
+    });
     expect(await requiresInitialPasswordChange({ token: "t" })).toBe(true);
 
-    mockFetch(403, { status: 403, message: "권한 없음" });
+    mockFetch(403, { code: "ACCESS_DENIED", status: 403, message: "권한이 없습니다." });
     expect(await requiresInitialPasswordChange({ token: "t" })).toBe(false);
 
     mockFetch(200, []);

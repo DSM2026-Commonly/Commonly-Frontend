@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ApiError } from "../api";
 import {
   HUMAN_CREATE_INVALID_RESPONSE_MESSAGE,
+  HUMAN_DELETE_CONFLICT_MESSAGE,
   HUMAN_DELETE_NOT_FOUND_MESSAGE,
   HUMAN_DELETE_UNAUTHORIZED_MESSAGE,
   HUMAN_ENDPOINT,
@@ -404,6 +405,8 @@ describe("deleteHuman", () => {
     const cases = [
       [401, HUMAN_DELETE_UNAUTHORIZED_MESSAGE],
       [404, HUMAN_DELETE_NOT_FOUND_MESSAGE],
+      // 재직 이력·발급 기록이 연결된 대상자는 백엔드가 409 로 거절한다(#64).
+      [409, HUMAN_DELETE_CONFLICT_MESSAGE],
     ] as const;
 
     for (const [status, message] of cases) {
